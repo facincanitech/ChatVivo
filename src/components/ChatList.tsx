@@ -10,15 +10,10 @@ import {
   IconGroup,
   IconHeart,
   IconKey,
-  IconListPlus,
   IconLock,
-  IconLogout,
   IconMailUnread,
-  IconMinusCircle,
   IconMore,
-  IconPinOff,
   IconSearch,
-  IconStar,
   IconTrash,
   IconUser,
 } from './icons'
@@ -49,6 +44,10 @@ type ConvWithLabel = Conversation & {
   isFavorite: boolean
   favoritedAt: string | null
   isOrganicGroup: boolean
+  isArchived: boolean
+  isMuted: boolean
+  isManuallyUnread: boolean
+  unreadCount: number
 }
 type FriendRequest = {
   id: string
@@ -88,7 +87,7 @@ export function ChatList({
   const [groupsBusy, setGroupsBusy] = useState(false)
   const [groupsError, setGroupsError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
-  const [activeFilter, setActiveFilter] = useState<'all' | 'favorites'>('all')
+  const [activeFilter, setActiveFilter] = useState<'all' | 'favorites' | 'archived'>('all')
   const [dmEmail, setDmEmail] = useState('')
   const [inviteSent, setInviteSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -119,8 +118,9 @@ export function ChatList({
     }
     const { data: memberRows } = await supabase
       .from('conversation_members')
-      .select('conversation:conversations(*), is_favorite, favorited_at')
+      .select('conversation:conversations(*), is_favorite, favorited_at, archived_at, muted, manually_unread, deleted_at')
       .eq('user_id', me.id)
+      .is('deleted_at', null)
 
     const myRows = memberRows || []
     const convs = myRows
@@ -131,6 +131,11 @@ export function ChatList({
       setConversations([])
       return
     }
+
+    const { data: unreadRows } = await supabase.rpc('get_unread_counts', { p_user_id: me.id })
+    const unreadMap = new Map<string, number>(
+      (unreadRows || []).map((r: { conversation_id: string; unread_count: number }) => [r.conversation_id, Number(r.unread_count)]),
+    )
 
     const ids = convs.map((c) => c.id)
     let allMembers: { conversation_id: string; added_by: string | null; role: string | null; profile: unknown }[] | null = null
@@ -152,6 +157,11 @@ export function ChatList({
         const mine = myRows.find((r) => (r.conversation as unknown as Conversation)?.id === c.id)
         const isFavorite = !!mine?.is_favorite
         const favoritedAt = (mine?.favorited_at as string | null) || null
+        const isArchived = !!mine?.archived_at
+        const isMuted = !!mine?.muted
+        const isManuallyUnread = !!mine?.manually_unread
+        const unreadCount = unreadMap.get(c.id) || 0
+        const extra = { isFavorite, favoritedAt, isArchived, isMuted, isManuallyUnread, unreadCount }
         const membersOfConv = (allMembers || []).filter((m) => m.conversation_id === c.id)
         const anyOther = membersOfConv.find((m) => (m.profile as unknown as Profile)?.id !== me.id)
 
@@ -164,12 +174,12 @@ export function ChatList({
             )
             let p = original?.profile as unknown as Profile | undefined
             if (!p || p.id === me.id) p = anyOther?.profile as unknown as Profile | undefined
-            return { ...c, label: p ? displayName(p) : 'conversa', avatarUrl: p?.avatar_url || null, otherId: p?.id || null, isFavorite, favoritedAt, isOrganicGroup: true }
+            return { ...c, label: p ? displayName(p) : 'conversa', avatarUrl: p?.avatar_url || null, otherId: p?.id || null, ...extra, isOrganicGroup: true }
           }
-          return { ...c, label: c.name || 'grupo', avatarUrl: null, otherId: null, isFavorite, favoritedAt, isOrganicGroup: false }
+          return { ...c, label: c.name || 'grupo', avatarUrl: null, otherId: null, ...extra, isOrganicGroup: false }
         }
         const p = anyOther?.profile as unknown as Profile | undefined
-        return { ...c, label: p ? displayName(p) : 'conversa', avatarUrl: p?.avatar_url || null, otherId: p?.id || null, isFavorite, favoritedAt, isOrganicGroup: false }
+        return { ...c, label: p ? displayName(p) : 'conversa', avatarUrl: p?.avatar_url || null, otherId: p?.id || null, ...extra, isOrganicGroup: false }
       })
       .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
 
@@ -249,6 +259,14 @@ export function ChatList({
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'conversations' },
         () => loadConversations(),
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages' },
+        (payload) => {
+          const msg = payload.new as { author_id: string }
+          if (msg.author_id !== me.id) loadConversations()
+        },
       )
       .on(
         'postgres_changes',
@@ -507,16 +525,58 @@ export function ChatList({
     }
   }
 
-  async function leaveConversation(conv: ConvWithLabel) {
+  async function deleteConversation(conv: ConvWithLabel) {
     if (!me) return
     await supabase
       .from('conversation_members')
-      .delete()
+      .update({ deleted_at: new Date().toISOString() })
       .eq('conversation_id', conv.id)
       .eq('user_id', me.id)
     setConversations((prev) => prev.filter((c) => c.id !== conv.id))
     if (selected?.id === conv.id) onSelect(null)
     setContextMenu(null)
+  }
+
+  async function archiveConversation(conv: ConvWithLabel) {
+    if (!me) return
+    const next = !conv.isArchived
+    await supabase
+      .from('conversation_members')
+      .update({ archived_at: next ? new Date().toISOString() : null })
+      .eq('conversation_id', conv.id)
+      .eq('user_id', me.id)
+    setConversations((prev) => prev.map((c) => (c.id === conv.id ? { ...c, isArchived: next } : c)))
+    setContextMenu(null)
+  }
+
+  async function muteConversation(conv: ConvWithLabel) {
+    if (!me) return
+    const next = !conv.isMuted
+    await supabase
+      .from('conversation_members')
+      .update({ muted: next })
+      .eq('conversation_id', conv.id)
+      .eq('user_id', me.id)
+    setConversations((prev) => prev.map((c) => (c.id === conv.id ? { ...c, isMuted: next } : c)))
+    setContextMenu(null)
+  }
+
+  async function markUnread(conv: ConvWithLabel) {
+    if (!me) return
+    await supabase
+      .from('conversation_members')
+      .update({ manually_unread: true })
+      .eq('conversation_id', conv.id)
+      .eq('user_id', me.id)
+    setConversations((prev) => prev.map((c) => (c.id === conv.id ? { ...c, isManuallyUnread: true } : c)))
+    setContextMenu(null)
+  }
+
+  function selectConversation(c: ConvWithLabel) {
+    onSelect(c)
+    setConversations((prev) =>
+      prev.map((conv) => (conv.id === c.id ? { ...conv, unreadCount: 0, isManuallyUnread: false } : conv)),
+    )
   }
 
   function handleContextMenu(e: React.MouseEvent, conv: ConvWithLabel) {
@@ -706,12 +766,17 @@ export function ChatList({
     setConversations((prev) =>
       prev.map((conv) => (conv.id === c.id ? { ...conv, isFavorite: next, favoritedAt } : conv)),
     )
+    setContextMenu(null)
   }
 
   const filtered = conversations
     .filter((c) => !(c.otherId && blockedIds.has(c.otherId)))
     .filter((c) => c.label.toLowerCase().includes(query.toLowerCase()))
-    .filter((c) => activeFilter === 'all' || c.isFavorite)
+    .filter((c) => {
+      if (activeFilter === 'archived') return c.isArchived
+      if (activeFilter === 'favorites') return c.isFavorite
+      return !c.isArchived
+    })
     .sort((a, b) => {
       if (activeFilter !== 'favorites') return 0
       return (a.favoritedAt || '').localeCompare(b.favoritedAt || '')
@@ -746,6 +811,7 @@ export function ChatList({
       <div className="filters">
         <button className={`filter${activeFilter === 'all' ? ' active' : ''}`} onClick={() => setActiveFilter('all')}>Todos</button>
         <button className={`filter${activeFilter === 'favorites' ? ' active' : ''}`} onClick={() => setActiveFilter('favorites')}>Favoritos</button>
+        <button className={`filter${activeFilter === 'archived' ? ' active' : ''}`} onClick={() => setActiveFilter('archived')}>Arquivo</button>
       </div>
 
       <div className="chat-list">
@@ -755,23 +821,18 @@ export function ChatList({
           <div
             key={c.id}
             className={`chat${selected?.id === c.id ? ' selected' : ''}`}
-            onClick={() => onSelect(c)}
+            onClick={() => selectConversation(c)}
             onContextMenu={(e) => handleContextMenu(e, c)}
           >
             <div className="photo">
               {c.avatarUrl ? <img src={c.avatarUrl} alt="" /> : c.label[0]?.toUpperCase()}
             </div>
-            <button
-              type="button"
-              className={`favorite-star${c.isFavorite ? ' filled' : ''}`}
-              onClick={(e) => { e.stopPropagation(); toggleFavorite(c) }}
-              title={c.isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
-            >
-              <IconStar size={16} />
-            </button>
             <div className="chat-info">
               <div className="row">
                 <div className="name">{c.type === 'group' && !c.isOrganicGroup ? `# ${c.label}` : c.label}</div>
+                {(c.unreadCount > 0 || c.isManuallyUnread) && (
+                  <span className="unread-badge">{c.unreadCount > 0 ? c.unreadCount : ''}</span>
+                )}
               </div>
             </div>
           </div>
@@ -785,25 +846,21 @@ export function ChatList({
             style={{ left: contextMenu.x, top: contextMenu.y }}
             onClick={(e) => e.stopPropagation()}
           >
-            <button type="button"><IconArchive size={16} /> Arquivar conversa</button>
-            {contextMenu.conv.type === 'group' ? (
-              <button type="button"><IconBellOff size={16} /> Silenciar notificações</button>
-            ) : (
-              <button type="button"><IconPinOff size={16} /> Desafixar conversa</button>
-            )}
-            <button type="button"><IconMailUnread size={16} /> Marcar como não lida</button>
-            <button type="button"><IconHeart size={16} /> Adicionar aos Favoritos</button>
-            <button type="button"><IconListPlus size={16} /> Adicionar à lista</button>
-            <button type="button"><IconMinusCircle size={16} /> Limpar conversa</button>
-            {contextMenu.conv.type === 'group' ? (
-              <button type="button" className="danger" onClick={() => leaveConversation(contextMenu.conv)}>
-                <IconLogout size={16} /> Sair do grupo
-              </button>
-            ) : (
-              <button type="button" className="danger" onClick={() => leaveConversation(contextMenu.conv)}>
-                <IconTrash size={16} /> Apagar conversa
-              </button>
-            )}
+            <button type="button" onClick={() => archiveConversation(contextMenu.conv)}>
+              <IconArchive size={16} /> {contextMenu.conv.isArchived ? 'Desarquivar conversa' : 'Arquivar conversa'}
+            </button>
+            <button type="button" onClick={() => muteConversation(contextMenu.conv)}>
+              <IconBellOff size={16} /> {contextMenu.conv.isMuted ? 'Dessilenciar notificações' : 'Silenciar notificações'}
+            </button>
+            <button type="button" onClick={() => markUnread(contextMenu.conv)}>
+              <IconMailUnread size={16} /> Marcar como não lida
+            </button>
+            <button type="button" onClick={() => toggleFavorite(contextMenu.conv)}>
+              <IconHeart size={16} /> {contextMenu.conv.isFavorite ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos'}
+            </button>
+            <button type="button" className="danger" onClick={() => deleteConversation(contextMenu.conv)}>
+              <IconTrash size={16} /> Apagar conversa
+            </button>
           </div>
         </div>
       )}

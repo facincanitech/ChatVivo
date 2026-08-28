@@ -127,12 +127,51 @@ function App() {
     }
   }, [profile?.id])
 
+  const [mutedIds, setMutedIds] = useState<Set<string>>(new Set())
+  const mutedIdsRef = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    mutedIdsRef.current = mutedIds
+  }, [mutedIds])
+
+  useEffect(() => {
+    if (!profile) {
+      setMutedIds(new Set())
+      return
+    }
+
+    async function load() {
+      if (!profile) return
+      const { data } = await supabase
+        .from('conversation_members')
+        .select('conversation_id')
+        .eq('user_id', profile.id)
+        .eq('muted', true)
+      setMutedIds(new Set((data || []).map((r) => r.conversation_id as string)))
+    }
+
+    load()
+
+    const channel = supabase
+      .channel(`muted:${profile.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'conversation_members', filter: `user_id=eq.${profile.id}` },
+        () => load(),
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [profile?.id])
+
   useEffect(() => {
     if (!profile) return
     const channel = supabase
       .channel(`nudge:${profile.id}`)
       .on('broadcast', { event: 'nudge' }, ({ payload }) => {
         const { userId, conversationId } = payload as { userId: string; conversationId?: string }
+        if (conversationId && mutedIdsRef.current.has(conversationId)) return
         triggerNudgeShake()
         playNudgeSound()
         if (!conversationId) return
