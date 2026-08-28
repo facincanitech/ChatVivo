@@ -17,6 +17,10 @@ dist-ssr
 .env.*
 !.env.example
 
+# Supabase setup internals (schema/role/policy details kept private)
+supabase/
+scripts/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
