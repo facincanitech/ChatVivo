@@ -32,4 +32,4 @@ export type TypingPayload = {
   text: string
 }
 
-export type PanelView = 'root' | 'contact' | 'group' | 'join' | 'friends'
+export type PanelView = 'root' | 'contact' | 'group' | 'friends'

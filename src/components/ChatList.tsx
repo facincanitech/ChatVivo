@@ -8,7 +8,6 @@ import {
   IconArrowLeft,
   IconBellOff,
   IconGroup,
-  IconHash,
   IconHeart,
   IconKey,
   IconListPlus,
@@ -91,7 +90,6 @@ export function ChatList({
   const [query, setQuery] = useState('')
   const [activeFilter, setActiveFilter] = useState<'all' | 'favorites'>('all')
   const [dmEmail, setDmEmail] = useState('')
-  const [joinCode, setJoinCode] = useState('')
   const [inviteSent, setInviteSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -363,40 +361,6 @@ export function ChatList({
       setDmEmail('')
       await loadConversations()
       onSelect(conv as Conversation)
-      closePanel()
-    } catch (err) {
-      setError(getErrorMessage(err))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function joinByCode() {
-    if (!me) return
-    setError(null)
-    setBusy(true)
-    try {
-      const code = joinCode.trim()
-      if (!code) return
-
-      const { data: invite, error: inviteErr } = await supabase
-        .from('invites')
-        .select('*')
-        .eq('code', code)
-        .maybeSingle()
-      if (inviteErr) throw inviteErr
-      if (!invite) throw new Error('Convite inválido')
-      if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
-        throw new Error('Convite expirado')
-      }
-
-      const { error: memberErr } = await supabase
-        .from('conversation_members')
-        .insert({ conversation_id: invite.conversation_id, user_id: me.id })
-      if (memberErr && !memberErr.message.includes('duplicate')) throw memberErr
-
-      setJoinCode('')
-      await loadConversations()
       closePanel()
     } catch (err) {
       setError(getErrorMessage(err))
@@ -760,9 +724,7 @@ export function ChatList({
         ? 'Novo contato'
         : panelView === 'group'
           ? 'Novo grupo'
-          : panelView === 'friends'
-            ? (friendsView === 'add' ? 'Adicionar amigo' : 'Amigos')
-            : 'Entrar com código'
+          : (friendsView === 'add' ? 'Adicionar amigo' : 'Amigos')
 
   return (
     <section className="chats">
@@ -857,10 +819,6 @@ export function ChatList({
             <div className="new-conv-option" onClick={() => onPanelViewChange('contact')}>
               <div className="option-icon"><IconUser size={20} /></div>
               <span>Novo contato</span>
-            </div>
-            <div className="new-conv-option" onClick={() => onPanelViewChange('join')}>
-              <div className="option-icon"><IconHash size={20} /></div>
-              <span>Entrar com código</span>
             </div>
             <div className="new-conv-option" onClick={() => { setFriendsView('list'); onPanelViewChange('friends') }}>
               <div className="option-icon"><IconHeart size={20} /></div>
@@ -1004,19 +962,6 @@ export function ChatList({
           </div>
         )}
 
-        {panelView === 'join' && (
-          <div className="new-conv-form">
-            <label>Código de convite</label>
-            <input
-              placeholder="código"
-              value={joinCode}
-              onChange={(e) => setJoinCode(e.target.value)}
-              autoFocus
-            />
-            <button type="button" disabled={busy} onClick={joinByCode}>Entrar</button>
-            {error && <span className="auth-error">{error}</span>}
-          </div>
-        )}
       </div>
 
       <div className={`new-conv-panel${accountOpen ? ' open' : ''}`}>
