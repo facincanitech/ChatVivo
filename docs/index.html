@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ChatVivo</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, sans-serif; color-scheme: light dark; }
+  .room { display: flex; flex-direction: column; height: 100vh; max-width: 640px; margin: 0 auto; }
+  .room-header { padding: 12px 16px; border-bottom: 1px solid #e5e5e5; display: flex; flex-direction: column; gap: 2px; }
+  .room-header h1 { font-size: 1.1rem; margin: 0; }
+  .room-name { font-size: 0.75rem; color: #888; }
+  .messages { flex: 1; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
+  .message { display: flex; gap: 6px; align-items: baseline; }
+  .message-author { font-weight: 600; font-size: 0.85rem; color: #888; flex-shrink: 0; }
+  .message-content { word-break: break-word; }
+  .message-live .message-content { color: #888; font-style: italic; }
+  .cursor { animation: blink 1s step-start infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .composer { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid #e5e5e5; }
+  .composer textarea { flex: 1; resize: none; padding: 8px; font-family: inherit; font-size: 0.95rem; }
+  .composer button { padding: 0 16px; cursor: pointer; }
+  .composer button:disabled { opacity: 0.5; cursor: default; }
+</style>
+</head>
+<body>
+<div class="room">
+  <header class="room-header">
+    <h1>ChatVivo</h1>
+    <span class="room-name" id="roomInfo">sala: general</span>
+  </header>
+  <div class="messages" id="messages"></div>
+  <div class="composer">
+    <textarea id="draft" rows="2" placeholder="digite... tudo aqui é visto ao vivo pelo grupo"></textarea>
+    <button id="sendBtn" type="button" disabled>Enviar</button>
+  </div>
+</div>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+const SUPABASE_URL = 'https://eeyypnkbiejvficybhxu.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable__dtVChf4HhsbSjY43nauBw_VjNtdLlA';
+const ROOM_ID = 'general';
+const NAME_KEY = 'chatvivo_name';
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let name = localStorage.getItem(NAME_KEY);
+if (!name) {
+  name = (window.prompt('Como você quer aparecer na sala?') || '').trim() || `anon-${Math.floor(Math.random() * 1000)}`;
+  localStorage.setItem(NAME_KEY, name);
+}
+document.getElementById('roomInfo').textContent = `sala: ${ROOM_ID} · você: ${name}`;
+
+const messagesEl = document.getElementById('messages');
+const draftEl = document.getElementById('draft');
+const sendBtn = document.getElementById('sendBtn');
+
+const liveEls = new Map();
+
+function scrollToBottom() {
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function appendMessage(msg) {
+  const el = document.createElement('div');
+  el.className = 'message';
+  el.innerHTML = `<span class="message-author"></span><span class="message-content"></span>`;
+  el.querySelector('.message-author').textContent = msg.author;
+  el.querySelector('.message-content').textContent = msg.content;
+  messagesEl.appendChild(el);
+  scrollToBottom();
+}
+
+function setLiveTyping(author, text) {
+  if (author === name) return;
+  let el = liveEls.get(author);
+  if (!text) {
+    if (el) { el.remove(); liveEls.delete(author); }
+    return;
+  }
+  if (!el) {
+    el = document.createElement('div');
+    el.className = 'message message-live';
+    el.innerHTML = `<span class="message-author"></span><span class="message-content"></span>`;
+    el.querySelector('.message-author').textContent = author;
+    messagesEl.appendChild(el);
+    liveEls.set(author, el);
+  }
+  el.querySelector('.message-content').textContent = text;
+  scrollToBottom();
+}
+
+const { data: initial } = await supabase
+  .from('messages')
+  .select('*')
+  .eq('room_id', ROOM_ID)
+  .order('created_at', { ascending: true })
+  .limit(200);
+
+(initial || []).forEach(appendMessage);
+
+const channel = supabase
+  .channel(`room:${ROOM_ID}`)
+  .on('broadcast', { event: 'typing' }, ({ payload }) => {
+    setLiveTyping(payload.author, payload.text);
+  })
+  .on(
+    'postgres_changes',
+    { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${ROOM_ID}` },
+    (payload) => {
+      appendMessage(payload.new);
+      setLiveTyping(payload.new.author, '');
+    },
+  )
+  .subscribe();
+
+function broadcastTyping(text) {
+  channel.send({ type: 'broadcast', event: 'typing', payload: { author: name, text } });
+}
+
+draftEl.addEventListener('input', () => {
+  broadcastTyping(draftEl.value);
+  sendBtn.disabled = !draftEl.value.trim();
+});
+
+async function send() {
+  const content = draftEl.value.trim();
+  if (!content) return;
+  broadcastTyping('');
+  draftEl.value = '';
+  sendBtn.disabled = true;
+  await supabase.from('messages').insert({ room_id: ROOM_ID, author: name, content });
+}
+
+sendBtn.addEventListener('click', send);
+draftEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    send();
+  }
+});
+</script>
+</body>
+</html>
