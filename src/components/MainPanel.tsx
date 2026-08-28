@@ -80,18 +80,25 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const [profilePopup, setProfilePopup] = useState<{ id: string; meta: MemberMeta } | null>(null)
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const [friendRequestState, setFriendRequestState] = useState<'idle' | 'sent' | 'friends' | 'error'>('idle')
+  const [friendRequestLoading, setFriendRequestLoading] = useState(false)
   useEffect(() => {
     setFriendRequestState('idle')
-    if (!me || !profilePopup) return
+    if (!me || !profilePopup) {
+      setFriendRequestLoading(false)
+      return
+    }
+    setFriendRequestLoading(true)
     supabase
       .from('friend_requests')
       .select('status, from_id')
       .or(`and(from_id.eq.${me.id},to_id.eq.${profilePopup.id}),and(from_id.eq.${profilePopup.id},to_id.eq.${me.id})`)
       .maybeSingle()
       .then(({ data }) => {
-        if (!data) return
-        if (data.status === 'accepted') setFriendRequestState('friends')
-        else if (data.status === 'pending' && data.from_id === me.id) setFriendRequestState('sent')
+        if (data) {
+          if (data.status === 'accepted') setFriendRequestState('friends')
+          else if (data.status === 'pending' && data.from_id === me.id) setFriendRequestState('sent')
+        }
+        setFriendRequestLoading(false)
       })
   }, [profilePopup?.id, me?.id])
   const [atBottom, setAtBottom] = useState(true)
@@ -949,7 +956,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
             <p style={{ fontSize: '.75rem', color: '#8696a0' }}>{profilePopup.meta.email}</p>
             <p>{profilePopup.meta.status || 'sem status'}</p>
             <p style={{ fontSize: '.75rem' }}>{formatPresence(profilePopup.meta.last_seen_at)}</p>
-            {friendRequestState === 'friends' ? (
+            {friendRequestLoading ? null : friendRequestState === 'friends' ? (
               <p style={{ fontSize: '.75rem', color: '#a9e7d8' }}>✓ Amigos</p>
             ) : friendRequestState === 'sent' ? (
               <p style={{ fontSize: '.75rem', color: '#a9e7d8' }}>solicitação de amizade enviada</p>

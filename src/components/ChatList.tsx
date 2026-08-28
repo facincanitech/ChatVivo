@@ -245,7 +245,12 @@ export function ChatList({
       .channel(`member-updates:${me.id}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'conversation_members', filter: `user_id=eq.${me.id}` },
+        { event: '*', schema: 'public', table: 'conversation_members', filter: `user_id=eq.${me.id}` },
+        () => loadConversations(),
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'conversations' },
         () => loadConversations(),
       )
       .on(
