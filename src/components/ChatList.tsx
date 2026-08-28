@@ -62,6 +62,7 @@ type OutgoingRequest = {
 }
 
 type BlockedUser = { id: string; username: string; email: string }
+type Friend = { id: string; username: string; display_name: string | null; avatar_url: string | null }
 
 export function ChatList({
   me,
@@ -96,6 +97,8 @@ export function ChatList({
   const [friendInfo, setFriendInfo] = useState<string | null>(null)
   const [incoming, setIncoming] = useState<FriendRequest[]>([])
   const [outgoing, setOutgoing] = useState<OutgoingRequest[]>([])
+  const [friendsView, setFriendsView] = useState<'list' | 'add'>('list')
+  const [friends, setFriends] = useState<Friend[]>([])
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [contextMenu, setContextMenu] = useState<{ conv: ConvWithLabel; x: number; y: number } | null>(null)
 
@@ -187,10 +190,41 @@ export function ChatList({
     setOutgoing((data as unknown as OutgoingRequest[]) || [])
   }
 
+  async function loadFriends() {
+    if (!me) {
+      setFriends([])
+      return
+    }
+    const { data } = await supabase
+      .from('friend_requests')
+      .select(
+        'from_id, to_id, from_profile:profiles!friend_requests_from_id_fkey(id, username, display_name, avatar_url), to_profile:profiles!friend_requests_to_id_fkey(id, username, display_name, avatar_url)',
+      )
+      .eq('status', 'accepted')
+      .or(`from_id.eq.${me.id},to_id.eq.${me.id}`)
+
+    setFriends(
+      (data || []).map((row: any) =>
+        row.from_id === me.id ? row.to_profile : row.from_profile,
+      ),
+    )
+  }
+
+  async function unfriend(id: string) {
+    if (!me) return
+    await supabase
+      .from('friend_requests')
+      .delete()
+      .eq('status', 'accepted')
+      .or(`and(from_id.eq.${me.id},to_id.eq.${id}),and(from_id.eq.${id},to_id.eq.${me.id})`)
+    setFriends((prev) => prev.filter((f) => f.id !== id))
+  }
+
   useEffect(() => {
     loadConversations()
     loadIncomingRequests()
     loadOutgoingRequests()
+    loadFriends()
     if (!me) return
     const channel = supabase
       .channel(`member-updates:${me.id}`)
@@ -202,12 +236,12 @@ export function ChatList({
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'friend_requests', filter: `to_id=eq.${me.id}` },
-        () => loadIncomingRequests(),
+        () => { loadIncomingRequests(); loadFriends() },
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'friend_requests', filter: `from_id=eq.${me.id}` },
-        () => loadOutgoingRequests(),
+        () => { loadOutgoingRequests(); loadFriends() },
       )
       .subscribe()
     return () => {
@@ -444,6 +478,11 @@ export function ChatList({
   }
 
   function goBack() {
+    if (panelView === 'friends' && friendsView === 'add') {
+      setFriendsView('list')
+      setError(null)
+      return
+    }
     if (panelView === 'root') closePanel()
     else {
       onPanelViewChange('root')
@@ -639,7 +678,7 @@ export function ChatList({
         : panelView === 'group'
           ? 'Novo grupo'
           : panelView === 'friends'
-            ? 'Amizades'
+            ? (friendsView === 'add' ? 'Adicionar amigo' : 'Amigos')
             : 'Entrar com código'
 
   return (
@@ -740,14 +779,39 @@ export function ChatList({
               <div className="option-icon"><IconHash size={20} /></div>
               <span>Entrar com código</span>
             </div>
-            <div className="new-conv-option" onClick={() => onPanelViewChange('friends')}>
+            <div className="new-conv-option" onClick={() => { setFriendsView('list'); onPanelViewChange('friends') }}>
               <div className="option-icon"><IconHeart size={20} /></div>
-              <span>Solicitação de amizade{incoming.length > 0 ? ` (${incoming.length})` : ''}</span>
+              <span>Amigos{incoming.length > 0 ? ` (${incoming.length})` : ''}</span>
             </div>
           </div>
         )}
 
-        {panelView === 'friends' && (
+        {panelView === 'friends' && friendsView === 'list' && (
+          <>
+            <div className="new-conv-list">
+              <div className="new-conv-option" onClick={() => setFriendsView('add')}>
+                <div className="option-icon"><IconUser size={20} /></div>
+                <span>Adicionar amigo</span>
+              </div>
+            </div>
+            <div className="friend-request-list" style={{ padding: '0 22px' }}>
+              {friends.length === 0 && <span className="invite-code">você ainda não tem amigos</span>}
+              {friends.map((f) => (
+                <div key={f.id} className="friend-request-row">
+                  <div className="photo" style={{ width: 40, height: 40, overflow: 'hidden' }}>
+                    {f.avatar_url ? <img src={f.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : f.username[0]?.toUpperCase()}
+                  </div>
+                  <div className="friend-request-info">
+                    <div className="name">@{displayName(f)}</div>
+                  </div>
+                  <button type="button" className="decline" onClick={() => unfriend(f.id)}>Desfazer</button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {panelView === 'friends' && friendsView === 'add' && (
           <div className="new-conv-form">
             <label>Adicionar por email</label>
             <input

@@ -66,6 +66,10 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
   const [profilePopup, setProfilePopup] = useState<{ id: string; meta: MemberMeta } | null>(null)
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
+  const [friendRequestState, setFriendRequestState] = useState<'idle' | 'sent' | 'error'>('idle')
+  useEffect(() => {
+    setFriendRequestState('idle')
+  }, [profilePopup?.id])
   const [atBottom, setAtBottom] = useState(true)
 
   const channelRef = useRef<RealtimeChannel | null>(null)
@@ -251,6 +255,25 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     channelRef.current?.send({ type: 'broadcast', event: 'typing', payload: { userId: me.id, text } })
   }
 
+  async function sendFriendFromPopup() {
+    if (!me || !profilePopup) return
+    const { error: reqErr } = await supabase
+      .from('friend_requests')
+      .insert({ from_id: me.id, to_id: profilePopup.id })
+    if (reqErr && !reqErr.message.includes('duplicate')) {
+      setFriendRequestState('error')
+      return
+    }
+    if (reqErr) {
+      await supabase
+        .from('friend_requests')
+        .update({ status: 'pending' })
+        .eq('from_id', me.id)
+        .eq('to_id', profilePopup.id)
+    }
+    setFriendRequestState('sent')
+  }
+
   async function blockFromPopup() {
     if (!me || !profilePopup) return
     await supabase.from('blocks').insert({ blocker_id: me.id, blocked_id: profilePopup.id })
@@ -316,7 +339,12 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
           added_by: me.id,
           ...(isRoleGroup ? { role: 'member' } : {}),
         })
-      if (memberErr && !memberErr.message.includes('duplicate')) throw memberErr
+      if (memberErr && !memberErr.message.includes('duplicate')) {
+        if (memberErr.message.includes('row-level security')) {
+          throw new Error('Só dá pra adicionar quem é seu amigo (ou é o parceiro da DM original)')
+        }
+        throw memberErr
+      }
 
       setMembers((prev) => ({
         ...prev,
@@ -823,6 +851,13 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
             <h2>@{displayName(profilePopup.meta)}</h2>
             <p>{profilePopup.meta.status || 'sem status'}</p>
             <p style={{ fontSize: '.75rem' }}>{formatPresence(profilePopup.meta.last_seen_at)}</p>
+            {friendRequestState === 'sent' ? (
+              <p style={{ fontSize: '.75rem', color: '#a9e7d8' }}>solicitação de amizade enviada</p>
+            ) : (
+              <button type="button" className="google-btn" onClick={sendFriendFromPopup}>
+                <IconPlus size={14} /> Amigar
+              </button>
+            )}
             <button type="button" className="modal-close" onClick={() => setProfilePopup(null)}>fechar</button>
           </div>
         </div>
