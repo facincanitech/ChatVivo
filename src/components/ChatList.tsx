@@ -11,11 +11,13 @@ type Props = {
 }
 
 type ConvWithLabel = Conversation & { label: string }
+type PanelView = 'root' | 'contact' | 'group' | 'join'
 
 export function ChatList({ me, selected, onSelect, requireAuth }: Props) {
   const [conversations, setConversations] = useState<ConvWithLabel[]>([])
   const [query, setQuery] = useState('')
-  const [menuOpen, setMenuOpen] = useState(false)
+  const [panelOpen, setPanelOpen] = useState(false)
+  const [panelView, setPanelView] = useState<PanelView>('root')
   const [dmEmail, setDmEmail] = useState('')
   const [groupName, setGroupName] = useState('')
   const [joinCode, setJoinCode] = useState('')
@@ -79,6 +81,13 @@ export function ChatList({ me, selected, onSelect, requireAuth }: Props) {
     }
   }, [me?.id])
 
+  function closePanel() {
+    setPanelOpen(false)
+    setPanelView('root')
+    setError(null)
+    setInviteSent(false)
+  }
+
   async function startDm() {
     if (!me) return
     setError(null)
@@ -129,6 +138,7 @@ export function ChatList({ me, selected, onSelect, requireAuth }: Props) {
       setDmEmail('')
       await loadConversations()
       onSelect(conv as Conversation)
+      closePanel()
     } catch (err) {
       setError(getErrorMessage(err))
     } finally {
@@ -199,8 +209,8 @@ export function ChatList({ me, selected, onSelect, requireAuth }: Props) {
       if (memberErr && !memberErr.message.includes('duplicate')) throw memberErr
 
       setJoinCode('')
-      setMenuOpen(false)
       await loadConversations()
+      closePanel()
     } catch (err) {
       setError(getErrorMessage(err))
     } finally {
@@ -209,10 +219,24 @@ export function ChatList({ me, selected, onSelect, requireAuth }: Props) {
   }
 
   function handleNewClick() {
-    requireAuth(() => setMenuOpen((v) => !v))
+    requireAuth(() => {
+      setPanelView('root')
+      setPanelOpen(true)
+    })
+  }
+
+  function goBack() {
+    if (panelView === 'root') closePanel()
+    else {
+      setPanelView('root')
+      setError(null)
+    }
   }
 
   const filtered = conversations.filter((c) => c.label.toLowerCase().includes(query.toLowerCase()))
+
+  const panelTitle =
+    panelView === 'root' ? 'Nova conversa' : panelView === 'contact' ? 'Novo contato' : panelView === 'group' ? 'Novo grupo' : 'Entrar com código'
 
   return (
     <section className="chats">
@@ -258,42 +282,78 @@ export function ChatList({ me, selected, onSelect, requireAuth }: Props) {
         ))}
       </div>
 
-      {menuOpen && (
-        <div className="new-conv-menu">
-          <label>Chamar em DM (email)</label>
-          <input
-            type="email"
-            placeholder="email da pessoa"
-            value={dmEmail}
-            onChange={(e) => setDmEmail(e.target.value)}
-          />
-          <button type="button" disabled={busy} onClick={startDm}>Chamar</button>
-          {inviteSent && (
-            <span className="invite-code">
-              essa pessoa ainda não tem conta — mandamos um convite por email
-            </span>
-          )}
-
-          <label>Criar grupo</label>
-          <input
-            placeholder="nome do grupo"
-            value={groupName}
-            onChange={(e) => setGroupName(e.target.value)}
-          />
-          <button type="button" disabled={busy} onClick={createGroup}>Criar</button>
-          {lastInvite && <span className="invite-code">código: <strong>{lastInvite}</strong></span>}
-
-          <label>Entrar com código</label>
-          <input
-            placeholder="código de convite"
-            value={joinCode}
-            onChange={(e) => setJoinCode(e.target.value)}
-          />
-          <button type="button" disabled={busy} onClick={joinByCode}>Entrar</button>
-
-          {error && <span className="auth-error">{error}</span>}
+      <div className={`new-conv-panel${panelOpen ? ' open' : ''}`}>
+        <div className="new-conv-header">
+          <button type="button" className="icon-btn" onClick={goBack}>←</button>
+          <div className="brand" style={{ fontSize: 18 }}>{panelTitle}</div>
         </div>
-      )}
+
+        {panelView === 'root' && (
+          <div className="new-conv-list">
+            <div className="new-conv-option" onClick={() => setPanelView('group')}>
+              <div className="option-icon">＋</div>
+              <span>Novo grupo</span>
+            </div>
+            <div className="new-conv-option" onClick={() => setPanelView('contact')}>
+              <div className="option-icon">☺</div>
+              <span>Novo contato</span>
+            </div>
+            <div className="new-conv-option" onClick={() => setPanelView('join')}>
+              <div className="option-icon">#</div>
+              <span>Entrar com código</span>
+            </div>
+          </div>
+        )}
+
+        {panelView === 'contact' && (
+          <div className="new-conv-form">
+            <label>Email da pessoa</label>
+            <input
+              type="email"
+              placeholder="email@exemplo.com"
+              value={dmEmail}
+              onChange={(e) => setDmEmail(e.target.value)}
+              autoFocus
+            />
+            <button type="button" disabled={busy} onClick={startDm}>Chamar</button>
+            {inviteSent && (
+              <span className="invite-code">
+                essa pessoa ainda não tem conta — mandamos um convite por email
+              </span>
+            )}
+            {error && <span className="auth-error">{error}</span>}
+          </div>
+        )}
+
+        {panelView === 'group' && (
+          <div className="new-conv-form">
+            <label>Nome do grupo</label>
+            <input
+              placeholder="nome do grupo"
+              value={groupName}
+              onChange={(e) => setGroupName(e.target.value)}
+              autoFocus
+            />
+            <button type="button" disabled={busy} onClick={createGroup}>Criar</button>
+            {lastInvite && <span className="invite-code">código: <strong>{lastInvite}</strong></span>}
+            {error && <span className="auth-error">{error}</span>}
+          </div>
+        )}
+
+        {panelView === 'join' && (
+          <div className="new-conv-form">
+            <label>Código de convite</label>
+            <input
+              placeholder="código"
+              value={joinCode}
+              onChange={(e) => setJoinCode(e.target.value)}
+              autoFocus
+            />
+            <button type="button" disabled={busy} onClick={joinByCode}>Entrar</button>
+            {error && <span className="auth-error">{error}</span>}
+          </div>
+        )}
+      </div>
     </section>
   )
 }

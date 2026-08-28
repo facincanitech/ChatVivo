@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { playNudgeSound, triggerNudgeShake } from '../lib/nudge'
 import type { Conversation, Message, Profile } from '../types'
 
 const EMOJIS = ['😀', '😂', '😍', '😭', '🔥', '👍', '🙏', '😡', '💀', '❤️']
@@ -77,6 +78,12 @@ export function MainPanel({ me, conversation }: Props) {
           return next
         })
       })
+      .on('broadcast', { event: 'nudge' }, ({ payload }) => {
+        const { userId } = payload as { userId: string }
+        if (userId === me.id) return
+        triggerNudgeShake()
+        playNudgeSound()
+      })
       .on('broadcast', { event: 'media' }, ({ payload }) => {
         const { userId, dataUrl } = payload as { userId: string; dataUrl: string | null }
         if (userId === me.id) return
@@ -128,6 +135,11 @@ export function MainPanel({ me, conversation }: Props) {
   function broadcastTyping(text: string) {
     if (!me) return
     channelRef.current?.send({ type: 'broadcast', event: 'typing', payload: { userId: me.id, text } })
+  }
+
+  function sendNudge() {
+    if (!me) return
+    channelRef.current?.send({ type: 'broadcast', event: 'nudge', payload: { userId: me.id } })
   }
 
   function broadcastMedia(dataUrl: string | null) {
@@ -233,6 +245,9 @@ export function MainPanel({ me, conversation }: Props) {
         <div className="header-photo">{title[0]?.toUpperCase()}</div>
         <div className="header-text">
           <div className="header-name">{title}</div>
+        </div>
+        <div className="header-actions">
+          <button type="button" className="nudge-btn" title="Chamar atenção" onClick={sendNudge}>👋</button>
         </div>
       </header>
 
