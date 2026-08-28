@@ -495,8 +495,7 @@ export function ChatList({
     setAvatarUploading(true)
     setAccountError(null)
     try {
-      const ext = file.name.split('.').pop() || 'jpg'
-      const path = `${me.id}/avatar.${ext}`
+      const path = `${me.id}/avatar`
       const { error: uploadErr } = await supabase.storage
         .from('avatars')
         .upload(path, file, { upsert: true, cacheControl: '3600' })
