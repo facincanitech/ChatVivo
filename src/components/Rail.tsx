@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { IconChat, IconGroup, IconPlus, IconStar, IconUser } from './icons'
 import type { Profile } from '../types'
 
 type Props = {
@@ -21,15 +22,15 @@ export function Rail({ me, onRequireAuth, onNewConversation }: Props) {
 
   return (
     <aside className="rail">
-      <div className="logo">◉</div>
-      <button className="active" title="Conversas">💬</button>
-      <button title="Nova conversa" onClick={onNewConversation}>➕</button>
-      <button title="Comunidades (em breve)">👥</button>
-      <button title="Status (em breve)">⭐</button>
+      <div className="logo"><IconChat size={22} /></div>
+      <button className="active" title="Conversas"><IconChat /></button>
+      <button title="Nova conversa" onClick={onNewConversation}><IconPlus /></button>
+      <button title="Comunidades (em breve)"><IconGroup /></button>
+      <button title="Status (em breve)"><IconStar /></button>
       <div className="spacer" />
       <div style={{ position: 'relative' }}>
-        <div className="avatar-sm" onClick={handleAvatarClick} title={me ? me.username : 'Entrar'}>
-          {me ? me.username[0]?.toUpperCase() : '👤'}
+        <div className="avatar-sm" onClick={handleAvatarClick} title={me ? `${me.username} — conta` : 'Entrar'}>
+          <IconUser size={18} />
         </div>
         {menuOpen && me && (
           <div className="profile-menu">

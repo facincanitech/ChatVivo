@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { getErrorMessage } from '../lib/errors'
+import { IconArrowLeft, IconGroup, IconHash, IconHeart, IconSearch, IconUser } from './icons'
 import type { Conversation, PanelView, Profile } from '../types'
 
 type Props = {
@@ -361,7 +362,7 @@ export function ChatList({
 
       <div className="search-wrap">
         <div className="search">
-          <span>🔍</span>
+          <span><IconSearch size={18} /></span>
           <input
             placeholder="Pesquisar conversas"
             value={query}
@@ -396,26 +397,26 @@ export function ChatList({
 
       <div className={`new-conv-panel${panelOpen ? ' open' : ''}`}>
         <div className="new-conv-header">
-          <button type="button" className="icon-btn" onClick={goBack}>←</button>
+          <button type="button" className="icon-btn" onClick={goBack}><IconArrowLeft size={20} /></button>
           <div className="brand" style={{ fontSize: 18 }}>{panelTitle}</div>
         </div>
 
         {panelView === 'root' && (
           <div className="new-conv-list">
             <div className="new-conv-option" onClick={() => onPanelViewChange('group')}>
-              <div className="option-icon">＋</div>
+              <div className="option-icon"><IconGroup size={20} /></div>
               <span>Novo grupo</span>
             </div>
             <div className="new-conv-option" onClick={() => onPanelViewChange('contact')}>
-              <div className="option-icon">☺</div>
+              <div className="option-icon"><IconUser size={20} /></div>
               <span>Novo contato</span>
             </div>
             <div className="new-conv-option" onClick={() => onPanelViewChange('join')}>
-              <div className="option-icon">#</div>
+              <div className="option-icon"><IconHash size={20} /></div>
               <span>Entrar com código</span>
             </div>
             <div className="new-conv-option" onClick={() => onPanelViewChange('friends')}>
-              <div className="option-icon">♥</div>
+              <div className="option-icon"><IconHeart size={20} /></div>
               <span>Solicitação de amizade{incoming.length > 0 ? ` (${incoming.length})` : ''}</span>
             </div>
           </div>

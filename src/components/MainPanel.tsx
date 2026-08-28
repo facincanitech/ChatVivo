@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { playNudgeSound, triggerNudgeShake } from '../lib/nudge'
+import { IconAttach, IconBell, IconChat, IconSend, IconSmile } from './icons'
 import type { Conversation, Message, Profile } from '../types'
 
 const EMOJIS = ['😀', '😂', '😍', '😭', '🔥', '👍', '🙏', '😡', '💀', '❤️']
@@ -230,7 +231,7 @@ export function MainPanel({ me, conversation }: Props) {
       <main className="main">
         <div className="empty">
           <div className="empty-card">
-            <div style={{ fontSize: 46 }}>💬</div>
+            <div style={{ color: '#71818a' }}><IconChat size={46} /></div>
             <h2>Nenhuma conversa selecionada</h2>
             <p>Escolha uma conversa ou comece uma nova pra ver o mecanismo ao vivo em ação.</p>
           </div>
@@ -247,7 +248,7 @@ export function MainPanel({ me, conversation }: Props) {
           <div className="header-name">{title}</div>
         </div>
         <div className="header-actions">
-          <button type="button" className="nudge-btn" title="Chamar atenção" onClick={sendNudge}>👋</button>
+          <button type="button" className="nudge-btn" title="Chamar atenção" onClick={sendNudge}><IconBell size={20} /></button>
         </div>
       </header>
 
@@ -290,8 +291,8 @@ export function MainPanel({ me, conversation }: Props) {
       <p className="media-note">imagens só aparecem ao vivo pra quem está na sala — não ficam salvas no histórico</p>
 
       <footer className="composer">
-        <button type="button" className="compose-btn" onClick={() => setShowEmoji((v) => !v)} title="Emoji">☺</button>
-        <button type="button" className="compose-btn" onClick={() => fileInputRef.current?.click()} title="Anexar">＋</button>
+        <button type="button" className="compose-btn" onClick={() => setShowEmoji((v) => !v)} title="Emoji"><IconSmile size={20} /></button>
+        <button type="button" className="compose-btn" onClick={() => fileInputRef.current?.click()} title="Anexar"><IconAttach size={20} /></button>
         <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handleFileChange} />
         <div className="input">
           <textarea
@@ -302,7 +303,7 @@ export function MainPanel({ me, conversation }: Props) {
             rows={1}
           />
         </div>
-        <button type="button" className="send" onClick={handleSend} disabled={!draft.trim()}>➤</button>
+        <button type="button" className="send" onClick={handleSend} disabled={!draft.trim()}><IconSend size={18} /></button>
 
         {showEmoji && (
           <div className="emoji-picker">
