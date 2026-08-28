@@ -8,7 +8,9 @@ import {
   IconGroup,
   IconHash,
   IconHeart,
+  IconKey,
   IconListPlus,
+  IconLock,
   IconLogout,
   IconMailUnread,
   IconMinusCircle,
@@ -20,6 +22,8 @@ import {
 } from './icons'
 import type { Conversation, PanelView, Profile } from '../types'
 
+type AccountView = 'root' | 'profile' | 'account' | 'privacy' | 'blocked'
+
 type Props = {
   me: Profile | null
   selected: Conversation | null
@@ -28,6 +32,9 @@ type Props = {
   panelView: PanelView
   onPanelOpenChange: (open: boolean) => void
   onPanelViewChange: (view: PanelView) => void
+  accountOpen: boolean
+  onAccountOpenChange: (open: boolean) => void
+  onProfileChange: (patch: Partial<Profile>) => void
 }
 
 type ConvWithLabel = Conversation & { label: string }
@@ -43,6 +50,8 @@ type OutgoingRequest = {
   to_profile: { id: string; username: string; email: string }
 }
 
+type BlockedUser = { id: string; username: string; email: string }
+
 export function ChatList({
   me,
   selected,
@@ -51,6 +60,9 @@ export function ChatList({
   panelView,
   onPanelOpenChange,
   onPanelViewChange,
+  accountOpen,
+  onAccountOpenChange,
+  onProfileChange,
 }: Props) {
   const [conversations, setConversations] = useState<ConvWithLabel[]>([])
   const [query, setQuery] = useState('')
@@ -67,6 +79,13 @@ export function ChatList({
   const [outgoing, setOutgoing] = useState<OutgoingRequest[]>([])
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [contextMenu, setContextMenu] = useState<{ conv: ConvWithLabel; x: number; y: number } | null>(null)
+
+  const [accountView, setAccountView] = useState<AccountView>('root')
+  const [usernameDraft, setUsernameDraft] = useState('')
+  const [statusDraft, setStatusDraft] = useState('')
+  const [accountSaving, setAccountSaving] = useState(false)
+  const [accountError, setAccountError] = useState<string | null>(null)
+  const [blocked, setBlocked] = useState<BlockedUser[]>([])
 
   async function loadConversations() {
     if (!me) {
@@ -435,6 +454,69 @@ export function ChatList({
     }
   }
 
+  useEffect(() => {
+    if (accountOpen && me) {
+      setUsernameDraft(me.username)
+      setStatusDraft(me.status || '')
+      setAccountView('root')
+      setAccountError(null)
+    }
+  }, [accountOpen, me?.id])
+
+  async function saveUsername() {
+    if (!me) return
+    const username = usernameDraft.trim()
+    if (!username || username === me.username) return
+    setAccountSaving(true)
+    setAccountError(null)
+    const { error: err } = await supabase.from('profiles').update({ username }).eq('id', me.id)
+    if (err) setAccountError(err.message.includes('duplicate') ? 'Esse nome já está em uso' : getErrorMessage(err))
+    else onProfileChange({ username })
+    setAccountSaving(false)
+  }
+
+  async function saveStatus() {
+    if (!me) return
+    setAccountSaving(true)
+    const status = statusDraft.trim()
+    await supabase.from('profiles').update({ status }).eq('id', me.id)
+    onProfileChange({ status })
+    setAccountSaving(false)
+  }
+
+  async function openBlocked() {
+    if (!me) return
+    setAccountView('blocked')
+    const { data } = await supabase
+      .from('blocks')
+      .select('blocked:profiles!blocks_blocked_id_fkey(id, username, email)')
+      .eq('blocker_id', me.id)
+    setBlocked(((data as unknown as { blocked: BlockedUser }[]) || []).map((r) => r.blocked))
+  }
+
+  async function unblock(id: string) {
+    if (!me) return
+    await supabase.from('blocks').delete().eq('blocker_id', me.id).eq('blocked_id', id)
+    setBlocked((prev) => prev.filter((b) => b.id !== id))
+  }
+
+  function accountGoBack() {
+    if (accountView === 'blocked') setAccountView('privacy')
+    else if (accountView === 'root') onAccountOpenChange(false)
+    else setAccountView('root')
+  }
+
+  const accountTitle =
+    accountView === 'root'
+      ? me?.username || ''
+      : accountView === 'profile'
+        ? 'Perfil'
+        : accountView === 'account'
+          ? 'Conta'
+          : accountView === 'privacy'
+            ? 'Privacidade'
+            : 'Bloqueados'
+
   const filtered = conversations.filter((c) => c.label.toLowerCase().includes(query.toLowerCase()))
 
   const panelTitle =
@@ -662,6 +744,110 @@ export function ChatList({
             <button type="button" disabled={busy} onClick={joinByCode}>Entrar</button>
             {error && <span className="auth-error">{error}</span>}
           </div>
+        )}
+      </div>
+
+      <div className={`new-conv-panel${accountOpen ? ' open' : ''}`}>
+        <div className="new-conv-header">
+          <button type="button" className="icon-btn" onClick={accountGoBack}><IconArrowLeft size={20} /></button>
+          <div className="brand" style={{ fontSize: 18 }}>{accountTitle}</div>
+        </div>
+
+        {accountView === 'root' && me && (
+          <>
+            <div className="account-status-wrap" onClick={() => setAccountView('profile')}>
+              <span className="account-status-bubble">{me.status || "What's happening?"}</span>
+            </div>
+            <div className="account-avatar-wrap">
+              <div className="account-avatar"><IconUser size={40} /></div>
+            </div>
+            <div className="new-conv-list">
+              <div className="new-conv-option" onClick={() => setAccountView('profile')}>
+                <div className="option-icon"><IconUser size={20} /></div>
+                <div>
+                  <div>Perfil</div>
+                  <div className="option-subtitle">Nome, foto do perfil, nome de usuário</div>
+                </div>
+              </div>
+              <div className="new-conv-option" onClick={() => setAccountView('account')}>
+                <div className="option-icon"><IconKey size={20} /></div>
+                <div>
+                  <div>Conta</div>
+                  <div className="option-subtitle">Notificações de segurança, dados da conta</div>
+                </div>
+              </div>
+              <div className="new-conv-option" onClick={() => setAccountView('privacy')}>
+                <div className="option-icon"><IconLock size={20} /></div>
+                <div>
+                  <div>Privacidade</div>
+                  <div className="option-subtitle">Contatos bloqueados, mensagens temporárias</div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {accountView === 'profile' && me && (
+          <div className="new-conv-form">
+            <label>Nome de usuário</label>
+            <input
+              value={usernameDraft}
+              onChange={(e) => setUsernameDraft(e.target.value)}
+            />
+            <button type="button" disabled={accountSaving} onClick={saveUsername}>Salvar nome</button>
+
+            <label style={{ marginTop: 10 }}>Status</label>
+            <input
+              placeholder="What's happening?"
+              value={statusDraft}
+              onChange={(e) => setStatusDraft(e.target.value)}
+            />
+            <button type="button" disabled={accountSaving} onClick={saveStatus}>Salvar status</button>
+            {accountError && <span className="auth-error">{accountError}</span>}
+          </div>
+        )}
+
+        {accountView === 'account' && me && (
+          <div className="new-conv-form">
+            <label>Email</label>
+            <input value={me.email} disabled />
+            <span className="invite-code">notificações de segurança e mais dados da conta chegam em breve</span>
+          </div>
+        )}
+
+        {accountView === 'privacy' && (
+          <div className="new-conv-list">
+            <div className="new-conv-option" onClick={openBlocked}>
+              <div className="option-icon"><IconLock size={20} /></div>
+              <span>Contatos bloqueados</span>
+            </div>
+            <div className="new-conv-option">
+              <div className="option-icon"><IconLock size={20} /></div>
+              <span>Mensagens temporárias (em breve)</span>
+            </div>
+          </div>
+        )}
+
+        {accountView === 'blocked' && (
+          <div className="new-conv-form">
+            {blocked.length === 0 && <span className="invite-code">ninguém bloqueado</span>}
+            <div className="friend-request-list">
+              {blocked.map((b) => (
+                <div key={b.id} className="friend-request-row">
+                  <div className="photo" style={{ width: 40, height: 40 }}>{b.username[0]?.toUpperCase()}</div>
+                  <div className="friend-request-info">
+                    <div className="name">@{b.username}</div>
+                    <div className="preview">{b.email}</div>
+                  </div>
+                  <button type="button" onClick={() => unblock(b.id)}>Desbloquear</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {me && (
+          <button type="button" className="account-signout" onClick={() => supabase.auth.signOut()}>Sair</button>
         )}
       </div>
     </section>

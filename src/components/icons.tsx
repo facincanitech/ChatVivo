@@ -228,6 +228,17 @@ export function IconLogout({ size = 18 }: IconProps) {
   )
 }
 
+export function IconKey({ size = 18 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size}>
+      <circle cx="8" cy="15" r="4" />
+      <path d="M11 12l9-9" />
+      <path d="M16 7l3 3" />
+      <path d="M19 4l3 3" />
+    </svg>
+  )
+}
+
 export function IconLock({ size = 18 }: IconProps) {
   return (
     <svg {...base} width={size} height={size}>

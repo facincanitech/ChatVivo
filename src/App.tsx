@@ -15,6 +15,7 @@ function App() {
   const [authOpen, setAuthOpen] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
   const [panelView, setPanelView] = useState<PanelView>('root')
+  const [accountOpen, setAccountOpen] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
@@ -68,8 +69,16 @@ function App() {
 
   function openNewConversation() {
     requireAuth(() => {
+      setAccountOpen(false)
       setPanelView('root')
       setPanelOpen(true)
+    })
+  }
+
+  function openAccount() {
+    requireAuth(() => {
+      setPanelOpen(false)
+      setAccountOpen(true)
     })
   }
 
@@ -79,7 +88,7 @@ function App() {
         me={profile}
         onRequireAuth={() => requireAuth(() => {})}
         onNewConversation={openNewConversation}
-        onProfileChange={(patch) => setProfile((p) => (p ? { ...p, ...patch } : p))}
+        onOpenAccount={openAccount}
       />
       <ChatList
         me={profile}
@@ -89,6 +98,9 @@ function App() {
         panelView={panelView}
         onPanelOpenChange={setPanelOpen}
         onPanelViewChange={setPanelView}
+        accountOpen={accountOpen}
+        onAccountOpenChange={setAccountOpen}
+        onProfileChange={(patch) => setProfile((p) => (p ? { ...p, ...patch } : p))}
       />
       <MainPanel
         me={profile}

@@ -254,6 +254,25 @@ body{
 }
 .new-conv-form .invite-code{font-size:.8rem;color:#f5b8ba}
 .new-conv-form label{font-size:.7rem;color:#8696a0;text-transform:uppercase;letter-spacing:.03em}
+.new-conv-form input:disabled{opacity:.6}
+
+.option-subtitle{font-size:12px;color:#8696a0;margin-top:2px}
+
+.account-status-wrap{padding:8px 22px 4px;cursor:pointer}
+.account-status-bubble{
+  display:inline-block;background:#202c33;color:#aebac1;padding:8px 14px;
+  border-radius:16px;font-size:13px;
+}
+.account-avatar-wrap{display:flex;justify-content:center;padding:12px 0 20px}
+.account-avatar{
+  width:110px;height:110px;border-radius:50%;background:#2a3942;color:#8696a0;
+  display:grid;place-items:center;
+}
+.account-signout{
+  margin:10px 22px;padding:10px;border-radius:6px;border:1px solid #3a2323;
+  background:none;color:#f5b8ba;cursor:pointer;font-size:.85rem;
+}
+.account-signout:hover{background:#3a2323}
 
 .friend-request-list{
   display:flex;flex-direction:column;gap:8px;max-height:260px;overflow-y:auto;
