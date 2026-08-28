@@ -36,7 +36,6 @@ export function Rail({ me, onRequireAuth, onNewConversation, onStatusChange }: P
   return (
     <aside className="rail">
       <div className="logo"><IconChat size={22} /></div>
-      <button className="active" title="Conversas"><IconChat /></button>
       <button title="Nova conversa" onClick={onNewConversation}><IconPlus /></button>
       <button title="Comunidades (em breve)"><IconGroup /></button>
       <button title="Status (em breve)"><IconStar /></button>

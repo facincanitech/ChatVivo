@@ -283,9 +283,8 @@ body{
   .messages{padding-left:4%;padding-right:4%}
 }
 @media(max-width:760px){
-  .chats{width:100%}
+  .chats{width:auto;flex:1}
   .main{display:none}
-  .app.chat-open .rail{display:none}
   .app.chat-open .chats{display:none}
   .app.chat-open .main{display:flex}
   .back-mobile{display:inline-flex}
