@@ -2,13 +2,15 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { playNudgeSound, triggerNudgeShake } from '../lib/nudge'
-import { IconAttach, IconBell, IconChat, IconSend, IconSmile } from './icons'
+import { formatPresence } from '../lib/presence'
+import { IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconSend, IconSmile } from './icons'
 import type { Conversation, Message, Profile } from '../types'
 
 const EMOJIS = ['😀', '😂', '😍', '😭', '🔥', '👍', '🙏', '😡', '💀', '❤️']
 const REPLAY_WINDOW_MS = 20000
 
 type ReplayEvent = { t: number; text: string }
+type MemberMeta = { username: string; status: string | null; last_seen_at: string | null; last_read_at: string }
 
 type Props = {
   me: Profile | null
@@ -17,7 +19,7 @@ type Props = {
 
 export function MainPanel({ me, conversation }: Props) {
   const [messages, setMessages] = useState<Message[]>([])
-  const [usernames, setUsernames] = useState<Record<string, string>>({})
+  const [members, setMembers] = useState<Record<string, MemberMeta>>({})
   const [draft, setDraft] = useState('')
   const [liveTyping, setLiveTyping] = useState<Record<string, string>>({})
   const [liveMedia, setLiveMedia] = useState<Record<string, string>>({})
@@ -39,21 +41,42 @@ export function MainPanel({ me, conversation }: Props) {
 
     let cancelled = false
 
-    async function load() {
-      if (!conversation) return
-      const { data: members } = await supabase
+    async function markRead() {
+      if (!conversation || !me) return
+      await supabase
         .from('conversation_members')
-        .select('user_id, profile:profiles(id, username)')
+        .update({ last_read_at: new Date().toISOString() })
+        .eq('conversation_id', conversation.id)
+        .eq('user_id', me.id)
+    }
+
+    async function loadMembers() {
+      if (!conversation) return
+      const { data: rows } = await supabase
+        .from('conversation_members')
+        .select('user_id, last_read_at, profile:profiles(id, username, status, last_seen_at)')
         .eq('conversation_id', conversation.id)
 
-      if (!cancelled && members) {
-        const map: Record<string, string> = {}
-        for (const row of members) {
+      if (!cancelled && rows) {
+        const map: Record<string, MemberMeta> = {}
+        for (const row of rows) {
           const p = row.profile as unknown as Profile
-          if (p) map[p.id] = p.username
+          if (p) {
+            map[p.id] = {
+              username: p.username,
+              status: p.status ?? null,
+              last_seen_at: p.last_seen_at ?? null,
+              last_read_at: row.last_read_at as string,
+            }
+          }
         }
-        setUsernames(map)
+        setMembers(map)
       }
+    }
+
+    async function load() {
+      if (!conversation) return
+      await loadMembers()
 
       const { data: msgs } = await supabase
         .from('messages')
@@ -63,6 +86,7 @@ export function MainPanel({ me, conversation }: Props) {
         .limit(200)
 
       if (!cancelled && msgs) setMessages(msgs as Message[])
+      await markRead()
     }
 
     load()
@@ -110,6 +134,19 @@ export function MainPanel({ me, conversation }: Props) {
             const next = { ...prev }
             delete next[msg.author_id]
             return next
+          })
+          markRead()
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'conversation_members', filter: `conversation_id=eq.${conversation.id}` },
+        (payload) => {
+          const row = payload.new as { user_id: string; last_read_at: string }
+          setMembers((prev) => {
+            const meta = prev[row.user_id]
+            if (!meta) return prev
+            return { ...prev, [row.user_id]: { ...meta, last_read_at: row.last_read_at } }
           })
         },
       )
@@ -219,12 +256,29 @@ export function MainPanel({ me, conversation }: Props) {
     setReplayEvents((data?.events as ReplayEvent[]) || [])
   }
 
+  const otherMember = useMemo(() => {
+    if (!conversation || conversation.type !== 'dm') return null
+    const entry = Object.entries(members).find(([id]) => id !== me?.id)
+    return entry ? entry[1] : null
+  }, [conversation, members, me?.id])
+
   const title = useMemo(() => {
     if (!conversation) return ''
     if (conversation.type === 'group') return conversation.name || 'grupo'
-    const other = Object.entries(usernames).find(([id]) => id !== me?.id)
-    return other ? other[1] : 'conversa'
-  }, [conversation, usernames, me?.id])
+    return otherMember?.username || 'conversa'
+  }, [conversation, otherMember])
+
+  const subtitle = useMemo(() => {
+    if (!otherMember) return ''
+    if (otherMember.status) return otherMember.status
+    return formatPresence(otherMember.last_seen_at)
+  }, [otherMember])
+
+  function isReadByOthers(msg: Message) {
+    const others = Object.entries(members).filter(([id]) => id !== me?.id)
+    if (others.length === 0) return false
+    return others.every(([, meta]) => new Date(meta.last_read_at) >= new Date(msg.created_at))
+  }
 
   if (!conversation || !me) {
     return (
@@ -246,6 +300,7 @@ export function MainPanel({ me, conversation }: Props) {
         <div className="header-photo">{title[0]?.toUpperCase()}</div>
         <div className="header-text">
           <div className="header-name">{title}</div>
+          {subtitle && <div className="status">{subtitle}</div>}
         </div>
         <div className="header-actions">
           <button type="button" className="nudge-btn" title="Chamar atenção" onClick={sendNudge}><IconBell size={20} /></button>
@@ -257,9 +312,14 @@ export function MainPanel({ me, conversation }: Props) {
           <div key={m.id} className={`message ${m.author_id === me.id ? 'out' : 'in'}`}>
             <div className="bubble">
               {m.author_id !== me.id && conversation.type === 'group' && (
-                <span className="author-label">{usernames[m.author_id] || '...'}</span>
+                <span className="author-label">{members[m.author_id]?.username || '...'}</span>
               )}
               {m.content}
+              {m.author_id === me.id && (
+                <span className={`read-receipt${isReadByOthers(m) ? ' read' : ''}`}>
+                  {isReadByOthers(m) ? <IconCheckDouble size={15} /> : <IconCheck size={13} />}
+                </span>
+              )}
               {m.author_id === me.id && (
                 <button type="button" className="replay-btn" onClick={() => openReplay(m)}>replay</button>
               )}
@@ -270,7 +330,7 @@ export function MainPanel({ me, conversation }: Props) {
         {Object.entries(liveTyping).map(([userId, text]) => (
           <div key={userId} className="message in live">
             <div className="bubble">
-              <span className="author-label">{usernames[userId] || '...'}</span>
+              <span className="author-label">{members[userId]?.username || '...'}</span>
               {text}
             </div>
           </div>
@@ -279,7 +339,7 @@ export function MainPanel({ me, conversation }: Props) {
         {Object.entries(liveMedia).map(([userId, dataUrl]) => (
           <div key={`media-${userId}`} className="message in live">
             <div className="bubble">
-              <span className="author-label">{usernames[userId] || '...'}</span>
+              <span className="author-label">{members[userId]?.username || '...'}</span>
               <img src={dataUrl} alt="preview ao vivo" className="live-media-preview" />
             </div>
           </div>

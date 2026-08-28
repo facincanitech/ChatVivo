@@ -119,6 +119,23 @@ export function IconArrowLeft({ size = 20 }: IconProps) {
   )
 }
 
+export function IconCheck({ size = 14 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size}>
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  )
+}
+
+export function IconCheckDouble({ size = 16 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size}>
+      <polyline points="18 6 7 17 2 12" />
+      <polyline points="22 6 11 17" />
+    </svg>
+  )
+}
+
 export function IconBell({ size = 20 }: IconProps) {
   return (
     <svg {...base} width={size} height={size}>

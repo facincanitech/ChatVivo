@@ -34,10 +34,24 @@ function App() {
     if (!session) return
     supabase
       .from('profiles')
-      .select('id, username, email')
+      .select('id, username, email, status, last_seen_at')
       .eq('id', session.user.id)
       .single()
       .then(({ data }) => setProfile(data as Profile))
+  }, [session])
+
+  useEffect(() => {
+    if (!session) return
+    const heartbeat = () => {
+      supabase.from('profiles').update({ last_seen_at: new Date().toISOString() }).eq('id', session.user.id).then()
+    }
+    heartbeat()
+    const interval = setInterval(heartbeat, 60000)
+    document.addEventListener('visibilitychange', heartbeat)
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', heartbeat)
+    }
   }, [session])
 
   function requireAuth(action: () => void) {
@@ -58,7 +72,12 @@ function App() {
 
   return (
     <div className="app">
-      <Rail me={profile} onRequireAuth={() => requireAuth(() => {})} onNewConversation={openNewConversation} />
+      <Rail
+        me={profile}
+        onRequireAuth={() => requireAuth(() => {})}
+        onNewConversation={openNewConversation}
+        onStatusChange={(status) => setProfile((p) => (p ? { ...p, status } : p))}
+      />
       <ChatList
         me={profile}
         selected={selected}

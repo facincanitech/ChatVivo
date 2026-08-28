@@ -2,6 +2,8 @@ export type Profile = {
   id: string
   username: string
   email: string
+  status?: string | null
+  last_seen_at?: string | null
 }
 
 export type Conversation = {
