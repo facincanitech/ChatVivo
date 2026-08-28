@@ -4,6 +4,9 @@ export type Profile = {
   email: string
   status?: string | null
   last_seen_at?: string | null
+  display_name?: string | null
+  avatar_url?: string | null
+  is_idle?: boolean
 }
 
 export type Conversation = {

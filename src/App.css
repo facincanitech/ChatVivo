@@ -87,8 +87,9 @@ body{
 .photo{
   width:52px;height:52px;border-radius:50%;object-fit:cover;flex:none;
   background:linear-gradient(135deg,#46545c,#182229);display:grid;place-items:center;
-  font-weight:700;
+  font-weight:700;overflow:hidden;
 }
+.photo img{width:100%;height:100%;object-fit:cover}
 .chat-info{min-width:0;flex:1}
 .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .name{font-size:16px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -108,6 +109,13 @@ body{
   display:flex;align-items:center;padding:0 22px;gap:14px;flex-shrink:0;
 }
 .header-photo{width:48px;height:48px;border-radius:50%;object-fit:cover;background:#46545c;display:grid;place-items:center;font-weight:700}
+.presence-dot{
+  position:absolute;bottom:0;right:0;width:12px;height:12px;border-radius:50%;
+  border:2px solid #202c33;
+}
+.presence-dot.online{background:#3fd05a}
+.presence-dot.afk{background:#f0b429}
+.presence-dot.offline{background:#e5484d}
 .header-text{min-width:0}
 .header-name{font-weight:700;font-size:17px}
 .status{font-size:12px;color:#8696a0;margin-top:4px}

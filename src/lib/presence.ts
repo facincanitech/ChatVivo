@@ -9,3 +9,12 @@ export function formatPresence(lastSeenAt: string | null | undefined): string {
   const days = Math.floor(hours / 24)
   return `visto por último há ${days}d`
 }
+
+export type PresenceColor = 'online' | 'afk' | 'offline'
+
+export function getPresenceColor(lastSeenAt: string | null | undefined, isIdle: boolean | undefined): PresenceColor {
+  if (!lastSeenAt) return 'offline'
+  const diffMs = Date.now() - new Date(lastSeenAt).getTime()
+  if (diffMs >= 90_000) return 'offline'
+  return isIdle ? 'afk' : 'online'
+}

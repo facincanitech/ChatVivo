@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { getErrorMessage } from '../lib/errors'
+import { displayName } from '../lib/displayName'
 import {
   IconArchive,
   IconArrowLeft,
@@ -37,7 +38,7 @@ type Props = {
   onProfileChange: (patch: Partial<Profile>) => void
 }
 
-type ConvWithLabel = Conversation & { label: string }
+type ConvWithLabel = Conversation & { label: string; avatarUrl: string | null }
 type FriendRequest = {
   id: string
   from_id: string
@@ -82,10 +83,13 @@ export function ChatList({
 
   const [accountView, setAccountView] = useState<AccountView>('root')
   const [usernameDraft, setUsernameDraft] = useState('')
+  const [displayNameDraft, setDisplayNameDraft] = useState('')
   const [statusDraft, setStatusDraft] = useState('')
   const [accountSaving, setAccountSaving] = useState(false)
   const [accountError, setAccountError] = useState<string | null>(null)
   const [blocked, setBlocked] = useState<BlockedUser[]>([])
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
 
   async function loadConversations() {
     if (!me) {
@@ -109,17 +113,17 @@ export function ChatList({
     const ids = convs.map((c) => c.id)
     const { data: allMembers } = await supabase
       .from('conversation_members')
-      .select('conversation_id, profile:profiles(id, username)')
+      .select('conversation_id, profile:profiles(id, username, display_name, avatar_url)')
       .in('conversation_id', ids)
 
     const labeled: ConvWithLabel[] = convs
       .map((c) => {
-        if (c.type === 'group') return { ...c, label: c.name || 'grupo' }
+        if (c.type === 'group') return { ...c, label: c.name || 'grupo', avatarUrl: null }
         const other = (allMembers || []).find(
           (m) => m.conversation_id === c.id && (m.profile as unknown as Profile)?.id !== me.id,
         )
         const p = other?.profile as unknown as Profile | undefined
-        return { ...c, label: p?.username || 'conversa' }
+        return { ...c, label: p ? displayName(p) : 'conversa', avatarUrl: p?.avatar_url || null }
       })
       .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
 
@@ -457,6 +461,7 @@ export function ChatList({
   useEffect(() => {
     if (accountOpen && me) {
       setUsernameDraft(me.username)
+      setDisplayNameDraft(me.display_name || '')
       setStatusDraft(me.status || '')
       setAccountView('root')
       setAccountError(null)
@@ -473,6 +478,43 @@ export function ChatList({
     if (err) setAccountError(err.message.includes('duplicate') ? 'Esse nome já está em uso' : getErrorMessage(err))
     else onProfileChange({ username })
     setAccountSaving(false)
+  }
+
+  async function saveDisplayName() {
+    if (!me) return
+    setAccountSaving(true)
+    const display_name = displayNameDraft.trim()
+    await supabase.from('profiles').update({ display_name }).eq('id', me.id)
+    onProfileChange({ display_name })
+    setAccountSaving(false)
+  }
+
+  async function uploadAvatar(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !me) return
+    setAvatarUploading(true)
+    setAccountError(null)
+    try {
+      const ext = file.name.split('.').pop() || 'jpg'
+      const path = `${me.id}/avatar.${ext}`
+      const { error: uploadErr } = await supabase.storage
+        .from('avatars')
+        .upload(path, file, { upsert: true, cacheControl: '3600' })
+      if (uploadErr) throw uploadErr
+
+      const { data } = supabase.storage.from('avatars').getPublicUrl(path)
+      const avatar_url = `${data.publicUrl}?t=${Date.now()}`
+
+      const { error: updateErr } = await supabase.from('profiles').update({ avatar_url }).eq('id', me.id)
+      if (updateErr) throw updateErr
+
+      onProfileChange({ avatar_url })
+    } catch (err) {
+      setAccountError(getErrorMessage(err))
+    } finally {
+      setAvatarUploading(false)
+      if (avatarInputRef.current) avatarInputRef.current.value = ''
+    }
   }
 
   async function saveStatus() {
@@ -508,7 +550,7 @@ export function ChatList({
 
   const accountTitle =
     accountView === 'root'
-      ? me?.username || ''
+      ? (me ? displayName(me) : '')
       : accountView === 'profile'
         ? 'Perfil'
         : accountView === 'account'
@@ -562,7 +604,9 @@ export function ChatList({
             onClick={() => onSelect(c)}
             onContextMenu={(e) => handleContextMenu(e, c)}
           >
-            <div className="photo">{c.label[0]?.toUpperCase()}</div>
+            <div className="photo">
+              {c.avatarUrl ? <img src={c.avatarUrl} alt="" /> : c.label[0]?.toUpperCase()}
+            </div>
             <div className="chat-info">
               <div className="row">
                 <div className="name">{c.type === 'group' ? `# ${c.label}` : `@${c.label}`}</div>
@@ -759,7 +803,9 @@ export function ChatList({
               <span className="account-status-bubble">{me.status || "What's happening?"}</span>
             </div>
             <div className="account-avatar-wrap">
-              <div className="account-avatar"><IconUser size={40} /></div>
+              <div className="account-avatar" style={{ overflow: 'hidden' }}>
+                {me.avatar_url ? <img src={me.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <IconUser size={40} />}
+              </div>
             </div>
             <div className="new-conv-list">
               <div className="new-conv-option" onClick={() => setAccountView('profile')}>
@@ -789,12 +835,30 @@ export function ChatList({
 
         {accountView === 'profile' && me && (
           <div className="new-conv-form">
-            <label>Nome de usuário</label>
+            <div className="account-avatar-wrap">
+              <div className="account-avatar" onClick={() => avatarInputRef.current?.click()} style={{ cursor: 'pointer', overflow: 'hidden' }}>
+                {me.avatar_url ? <img src={me.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <IconUser size={40} />}
+              </div>
+            </div>
+            <input ref={avatarInputRef} type="file" accept="image/*" hidden onChange={uploadAvatar} />
+            <button type="button" disabled={avatarUploading} onClick={() => avatarInputRef.current?.click()}>
+              {avatarUploading ? 'enviando...' : 'Trocar foto'}
+            </button>
+
+            <label style={{ marginTop: 10 }}>Nome</label>
+            <input
+              placeholder="seu nome de exibição"
+              value={displayNameDraft}
+              onChange={(e) => setDisplayNameDraft(e.target.value)}
+            />
+            <button type="button" disabled={accountSaving} onClick={saveDisplayName}>Salvar nome</button>
+
+            <label style={{ marginTop: 10 }}>Nome de usuário</label>
             <input
               value={usernameDraft}
               onChange={(e) => setUsernameDraft(e.target.value)}
             />
-            <button type="button" disabled={accountSaving} onClick={saveUsername}>Salvar nome</button>
+            <button type="button" disabled={accountSaving} onClick={saveUsername}>Salvar usuário</button>
 
             <label style={{ marginTop: 10 }}>Status</label>
             <input

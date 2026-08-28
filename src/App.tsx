@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
 import { Rail } from './components/Rail'
@@ -38,22 +38,38 @@ function App() {
     if (!session) return
     supabase
       .from('profiles')
-      .select('id, username, email, status, last_seen_at')
+      .select('id, username, email, status, last_seen_at, display_name, avatar_url, is_idle')
       .eq('id', session.user.id)
       .single()
       .then(({ data }) => setProfile(data as Profile))
   }, [session])
 
+  const lastActivityRef = useRef(Date.now())
+
   useEffect(() => {
     if (!session) return
+    const IDLE_THRESHOLD_MS = 120000
+
+    function markActive() {
+      lastActivityRef.current = Date.now()
+    }
+    const activityEvents = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll']
+    activityEvents.forEach((ev) => window.addEventListener(ev, markActive, { passive: true }))
+
     const heartbeat = () => {
-      supabase.from('profiles').update({ last_seen_at: new Date().toISOString() }).eq('id', session.user.id).then()
+      const isIdle = Date.now() - lastActivityRef.current > IDLE_THRESHOLD_MS
+      supabase
+        .from('profiles')
+        .update({ last_seen_at: new Date().toISOString(), is_idle: isIdle })
+        .eq('id', session.user.id)
+        .then()
     }
     heartbeat()
-    const interval = setInterval(heartbeat, 60000)
+    const interval = setInterval(heartbeat, 30000)
     document.addEventListener('visibilitychange', heartbeat)
     return () => {
       clearInterval(interval)
+      activityEvents.forEach((ev) => window.removeEventListener(ev, markActive))
       document.removeEventListener('visibilitychange', heartbeat)
     }
   }, [session])

@@ -2,16 +2,25 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { playNudgeSound, triggerNudgeShake } from '../lib/nudge'
-import { formatPresence } from '../lib/presence'
+import { formatPresence, getPresenceColor } from '../lib/presence'
 import { getErrorMessage } from '../lib/errors'
-import { IconArrowLeft, IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconPlus, IconSend, IconSmile } from './icons'
+import { displayName } from '../lib/displayName'
+import { IconArrowLeft, IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconPlus, IconSend, IconSmile, IconUser } from './icons'
 import type { Conversation, Message, Profile } from '../types'
 
 const EMOJIS = ['😀', '😂', '😍', '😭', '🔥', '👍', '🙏', '😡', '💀', '❤️']
 const REPLAY_WINDOW_MS = 20000
 
 type ReplayEvent = { t: number; text: string }
-type MemberMeta = { username: string; status: string | null; last_seen_at: string | null; last_read_at: string }
+type MemberMeta = {
+  username: string
+  display_name: string | null
+  avatar_url: string | null
+  status: string | null
+  last_seen_at: string | null
+  is_idle: boolean
+  last_read_at: string
+}
 
 type Props = {
   me: Profile | null
@@ -34,6 +43,8 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate }: Pr
   const [addError, setAddError] = useState<string | null>(null)
   const [addBusy, setAddBusy] = useState(false)
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
+  const [profilePopup, setProfilePopup] = useState<{ id: string; meta: MemberMeta } | null>(null)
+  const [atBottom, setAtBottom] = useState(true)
 
   const channelRef = useRef<RealtimeChannel | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -45,6 +56,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate }: Pr
     setLiveTyping({})
     setLiveMedia({})
     setDraft('')
+    setAtBottom(true)
     if (!conversation || !me) return
 
     let cancelled = false
@@ -62,7 +74,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate }: Pr
       if (!conversation) return
       const { data: rows } = await supabase
         .from('conversation_members')
-        .select('user_id, last_read_at, profile:profiles(id, username, status, last_seen_at)')
+        .select('user_id, last_read_at, profile:profiles(id, username, display_name, avatar_url, status, last_seen_at, is_idle)')
         .eq('conversation_id', conversation.id)
 
       if (!cancelled && rows) {
@@ -72,8 +84,11 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate }: Pr
           if (p) {
             map[p.id] = {
               username: p.username,
+              display_name: p.display_name ?? null,
+              avatar_url: p.avatar_url ?? null,
               status: p.status ?? null,
               last_seen_at: p.last_seen_at ?? null,
+              is_idle: p.is_idle ?? false,
               last_read_at: row.last_read_at as string,
             }
           }
@@ -169,8 +184,14 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate }: Pr
   }, [conversation?.id, me?.id])
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, liveTyping])
+    if (atBottom) bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages, liveTyping, atBottom])
+
+  function handleMessagesScroll(e: React.UIEvent<HTMLElement>) {
+    const el = e.currentTarget
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+    setAtBottom(distanceFromBottom < 80)
+  }
 
   function recordReplayEvent(text: string) {
     const now = Date.now()
@@ -186,6 +207,8 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate }: Pr
   function sendNudge() {
     if (!me) return
     channelRef.current?.send({ type: 'broadcast', event: 'nudge', payload: { userId: me.id } })
+    triggerNudgeShake()
+    playNudgeSound()
   }
 
   function broadcastMedia(dataUrl: string | null) {
@@ -223,8 +246,11 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate }: Pr
         ...prev,
         [target.id]: {
           username: target.username,
+          display_name: null,
+          avatar_url: null,
           status: null,
           last_seen_at: null,
+          is_idle: false,
           last_read_at: new Date().toISOString(),
         },
       }))
@@ -318,16 +344,17 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate }: Pr
     setReplayEvents((data?.events as ReplayEvent[]) || [])
   }
 
-  const otherMember = useMemo(() => {
+  const otherMemberEntry = useMemo(() => {
     if (!conversation || conversation.type !== 'dm') return null
     const entry = Object.entries(members).find(([id]) => id !== me?.id)
-    return entry ? entry[1] : null
+    return entry || null
   }, [conversation, members, me?.id])
+  const otherMember = otherMemberEntry?.[1] || null
 
   const title = useMemo(() => {
     if (!conversation) return ''
     if (conversation.type === 'group') return conversation.name || 'grupo'
-    return otherMember?.username || 'conversa'
+    return otherMember ? displayName(otherMember) : 'conversa'
   }, [conversation, otherMember])
 
   const displayTitle = conversation?.type === 'group' ? title : `@${title}`
@@ -362,9 +389,29 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate }: Pr
     <main className="main">
       <header className="chat-header">
         <button type="button" className="icon-btn back-mobile" onClick={onBack}><IconArrowLeft size={20} /></button>
-        <div className="header-photo">{title[0]?.toUpperCase()}</div>
+        <div
+          style={{ position: 'relative', cursor: otherMember ? 'pointer' : 'default' }}
+          onClick={() => otherMember && me && setProfilePopup({ id: otherMemberEntry![0], meta: otherMember })}
+        >
+          <div className="header-photo" style={{ overflow: 'hidden' }}>
+            {otherMember?.avatar_url ? (
+              <img src={otherMember.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              title[0]?.toUpperCase()
+            )}
+          </div>
+          {otherMember && (
+            <span className={`presence-dot ${getPresenceColor(otherMember.last_seen_at, otherMember.is_idle)}`} />
+          )}
+        </div>
         <div className="header-text">
-          <div className="header-name">{displayTitle}</div>
+          <div
+            className="header-name"
+            style={{ cursor: otherMember ? 'pointer' : 'default' }}
+            onClick={() => otherMember && me && setProfilePopup({ id: otherMemberEntry![0], meta: otherMember })}
+          >
+            {displayTitle}
+          </div>
           {subtitle && <div className="status">{subtitle}</div>}
         </div>
         <div className="header-actions" style={{ position: 'relative' }}>
@@ -394,12 +441,18 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate }: Pr
         </div>
       </header>
 
-      <section className="messages">
+      <section className="messages" onScroll={handleMessagesScroll}>
         {messages.map((m) => (
           <div key={m.id} className={`message ${m.author_id === me.id ? 'out' : 'in'}`}>
             <div className="bubble">
               {m.author_id !== me.id && conversation.type === 'group' && (
-                <span className="author-label">@{members[m.author_id]?.username || '...'}</span>
+                <span
+                  className="author-label"
+                  style={{ cursor: members[m.author_id] ? 'pointer' : 'default' }}
+                  onClick={() => members[m.author_id] && setProfilePopup({ id: m.author_id, meta: members[m.author_id] })}
+                >
+                  @{members[m.author_id] ? displayName(members[m.author_id]) : '...'}
+                </span>
               )}
               {m.content}
               {m.author_id === me.id && (
@@ -415,7 +468,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate }: Pr
         {Object.entries(liveTyping).map(([userId, text]) => (
           <div key={userId} className="message in live">
             <div className="bubble">
-              <span className="author-label">@{members[userId]?.username || '...'}</span>
+              <span className="author-label">@{members[userId] ? displayName(members[userId]) : '...'}</span>
               {text}
             </div>
           </div>
@@ -424,7 +477,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate }: Pr
         {Object.entries(liveMedia).map(([userId, dataUrl]) => (
           <div key={`media-${userId}`} className={`message live ${userId === me.id ? 'out' : 'in'}`}>
             <div className="bubble">
-              <span className="author-label">@{members[userId]?.username || '...'}</span>
+              <span className="author-label">@{members[userId] ? displayName(members[userId]) : '...'}</span>
               <img
                 src={dataUrl}
                 alt="preview ao vivo"
@@ -487,6 +540,26 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate }: Pr
       {expandedImage && (
         <div className="image-lightbox" onClick={() => setExpandedImage(null)}>
           <img src={expandedImage} alt="preview ao vivo expandido" />
+        </div>
+      )}
+
+      {profilePopup && (
+        <div className="modal-backdrop" onClick={() => setProfilePopup(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="account-avatar-wrap">
+              <div className="account-avatar" style={{ overflow: 'hidden' }}>
+                {profilePopup.meta.avatar_url ? (
+                  <img src={profilePopup.meta.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <IconUser size={40} />
+                )}
+              </div>
+            </div>
+            <h2>@{displayName(profilePopup.meta)}</h2>
+            <p>{profilePopup.meta.status || 'sem status'}</p>
+            <p style={{ fontSize: '.75rem' }}>{formatPresence(profilePopup.meta.last_seen_at)}</p>
+            <button type="button" className="modal-close" onClick={() => setProfilePopup(null)}>fechar</button>
+          </div>
         </div>
       )}
     </main>
