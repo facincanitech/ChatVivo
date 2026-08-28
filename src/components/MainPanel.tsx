@@ -3,7 +3,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { playNudgeSound, triggerNudgeShake } from '../lib/nudge'
 import { formatPresence } from '../lib/presence'
-import { IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconSend, IconSmile } from './icons'
+import { IconArrowLeft, IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconSend, IconSmile } from './icons'
 import type { Conversation, Message, Profile } from '../types'
 
 const EMOJIS = ['😀', '😂', '😍', '😭', '🔥', '👍', '🙏', '😡', '💀', '❤️']
@@ -15,9 +15,10 @@ type MemberMeta = { username: string; status: string | null; last_seen_at: strin
 type Props = {
   me: Profile | null
   conversation: Conversation | null
+  onBack: () => void
 }
 
-export function MainPanel({ me, conversation }: Props) {
+export function MainPanel({ me, conversation, onBack }: Props) {
   const [messages, setMessages] = useState<Message[]>([])
   const [members, setMembers] = useState<Record<string, MemberMeta>>({})
   const [draft, setDraft] = useState('')
@@ -297,6 +298,7 @@ export function MainPanel({ me, conversation }: Props) {
   return (
     <main className="main">
       <header className="chat-header">
+        <button type="button" className="icon-btn back-mobile" onClick={onBack}><IconArrowLeft size={20} /></button>
         <div className="header-photo">{title[0]?.toUpperCase()}</div>
         <div className="header-text">
           <div className="header-name">{title}</div>

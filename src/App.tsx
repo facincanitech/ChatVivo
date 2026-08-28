@@ -71,7 +71,7 @@ function App() {
   }
 
   return (
-    <div className="app">
+    <div className={`app${selected ? ' chat-open' : ''}`}>
       <Rail
         me={profile}
         onRequireAuth={() => requireAuth(() => {})}
@@ -87,7 +87,7 @@ function App() {
         onPanelOpenChange={setPanelOpen}
         onPanelViewChange={setPanelView}
       />
-      <MainPanel me={profile} conversation={selected} />
+      <MainPanel me={profile} conversation={selected} onBack={() => setSelected(null)} />
       {authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}
     </div>
   )

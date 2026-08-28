@@ -283,10 +283,10 @@ body{
   .messages{padding-left:4%;padding-right:4%}
 }
 @media(max-width:760px){
-  .app{position:relative}
-  .chats{width:100%;position:absolute;inset:0;z-index:5}
-  .chats.hidden{display:none}
-  .main{position:absolute;inset:0;z-index:6}
-  .main.hidden{display:none}
-  .back-mobile{display:inline-block}
+  .chats{width:100%}
+  .main{display:none}
+  .app.chat-open .rail{display:none}
+  .app.chat-open .chats{display:none}
+  .app.chat-open .main{display:flex}
+  .back-mobile{display:inline-flex}
 }
