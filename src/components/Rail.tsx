@@ -5,9 +5,10 @@ import type { Profile } from '../types'
 type Props = {
   me: Profile | null
   onRequireAuth: () => void
+  onNewConversation: () => void
 }
 
-export function Rail({ me, onRequireAuth }: Props) {
+export function Rail({ me, onRequireAuth, onNewConversation }: Props) {
   const [menuOpen, setMenuOpen] = useState(false)
 
   function handleAvatarClick() {
@@ -21,14 +22,14 @@ export function Rail({ me, onRequireAuth }: Props) {
   return (
     <aside className="rail">
       <div className="logo">◉</div>
-      <button className="active" title="Conversas">▣</button>
-      <button title="Chamadas (em breve)">⌕</button>
-      <button title="Comunidades (em breve)">◌</button>
-      <button title="Status (em breve)">◉</button>
+      <button className="active" title="Conversas">💬</button>
+      <button title="Nova conversa" onClick={onNewConversation}>➕</button>
+      <button title="Comunidades (em breve)">👥</button>
+      <button title="Status (em breve)">⭐</button>
       <div className="spacer" />
       <div style={{ position: 'relative' }}>
         <div className="avatar-sm" onClick={handleAvatarClick} title={me ? me.username : 'Entrar'}>
-          {me ? me.username[0]?.toUpperCase() : '?'}
+          {me ? me.username[0]?.toUpperCase() : '👤'}
         </div>
         {menuOpen && me && (
           <div className="profile-menu">

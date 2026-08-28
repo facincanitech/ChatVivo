@@ -5,7 +5,7 @@ import { Rail } from './components/Rail'
 import { ChatList } from './components/ChatList'
 import { MainPanel } from './components/MainPanel'
 import { AuthModal } from './components/AuthModal'
-import type { Conversation, Profile } from './types'
+import type { Conversation, PanelView, Profile } from './types'
 import './App.css'
 
 function App() {
@@ -13,6 +13,8 @@ function App() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [selected, setSelected] = useState<Conversation | null>(null)
   const [authOpen, setAuthOpen] = useState(false)
+  const [panelOpen, setPanelOpen] = useState(false)
+  const [panelView, setPanelView] = useState<PanelView>('root')
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
@@ -47,10 +49,25 @@ function App() {
     action()
   }
 
+  function openNewConversation() {
+    requireAuth(() => {
+      setPanelView('root')
+      setPanelOpen(true)
+    })
+  }
+
   return (
     <div className="app">
-      <Rail me={profile} onRequireAuth={() => requireAuth(() => {})} />
-      <ChatList me={profile} selected={selected} onSelect={setSelected} requireAuth={requireAuth} />
+      <Rail me={profile} onRequireAuth={() => requireAuth(() => {})} onNewConversation={openNewConversation} />
+      <ChatList
+        me={profile}
+        selected={selected}
+        onSelect={setSelected}
+        panelOpen={panelOpen}
+        panelView={panelView}
+        onPanelOpenChange={setPanelOpen}
+        onPanelViewChange={setPanelView}
+      />
       <MainPanel me={profile} conversation={selected} />
       {authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}
     </div>

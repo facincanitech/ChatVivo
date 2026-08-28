@@ -12,6 +12,11 @@
   --input:#2a3942;
 }
 *{box-sizing:border-box}
+*{scrollbar-width:thin;scrollbar-color:#37464e transparent}
+*::-webkit-scrollbar{width:8px;height:8px}
+*::-webkit-scrollbar-track{background:transparent}
+*::-webkit-scrollbar-thumb{background:#37464e;border-radius:4px}
+*::-webkit-scrollbar-thumb:hover{background:#46545c}
 html,body{height:100%;margin:0}
 body{
   font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;
@@ -243,6 +248,18 @@ body{
 }
 .new-conv-form .invite-code{font-size:.8rem;color:#a9e7d8}
 .new-conv-form label{font-size:.7rem;color:#8696a0;text-transform:uppercase;letter-spacing:.03em}
+
+.friend-request-list{
+  display:flex;flex-direction:column;gap:8px;max-height:260px;overflow-y:auto;
+}
+.friend-request-row{
+  display:flex;align-items:center;gap:10px;padding:8px;border-radius:8px;background:#182229;
+}
+.friend-request-info{flex:1;min-width:0}
+.friend-request-info .name{font-size:14px}
+.friend-request-info .preview{font-size:12px;margin-top:2px}
+.friend-request-row button{padding:6px 10px;font-size:.75rem}
+.friend-request-row button.decline{background:#3a2323;color:#f5b5b5}
 
 /* nudge */
 @keyframes shake{

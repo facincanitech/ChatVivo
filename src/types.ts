@@ -24,3 +24,5 @@ export type TypingPayload = {
   userId: string
   text: string
 }
+
+export type PanelView = 'root' | 'contact' | 'group' | 'join' | 'friends'
