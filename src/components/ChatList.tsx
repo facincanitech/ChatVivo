@@ -431,24 +431,47 @@ export function ChatList({
         .eq('id', req.id)
       if (updateErr) throw updateErr
 
-      const { data: conv, error: convErr } = await supabase
-        .from('conversations')
-        .insert({ type: 'dm', created_by: me.id })
-        .select()
-        .single()
-      if (convErr) throw convErr
-
-      const { error: membersErr } = await supabase
+      // reuse an existing DM with this person instead of creating a duplicate
+      const { data: myConvs } = await supabase
         .from('conversation_members')
-        .insert([
-          { conversation_id: conv.id, user_id: me.id },
-          { conversation_id: conv.id, user_id: req.from_id },
-        ])
-      if (membersErr) throw membersErr
+        .select('conversation_id, conversation:conversations(type)')
+        .eq('user_id', me.id)
+      const myDmIds = (myConvs || [])
+        .filter((r) => (r.conversation as unknown as Conversation)?.type === 'dm')
+        .map((r) => r.conversation_id)
+
+      let conv: Conversation | null = null
+      if (myDmIds.length > 0) {
+        const { data: shared } = await supabase
+          .from('conversation_members')
+          .select('conversation_id, conversation:conversations(*)')
+          .eq('user_id', req.from_id)
+          .in('conversation_id', myDmIds)
+          .limit(1)
+        if (shared && shared.length > 0) conv = shared[0].conversation as unknown as Conversation
+      }
+
+      if (!conv) {
+        const { data: newConv, error: convErr } = await supabase
+          .from('conversations')
+          .insert({ type: 'dm', created_by: me.id })
+          .select()
+          .single()
+        if (convErr) throw convErr
+
+        const { error: membersErr } = await supabase
+          .from('conversation_members')
+          .insert([
+            { conversation_id: newConv.id, user_id: me.id },
+            { conversation_id: newConv.id, user_id: req.from_id },
+          ])
+        if (membersErr) throw membersErr
+        conv = newConv as Conversation
+      }
 
       await loadIncomingRequests()
       await loadConversations()
-      onSelect(conv as Conversation)
+      onSelect(conv)
       closePanel()
     } catch (err) {
       setError(getErrorMessage(err))
@@ -1028,6 +1051,16 @@ export function ChatList({
             <label>Email</label>
             <input value={me.email} disabled />
             <span className="invite-code">notificações de segurança e mais dados da conta chegam em breve</span>
+
+            <label style={{ marginTop: 10 }}>App</label>
+            <a
+              href={`${import.meta.env.BASE_URL}downloads/ferus.apk`}
+              className="google-btn"
+              style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}
+            >
+              Baixar o app (Android) — v{APP_VERSION}
+            </a>
+            <span className="invite-code">apk de teste — instala liberando "fontes desconhecidas" no Android</span>
           </div>
         )}
 
