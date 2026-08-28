@@ -124,11 +124,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
 
     async function markRead() {
       if (!conversation || !me) return
-      await supabase
-        .from('conversation_members')
-        .update({ last_read_at: new Date().toISOString() })
-        .eq('conversation_id', conversation.id)
-        .eq('user_id', me.id)
+      await supabase.rpc('mark_conversation_read', { p_conversation_id: conversation.id })
     }
 
     async function loadMembers() {
@@ -353,6 +349,11 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     })
   }
 
+  async function postSystemMessage(content: string) {
+    if (!me || !conversation) return
+    await supabase.from('messages').insert({ conversation_id: conversation.id, author_id: me.id, content, kind: 'system' })
+  }
+
   async function addMember() {
     if (!me || !conversation) return
     const input = addEmail.trim()
@@ -433,6 +434,8 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
         setMembers((prev) => (prev[me.id] ? { ...prev, [me.id]: { ...prev[me.id], is_leader: true } } : prev))
       }
 
+      await postSystemMessage(`${displayName(me)} adicionou @${target.username} ao chat`)
+
       setAddEmail('')
       setConfigView('root')
     } catch (err) {
@@ -482,7 +485,8 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   }
 
   async function removeMember(targetId: string) {
-    if (!conversation) return
+    if (!conversation || !me) return
+    const targetMeta = members[targetId]
     await supabase
       .from('conversation_members')
       .delete()
@@ -498,10 +502,14 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       await supabase.from('conversations').update({ type: 'dm' }).eq('id', conversation.id)
       onConversationUpdate({ type: 'dm' })
     }
+    if (targetMeta) {
+      await postSystemMessage(`${displayName(me)} removeu @${displayName(targetMeta)} do chat`)
+    }
   }
 
   async function promoteLeader(targetId: string) {
-    if (!conversation) return
+    if (!conversation || !me) return
+    const targetMeta = members[targetId]
     if (isRoleGroup) {
       await supabase
         .from('conversation_members')
@@ -509,6 +517,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
         .eq('conversation_id', conversation.id)
         .eq('user_id', targetId)
       setMembers((prev) => (prev[targetId] ? { ...prev, [targetId]: { ...prev[targetId], role: 'moderator' } } : prev))
+      if (targetMeta) await postSystemMessage(`${displayName(me)} promoveu @${displayName(targetMeta)} a moderador`)
       return
     }
     await supabase
@@ -517,16 +526,19 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       .eq('conversation_id', conversation.id)
       .eq('user_id', targetId)
     setMembers((prev) => (prev[targetId] ? { ...prev, [targetId]: { ...prev[targetId], is_leader: true } } : prev))
+    if (targetMeta) await postSystemMessage(`${displayName(me)} deu a coroa pra @${displayName(targetMeta)}`)
   }
 
   async function demoteLeader(targetId: string) {
-    if (!conversation) return
+    if (!conversation || !me) return
+    const targetMeta = members[targetId]
     await supabase
       .from('conversation_members')
       .update({ is_leader: false })
       .eq('conversation_id', conversation.id)
       .eq('user_id', targetId)
     setMembers((prev) => (prev[targetId] ? { ...prev, [targetId]: { ...prev[targetId], is_leader: false } } : prev))
+    if (targetMeta) await postSystemMessage(`${displayName(me)} tirou a coroa de @${displayName(targetMeta)}`)
   }
 
   function handleChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
@@ -814,6 +826,9 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
 
       <section className="messages" onScroll={handleMessagesScroll}>
         {messages.filter((m) => !blockedIds.has(m.author_id)).map((m) => (
+          m.kind === 'system' ? (
+            <div key={m.id} className="system-message">{m.content}</div>
+          ) : (
           <div key={m.id} className={`message ${m.author_id === me.id ? 'out' : 'in'}`}>
             <div className="bubble">
               {m.author_id !== me.id && conversation.type === 'group' && (
@@ -834,6 +849,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
               <button type="button" className="replay-btn" onClick={() => openReplay(m)}>replay</button>
             </div>
           </div>
+          )
         ))}
 
         {Object.entries(liveTyping).filter(([userId]) => !blockedIds.has(userId)).map(([userId, text]) => (
