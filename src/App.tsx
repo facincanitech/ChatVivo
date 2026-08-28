@@ -98,6 +98,12 @@ function App() {
     })
   }
 
+  function goHome() {
+    setSelected(null)
+    setPanelOpen(false)
+    setAccountOpen(false)
+  }
+
   return (
     <div className={`app${selected ? ' chat-open' : ''}`}>
       <Rail
@@ -105,6 +111,7 @@ function App() {
         onRequireAuth={() => requireAuth(() => {})}
         onNewConversation={openNewConversation}
         onOpenAccount={openAccount}
+        onGoHome={goHome}
       />
       <ChatList
         me={profile}

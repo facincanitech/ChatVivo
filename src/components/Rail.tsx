@@ -8,9 +8,10 @@ type Props = {
   onRequireAuth: () => void
   onNewConversation: () => void
   onOpenAccount: () => void
+  onGoHome: () => void
 }
 
-export function Rail({ me, onRequireAuth, onNewConversation, onOpenAccount }: Props) {
+export function Rail({ me, onRequireAuth, onNewConversation, onOpenAccount, onGoHome }: Props) {
   const [pendingCount, setPendingCount] = useState(0)
 
   useEffect(() => {
@@ -55,7 +56,9 @@ export function Rail({ me, onRequireAuth, onNewConversation, onOpenAccount }: Pr
 
   return (
     <aside className="rail">
-      <div className="logo"><IconChat size={22} /></div>
+      <div className="logo" onClick={onGoHome} style={{ cursor: 'pointer' }} title="Início">
+        <IconChat size={22} />
+      </div>
       <div style={{ position: 'relative' }}>
         <button title="Nova conversa" onClick={onNewConversation}><IconPlus /></button>
         {pendingCount > 0 && (
