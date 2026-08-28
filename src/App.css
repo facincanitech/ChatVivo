@@ -211,7 +211,7 @@ body{
 /* profile popover */
 .profile-menu{
   position:absolute;left:64px;bottom:12px;background:#202c33;border:1px solid #34434b;
-  border-radius:10px;padding:8px;min-width:160px;z-index:40;box-shadow:0 8px 24px #0006;
+  border-radius:10px;padding:8px;width:240px;z-index:40;box-shadow:0 8px 24px #0006;
 }
 .profile-menu button{
   width:100%;text-align:left;background:none;border:0;color:var(--text);
