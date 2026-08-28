@@ -357,7 +357,7 @@ export function ChatList({
   return (
     <section className="chats">
       <div className="top">
-        <div className="brand">Eros</div>
+        <div className="brand">Ferus</div>
       </div>
 
       <div className="search-wrap">
