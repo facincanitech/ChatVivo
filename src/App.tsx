@@ -90,7 +90,12 @@ function App() {
         onPanelOpenChange={setPanelOpen}
         onPanelViewChange={setPanelView}
       />
-      <MainPanel me={profile} conversation={selected} onBack={() => setSelected(null)} />
+      <MainPanel
+        me={profile}
+        conversation={selected}
+        onBack={() => setSelected(null)}
+        onConversationUpdate={(patch) => setSelected((c) => (c ? { ...c, ...patch } : c))}
+      />
       {authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}
     </div>
   )

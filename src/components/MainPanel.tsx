@@ -3,7 +3,8 @@ import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { playNudgeSound, triggerNudgeShake } from '../lib/nudge'
 import { formatPresence } from '../lib/presence'
-import { IconArrowLeft, IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconSend, IconSmile } from './icons'
+import { getErrorMessage } from '../lib/errors'
+import { IconArrowLeft, IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconPlus, IconSend, IconSmile } from './icons'
 import type { Conversation, Message, Profile } from '../types'
 
 const EMOJIS = ['😀', '😂', '😍', '😭', '🔥', '👍', '🙏', '😡', '💀', '❤️']
@@ -16,9 +17,10 @@ type Props = {
   me: Profile | null
   conversation: Conversation | null
   onBack: () => void
+  onConversationUpdate: (patch: Partial<Conversation>) => void
 }
 
-export function MainPanel({ me, conversation, onBack }: Props) {
+export function MainPanel({ me, conversation, onBack, onConversationUpdate }: Props) {
   const [messages, setMessages] = useState<Message[]>([])
   const [members, setMembers] = useState<Record<string, MemberMeta>>({})
   const [draft, setDraft] = useState('')
@@ -27,6 +29,10 @@ export function MainPanel({ me, conversation, onBack }: Props) {
   const [showEmoji, setShowEmoji] = useState(false)
   const [replayFor, setReplayFor] = useState<Message | null>(null)
   const [replayEvents, setReplayEvents] = useState<ReplayEvent[] | null>(null)
+  const [showAddMember, setShowAddMember] = useState(false)
+  const [addEmail, setAddEmail] = useState('')
+  const [addError, setAddError] = useState<string | null>(null)
+  const [addBusy, setAddBusy] = useState(false)
 
   const channelRef = useRef<RealtimeChannel | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -186,6 +192,54 @@ export function MainPanel({ me, conversation, onBack }: Props) {
     channelRef.current?.send({ type: 'broadcast', event: 'media', payload: { userId: me.id, dataUrl } })
   }
 
+  async function addMember() {
+    if (!me || !conversation) return
+    const email = addEmail.trim().toLowerCase()
+    if (!email) return
+    setAddBusy(true)
+    setAddError(null)
+    try {
+      const { data: found, error: findErr } = await supabase.rpc('find_profile_by_email', { p_email: email })
+      if (findErr) throw findErr
+      const target = found?.[0]
+      if (!target) {
+        setAddError('Essa pessoa ainda não tem conta no Ferus')
+        return
+      }
+
+      const { error: memberErr } = await supabase
+        .from('conversation_members')
+        .insert({ conversation_id: conversation.id, user_id: target.id })
+      if (memberErr && !memberErr.message.includes('duplicate')) throw memberErr
+
+      setMembers((prev) => ({
+        ...prev,
+        [target.id]: {
+          username: target.username,
+          status: null,
+          last_seen_at: null,
+          last_read_at: new Date().toISOString(),
+        },
+      }))
+
+      if (conversation.type === 'dm') {
+        const { error: convErr } = await supabase
+          .from('conversations')
+          .update({ type: 'group' })
+          .eq('id', conversation.id)
+        if (convErr) throw convErr
+        onConversationUpdate({ type: 'group' })
+      }
+
+      setAddEmail('')
+      setShowAddMember(false)
+    } catch (err) {
+      setAddError(getErrorMessage(err))
+    } finally {
+      setAddBusy(false)
+    }
+  }
+
   function handleChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
     const text = e.target.value
     setDraft(text)
@@ -306,8 +360,30 @@ export function MainPanel({ me, conversation, onBack }: Props) {
           <div className="header-name">{displayTitle}</div>
           {subtitle && <div className="status">{subtitle}</div>}
         </div>
-        <div className="header-actions">
+        <div className="header-actions" style={{ position: 'relative' }}>
+          <button
+            type="button"
+            className="nudge-btn"
+            title="Adicionar pessoa"
+            onClick={() => { setShowAddMember((v) => !v); setAddError(null) }}
+          >
+            <IconPlus size={20} />
+          </button>
           <button type="button" className="nudge-btn" title="Chamar atenção" onClick={sendNudge}><IconBell size={20} /></button>
+
+          {showAddMember && (
+            <div className="add-member-popover">
+              <input
+                type="email"
+                placeholder="email da pessoa"
+                value={addEmail}
+                onChange={(e) => setAddEmail(e.target.value)}
+                autoFocus
+              />
+              <button type="button" disabled={addBusy} onClick={addMember}>Adicionar</button>
+              {addError && <span className="auth-error">{addError}</span>}
+            </div>
+          )}
         </div>
       </header>
 

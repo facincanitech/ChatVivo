@@ -303,6 +303,19 @@ body{
 }
 .nudge-btn:hover{background:#2b3a42}
 
+.add-member-popover{
+  position:absolute;top:54px;right:0;background:#202c33;border:1px solid #34434b;
+  border-radius:10px;padding:10px;width:220px;z-index:45;box-shadow:0 8px 24px #0006;
+  display:flex;flex-direction:column;gap:8px;
+}
+.add-member-popover input{
+  padding:8px;border-radius:6px;border:1px solid #34434b;background:#111b21;color:var(--text);
+}
+.add-member-popover button{
+  padding:8px;border-radius:6px;border:0;background:var(--green);color:#fff;
+  font-weight:600;cursor:pointer;
+}
+
 .rail-badge{
   position:absolute;top:2px;right:2px;width:16px;height:16px;border-radius:50%;
   background:var(--green);color:#fff;display:grid;place-items:center;
