@@ -154,24 +154,23 @@ export function ChatList({
         const mine = myRows.find((r) => (r.conversation as unknown as Conversation)?.id === c.id)
         const isFavorite = !!mine?.is_favorite
         const favoritedAt = (mine?.favorited_at as string | null) || null
+        const membersOfConv = (allMembers || []).filter((m) => m.conversation_id === c.id)
+        const anyOther = membersOfConv.find((m) => (m.profile as unknown as Profile)?.id !== me.id)
+
         if (c.type === 'group') {
-          const myRole = (allMembers || []).find(
-            (m) => m.conversation_id === c.id && (m.profile as unknown as Profile)?.id === me.id,
-          )?.role
+          const myRole = membersOfConv.find((m) => (m.profile as unknown as Profile)?.id === me.id)?.role
           const isOrganicGroup = !myRole
           if (isOrganicGroup) {
-            const original = (allMembers || []).find(
-              (m) => m.conversation_id === c.id && m.added_by === null && (m.profile as unknown as Profile)?.id !== me.id,
+            const original = membersOfConv.find(
+              (m) => m.added_by === null && (m.profile as unknown as Profile)?.id !== me.id,
             )
-            const p = original?.profile as unknown as Profile | undefined
+            let p = original?.profile as unknown as Profile | undefined
+            if (!p || p.id === me.id) p = anyOther?.profile as unknown as Profile | undefined
             return { ...c, label: p ? displayName(p) : 'conversa', avatarUrl: p?.avatar_url || null, otherId: p?.id || null, isFavorite, favoritedAt, isOrganicGroup: true }
           }
           return { ...c, label: c.name || 'grupo', avatarUrl: null, otherId: null, isFavorite, favoritedAt, isOrganicGroup: false }
         }
-        const other = (allMembers || []).find(
-          (m) => m.conversation_id === c.id && (m.profile as unknown as Profile)?.id !== me.id,
-        )
-        const p = other?.profile as unknown as Profile | undefined
+        const p = anyOther?.profile as unknown as Profile | undefined
         return { ...c, label: p ? displayName(p) : 'conversa', avatarUrl: p?.avatar_url || null, otherId: p?.id || null, isFavorite, favoritedAt, isOrganicGroup: false }
       })
       .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
