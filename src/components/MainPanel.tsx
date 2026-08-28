@@ -646,7 +646,10 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   }, [otherMember])
 
   function isReadByOthers(msg: Message) {
-    const others = Object.entries(members).filter(([id]) => id !== me?.id)
+    let others = Object.entries(members).filter(([id]) => id !== me?.id)
+    if (isOrganicGroup) {
+      others = others.filter(([, meta]) => meta.added_by === null)
+    }
     if (others.length === 0) return false
     return others.every(([, meta]) => new Date(meta.last_read_at) >= new Date(msg.created_at))
   }

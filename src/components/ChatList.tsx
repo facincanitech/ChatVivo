@@ -49,6 +49,7 @@ type ConvWithLabel = Conversation & {
   otherId: string | null
   isFavorite: boolean
   favoritedAt: string | null
+  isOrganicGroup: boolean
 }
 type FriendRequest = {
   id: string
@@ -134,12 +135,12 @@ export function ChatList({
     }
 
     const ids = convs.map((c) => c.id)
-    let allMembers: { conversation_id: string; profile: unknown }[] | null = null
+    let allMembers: { conversation_id: string; added_by: string | null; role: string | null; profile: unknown }[] | null = null
     for (let attempt = 0; attempt < 3 && allMembers === null; attempt++) {
       if (attempt > 0) await new Promise((r) => setTimeout(r, 400 * attempt))
       const { data, error } = await supabase
         .from('conversation_members')
-        .select('conversation_id, profile:profiles!conversation_members_user_id_fkey(id, username, display_name, avatar_url)')
+        .select('conversation_id, added_by, role, profile:profiles!conversation_members_user_id_fkey(id, username, display_name, avatar_url)')
         .in('conversation_id', ids)
       if (error) {
         console.error('loadConversations: allMembers query failed', error)
@@ -153,12 +154,25 @@ export function ChatList({
         const mine = myRows.find((r) => (r.conversation as unknown as Conversation)?.id === c.id)
         const isFavorite = !!mine?.is_favorite
         const favoritedAt = (mine?.favorited_at as string | null) || null
-        if (c.type === 'group') return { ...c, label: c.name || 'grupo', avatarUrl: null, otherId: null, isFavorite, favoritedAt }
+        if (c.type === 'group') {
+          const myRole = (allMembers || []).find(
+            (m) => m.conversation_id === c.id && (m.profile as unknown as Profile)?.id === me.id,
+          )?.role
+          const isOrganicGroup = !myRole
+          if (isOrganicGroup) {
+            const original = (allMembers || []).find(
+              (m) => m.conversation_id === c.id && m.added_by === null && (m.profile as unknown as Profile)?.id !== me.id,
+            )
+            const p = original?.profile as unknown as Profile | undefined
+            return { ...c, label: p ? displayName(p) : 'conversa', avatarUrl: p?.avatar_url || null, otherId: p?.id || null, isFavorite, favoritedAt, isOrganicGroup: true }
+          }
+          return { ...c, label: c.name || 'grupo', avatarUrl: null, otherId: null, isFavorite, favoritedAt, isOrganicGroup: false }
+        }
         const other = (allMembers || []).find(
           (m) => m.conversation_id === c.id && (m.profile as unknown as Profile)?.id !== me.id,
         )
         const p = other?.profile as unknown as Profile | undefined
-        return { ...c, label: p ? displayName(p) : 'conversa', avatarUrl: p?.avatar_url || null, otherId: p?.id || null, isFavorite, favoritedAt }
+        return { ...c, label: p ? displayName(p) : 'conversa', avatarUrl: p?.avatar_url || null, otherId: p?.id || null, isFavorite, favoritedAt, isOrganicGroup: false }
       })
       .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
 
