@@ -314,8 +314,8 @@ body{
   display:grid;place-items:center;
 }
 .account-signout{
-  margin:10px 22px;padding:10px;border-radius:6px;border:1px solid #3a2323;
-  background:none;color:#f5b8ba;cursor:pointer;font-size:.85rem;
+  margin:auto 22px 20px;padding:10px;border-radius:6px;border:1px solid #3a2323;
+  background:none;color:#f5b8ba;cursor:pointer;font-size:.85rem;flex-shrink:0;
 }
 .account-signout:hover{background:#3a2323}
 
