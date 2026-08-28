@@ -130,10 +130,19 @@ export function ChatList({
     }
 
     const ids = convs.map((c) => c.id)
-    const { data: allMembers } = await supabase
-      .from('conversation_members')
-      .select('conversation_id, profile:profiles(id, username, display_name, avatar_url)')
-      .in('conversation_id', ids)
+    let allMembers: { conversation_id: string; profile: unknown }[] | null = null
+    for (let attempt = 0; attempt < 3 && allMembers === null; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 400 * attempt))
+      const { data, error } = await supabase
+        .from('conversation_members')
+        .select('conversation_id, profile:profiles(id, username, display_name, avatar_url)')
+        .in('conversation_id', ids)
+      if (error) {
+        console.error('loadConversations: allMembers query failed', error)
+        continue
+      }
+      allMembers = data
+    }
 
     const labeled: ConvWithLabel[] = convs
       .map((c) => {
