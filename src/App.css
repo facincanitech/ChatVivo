@@ -395,6 +395,46 @@ body{
 }
 .blocked-menu{width:220px}
 
+.community-feed{display:flex;flex-direction:column;gap:14px}
+.community-description{color:#a9b7bd;font-size:14px;padding:0 4px}
+.community-composer{
+  background:#111b21;border:1px solid #2a3942;border-radius:10px;
+  padding:12px;display:flex;flex-direction:column;gap:8px;
+}
+.community-composer textarea,.community-composer input{
+  background:#0b141a;border:1px solid #2a3942;border-radius:8px;color:#e9edef;
+  padding:8px 10px;font-family:inherit;font-size:14px;resize:vertical;
+}
+.community-composer button{
+  align-self:flex-end;padding:8px 16px;border-radius:6px;border:0;
+  background:var(--green);color:#fff;font-weight:600;cursor:pointer;
+}
+.community-post{
+  background:#111b21;border:1px solid #2a3942;border-radius:10px;padding:14px;
+}
+.community-post-header{display:flex;align-items:center;gap:10px}
+.community-post-content{margin:10px 0 0;white-space:pre-wrap;font-size:14.5px}
+.community-post-image{max-width:100%;border-radius:8px;margin-top:10px;display:block}
+.community-post-actions{display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap}
+.reaction-pill{
+  font-size:12px;background:#182229;border-radius:20px;padding:2px 9px;color:#c9d3d6;
+}
+.community-comments{
+  margin-top:10px;padding-top:10px;border-top:1px solid #2a3942;
+  display:flex;flex-direction:column;gap:8px;
+}
+.community-comment{display:flex;align-items:center;gap:6px;font-size:13.5px;flex-wrap:wrap}
+.community-comment-deleted{color:#71818a;font-style:italic;cursor:pointer;text-decoration:underline dotted}
+.community-comment-deleted-tag{font-size:10px;color:#71818a;border:1px solid #34434b;border-radius:4px;padding:0 5px}
+.community-comment-composer{display:flex;gap:6px;margin-top:4px}
+.community-comment-composer input{
+  flex:1;background:#0b141a;border:1px solid #2a3942;border-radius:20px;
+  color:#e9edef;padding:6px 12px;font-size:13.5px;
+}
+.community-comment-composer button{
+  background:none;border:0;color:var(--green);cursor:pointer;display:grid;place-items:center;
+}
+
 @media(max-width:1100px){
   .messages{padding-left:4%;padding-right:4%}
 }

@@ -17,7 +17,7 @@ import {
   IconTrash,
   IconUser,
 } from './icons'
-import type { Conversation, PanelView, Profile } from '../types'
+import type { Community, Conversation, PanelView, Profile } from '../types'
 
 type AccountView = 'root' | 'profile' | 'account' | 'privacy' | 'blocked' | 'terms'
 
@@ -35,6 +35,7 @@ type Props = {
   onGroupsOpenChange: (open: boolean) => void
   onProfileChange: (patch: Partial<Profile>) => void
   blockedIds: Set<string>
+  onSelectCommunity: (c: Community) => void
 }
 
 type ConvWithLabel = Conversation & {
@@ -78,14 +79,19 @@ export function ChatList({
   onGroupsOpenChange,
   onProfileChange,
   blockedIds,
+  onSelectCommunity,
 }: Props) {
   const [conversations, setConversations] = useState<ConvWithLabel[]>([])
-  const [groupsView, setGroupsView] = useState<'root' | 'create'>('root')
+  const [groupsView, setGroupsView] = useState<'root' | 'create' | 'community-create'>('root')
   const [myGroups, setMyGroups] = useState<{ id: string; name: string; role: string | null }[]>([])
   const [newGroupName, setNewGroupName] = useState('')
   const [newGroupDesc, setNewGroupDesc] = useState('')
   const [groupsBusy, setGroupsBusy] = useState(false)
   const [groupsError, setGroupsError] = useState<string | null>(null)
+  const [communities, setCommunities] = useState<Community[]>([])
+  const [newCommunityName, setNewCommunityName] = useState('')
+  const [newCommunityDesc, setNewCommunityDesc] = useState('')
+  const [newCommunityCategory, setNewCommunityCategory] = useState('')
   const [query, setQuery] = useState('')
   const [activeFilter, setActiveFilter] = useState<'all' | 'favorites' | 'archived'>('all')
   const [dmEmail, setDmEmail] = useState('')
@@ -622,15 +628,54 @@ export function ChatList({
     )
   }
 
+  async function loadCommunities() {
+    const { data } = await supabase.from('communities').select('*').order('created_at', { ascending: false })
+    setCommunities((data as Community[]) || [])
+  }
+
   useEffect(() => {
     if (groupsOpen && me) {
       setGroupsView('root')
       setGroupsError(null)
       setNewGroupName('')
       setNewGroupDesc('')
+      setNewCommunityName('')
+      setNewCommunityDesc('')
+      setNewCommunityCategory('')
       loadMyGroups()
+      loadCommunities()
     }
   }, [groupsOpen, me?.id])
+
+  async function createCommunity() {
+    if (!me) return
+    const name = newCommunityName.trim()
+    if (!name) return
+    setGroupsBusy(true)
+    setGroupsError(null)
+    try {
+      const { data: community, error: err } = await supabase
+        .from('communities')
+        .insert({
+          name,
+          description: newCommunityDesc.trim() || null,
+          category: newCommunityCategory.trim() || null,
+          created_by: me.id,
+        })
+        .select()
+        .single()
+      if (err) throw err
+
+      await supabase.from('community_members').insert({ community_id: community.id, user_id: me.id })
+
+      onGroupsOpenChange(false)
+      onSelectCommunity(community as Community)
+    } catch (err) {
+      setGroupsError(getErrorMessage(err))
+    } finally {
+      setGroupsBusy(false)
+    }
+  }
 
   async function createGroup2() {
     if (!me) return
@@ -1185,7 +1230,7 @@ export function ChatList({
           <button
             type="button"
             className="icon-btn"
-            onClick={() => (groupsView === 'create' ? setGroupsView('root') : onGroupsOpenChange(false))}
+            onClick={() => (groupsView === 'root' ? onGroupsOpenChange(false) : setGroupsView('root'))}
           >
             <IconArrowLeft size={20} />
           </button>
@@ -1199,9 +1244,9 @@ export function ChatList({
                 <div className="option-icon"><IconGroup size={20} /></div>
                 <span>Criar grupo</span>
               </div>
-              <div className="new-conv-option" style={{ opacity: 0.5, cursor: 'default' }}>
+              <div className="new-conv-option" onClick={() => setGroupsView('community-create')}>
                 <div className="option-icon"><IconHeart size={20} /></div>
-                <span>Criar comunidade (em breve)</span>
+                <span>Criar comunidade</span>
               </div>
             </div>
             <label style={{ padding: '0 22px', fontSize: '.7rem', color: '#8696a0', textTransform: 'uppercase' }}>
@@ -1227,6 +1272,30 @@ export function ChatList({
                 </div>
               ))}
             </div>
+            <label style={{ padding: '0 22px', fontSize: '.7rem', color: '#8696a0', textTransform: 'uppercase' }}>
+              Comunidades
+            </label>
+            <div className="chat-list">
+              {communities.length === 0 && <div className="empty">Nenhuma comunidade ainda</div>}
+              {communities.map((c) => (
+                <div
+                  key={c.id}
+                  className="chat"
+                  onClick={() => {
+                    onGroupsOpenChange(false)
+                    onSelectCommunity(c)
+                  }}
+                >
+                  <div className="photo">{c.name[0]?.toUpperCase()}</div>
+                  <div className="chat-info">
+                    <div className="row">
+                      <div className="name">{c.name}</div>
+                    </div>
+                    {c.category && <div className="preview">{c.category}</div>}
+                  </div>
+                </div>
+              ))}
+            </div>
           </>
         )}
 
@@ -1246,6 +1315,32 @@ export function ChatList({
               onChange={(e) => setNewGroupDesc(e.target.value)}
             />
             <button type="button" disabled={groupsBusy} onClick={createGroup2}>Criar</button>
+            {groupsError && <span className="auth-error">{groupsError}</span>}
+          </div>
+        )}
+
+        {groupsView === 'community-create' && (
+          <div className="new-conv-form">
+            <label>Nome da comunidade</label>
+            <input
+              placeholder="nome da comunidade"
+              value={newCommunityName}
+              onChange={(e) => setNewCommunityName(e.target.value)}
+              autoFocus
+            />
+            <label style={{ marginTop: 10 }}>Categoria</label>
+            <input
+              placeholder="categoria (opcional)"
+              value={newCommunityCategory}
+              onChange={(e) => setNewCommunityCategory(e.target.value)}
+            />
+            <label style={{ marginTop: 10 }}>Descrição</label>
+            <input
+              placeholder="descrição (opcional)"
+              value={newCommunityDesc}
+              onChange={(e) => setNewCommunityDesc(e.target.value)}
+            />
+            <button type="button" disabled={groupsBusy} onClick={createCommunity}>Criar</button>
             {groupsError && <span className="auth-error">{groupsError}</span>}
           </div>
         )}

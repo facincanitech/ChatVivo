@@ -4,8 +4,9 @@ import { supabase } from './lib/supabase'
 import { Rail } from './components/Rail'
 import { ChatList } from './components/ChatList'
 import { MainPanel } from './components/MainPanel'
+import { CommunityView } from './components/CommunityView'
 import { AuthModal } from './components/AuthModal'
-import type { Conversation, PanelView, Profile } from './types'
+import type { Community, Conversation, PanelView, Profile } from './types'
 import { APP_VERSION } from './version'
 import { playNudgeSound, triggerNudgeShake } from './lib/nudge'
 import './App.css'
@@ -34,6 +35,7 @@ function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [selected, setSelected] = useState<Conversation | null>(null)
+  const [selectedCommunity, setSelectedCommunity] = useState<Community | null>(null)
   const [authOpen, setAuthOpen] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
   const [panelView, setPanelView] = useState<PanelView>('root')
@@ -241,13 +243,14 @@ function App() {
 
   function goHome() {
     setSelected(null)
+    setSelectedCommunity(null)
     setPanelOpen(false)
     setAccountOpen(false)
     setGroupsOpen(false)
   }
 
   return (
-    <div className={`app${selected ? ' chat-open' : ''}`}>
+    <div className={`app${selected || selectedCommunity ? ' chat-open' : ''}`}>
       <Rail
         me={profile}
         onRequireAuth={() => requireAuth(() => {})}
@@ -260,7 +263,8 @@ function App() {
       <ChatList
         me={profile}
         selected={selected}
-        onSelect={setSelected}
+        onSelect={(c) => { setSelectedCommunity(null); setSelected(c) }}
+        onSelectCommunity={(c) => { setSelected(null); setSelectedCommunity(c) }}
         panelOpen={panelOpen}
         panelView={panelView}
         onPanelOpenChange={setPanelOpen}
@@ -272,13 +276,21 @@ function App() {
         onProfileChange={(patch) => setProfile((p) => (p ? { ...p, ...patch } : p))}
         blockedIds={blockedIds}
       />
-      <MainPanel
-        me={profile}
-        conversation={selected}
-        blockedIds={blockedIds}
-        onBack={() => setSelected(null)}
-        onConversationUpdate={(patch) => setSelected((c) => (c ? { ...c, ...patch } : c))}
-      />
+      {selectedCommunity && profile ? (
+        <CommunityView
+          me={profile}
+          community={selectedCommunity}
+          onBack={() => setSelectedCommunity(null)}
+        />
+      ) : (
+        <MainPanel
+          me={profile}
+          conversation={selected}
+          blockedIds={blockedIds}
+          onBack={() => setSelected(null)}
+          onConversationUpdate={(patch) => setSelected((c) => (c ? { ...c, ...patch } : c))}
+        />
+      )}
       {authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}
     </div>
   )

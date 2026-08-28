@@ -33,3 +33,12 @@ export type TypingPayload = {
 }
 
 export type PanelView = 'root' | 'contact' | 'group' | 'friends'
+
+export type Community = {
+  id: string
+  name: string
+  description: string | null
+  category: string | null
+  created_by: string
+  created_at: string
+}
