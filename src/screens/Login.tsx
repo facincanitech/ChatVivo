@@ -10,6 +10,15 @@ export function Login() {
   const [loading, setLoading] = useState(false)
   const [info, setInfo] = useState<string | null>(null)
 
+  async function handleGoogle() {
+    setError(null)
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.href },
+    })
+    if (oauthError) setError(oauthError.message)
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
@@ -38,6 +47,10 @@ export function Login() {
   return (
     <div className="auth-screen">
       <h1>ChatVivo</h1>
+      <button type="button" className="google-btn" onClick={handleGoogle}>
+        Entrar com Google
+      </button>
+      <span className="auth-divider">ou</span>
       <form onSubmit={handleSubmit} className="auth-form">
         {mode === 'signup' && (
           <input
