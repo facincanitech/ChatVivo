@@ -21,6 +21,9 @@ dist-ssr
 supabase/
 scripts/
 
+# Private project notes (context for future sessions, not for public repo)
+CLAUDE.md
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
