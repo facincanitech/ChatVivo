@@ -286,6 +286,42 @@ export function ChatList({
       if (!email) return
       if (email === me.email) throw new Error('Esse é você')
 
+      const { data: found, error: findErr } = await supabase.rpc('find_profile_by_email', { p_email: email })
+      if (findErr) throw findErr
+      const target = found?.[0]
+
+      if (target) {
+        // reuse an existing DM (or organic group, which keeps the 1x1 essence) with this person instead of creating a duplicate
+        const { data: myConvs } = await supabase
+          .from('conversation_members')
+          .select('conversation_id, role, conversation:conversations(type)')
+          .eq('user_id', me.id)
+        const myDmIds = (myConvs || [])
+          .filter((r) => {
+            const type = (r.conversation as unknown as Conversation)?.type
+            return type === 'dm' || (type === 'group' && !r.role)
+          })
+          .map((r) => r.conversation_id)
+
+        let existing: Conversation | null = null
+        if (myDmIds.length > 0) {
+          const { data: shared } = await supabase
+            .from('conversation_members')
+            .select('conversation_id, conversation:conversations(*)')
+            .eq('user_id', target.id)
+            .in('conversation_id', myDmIds)
+            .limit(1)
+          if (shared && shared.length > 0) existing = shared[0].conversation as unknown as Conversation
+        }
+
+        if (existing) {
+          setDmEmail('')
+          onSelect(existing)
+          closePanel()
+          return
+        }
+      }
+
       const { data: conv, error: convErr } = await supabase
         .from('conversations')
         .insert({ type: 'dm', created_by: me.id })
@@ -298,10 +334,6 @@ export function ChatList({
           .from('conversation_members')
           .insert({ conversation_id: conv.id, user_id: me.id })
         if (selfErr) throw selfErr
-
-        const { data: found, error: findErr } = await supabase.rpc('find_profile_by_email', { p_email: email })
-        if (findErr) throw findErr
-        const target = found?.[0]
 
         if (target) {
           const { error: memberErr } = await supabase
@@ -778,7 +810,7 @@ export function ChatList({
             </button>
             <div className="chat-info">
               <div className="row">
-                <div className="name">{c.type === 'group' ? `# ${c.label}` : `@${c.label}`}</div>
+                <div className="name">{c.type === 'group' && !c.isOrganicGroup ? `# ${c.label}` : `@${c.label}`}</div>
               </div>
             </div>
           </div>
