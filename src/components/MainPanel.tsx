@@ -5,7 +5,7 @@ import { playNudgeSound, triggerNudgeShake } from '../lib/nudge'
 import { formatPresence, getPresenceColor } from '../lib/presence'
 import { getErrorMessage } from '../lib/errors'
 import { displayName } from '../lib/displayName'
-import { IconArrowLeft, IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconMic, IconMore, IconPlus, IconSend, IconSmile, IconUser } from './icons'
+import { IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconMic, IconMore, IconPlus, IconSend, IconSmile, IconUser } from './icons'
 import type { Conversation, Message, Profile } from '../types'
 
 const EMOJIS = ['😀', '😂', '😍', '😭', '🔥', '👍', '🙏', '😡', '💀', '❤️']
@@ -607,7 +607,6 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   return (
     <main className="main">
       <header className="chat-header">
-        <button type="button" className="icon-btn back-mobile" onClick={onBack}><IconArrowLeft size={20} /></button>
         <div
           style={{ position: 'relative', cursor: otherMember ? 'pointer' : 'default' }}
           onClick={() => otherMember && me && setProfilePopup({ id: otherMemberEntry![0], meta: otherMember })}
@@ -642,7 +641,6 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
           >
             <IconPlus size={20} />
           </button>
-          <button type="button" className="nudge-btn" title="Chamar atenção" onClick={sendNudge}><IconBell size={20} /></button>
 
           {showChatConfig && (
             <div className="add-member-popover">
@@ -766,27 +764,32 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       <p className="media-note">imagens só aparecem ao vivo pra quem está na sala — não ficam salvas no histórico</p>
 
       <footer className="composer">
-        <button type="button" className="compose-btn" onClick={() => setShowEmoji((v) => !v)} title="Emoji"><IconSmile size={20} /></button>
-        <button type="button" className="compose-btn" onClick={() => fileInputRef.current?.click()} title="Anexar"><IconAttach size={20} /></button>
-        <button
-          type="button"
-          className={`compose-btn${recording ? ' recording' : ''}`}
-          onClick={toggleRecording}
-          title="Falar (transcreve pra texto, áudio não é salvo)"
-        >
-          <IconMic size={20} />
-        </button>
-        <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handleFileChange} />
-        <div className="input">
-          <textarea
-            value={draft}
-            onChange={handleChange}
-            onKeyDown={handleKeyDown}
-            placeholder="Digite uma mensagem... tudo aqui é visto ao vivo"
-            rows={1}
-          />
+        <div className="composer-icons">
+          <button type="button" className="compose-btn" onClick={() => setShowEmoji((v) => !v)} title="Emoji"><IconSmile size={20} /></button>
+          <button type="button" className="compose-btn" onClick={() => fileInputRef.current?.click()} title="Anexar"><IconAttach size={20} /></button>
+          <button
+            type="button"
+            className={`compose-btn${recording ? ' recording' : ''}`}
+            onClick={toggleRecording}
+            title="Falar (transcreve pra texto, áudio não é salvo)"
+          >
+            <IconMic size={20} />
+          </button>
+          <button type="button" className="compose-btn" title="Chamar atenção" onClick={sendNudge}><IconBell size={20} /></button>
+          <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handleFileChange} />
         </div>
-        <button type="button" className="send" onClick={handleSend} disabled={!draft.trim()}><IconSend size={18} /></button>
+        <div className="composer-input-row">
+          <div className="input">
+            <textarea
+              value={draft}
+              onChange={handleChange}
+              onKeyDown={handleKeyDown}
+              placeholder="Digite uma mensagem... tudo aqui é visto ao vivo"
+              rows={1}
+            />
+          </div>
+          <button type="button" className="send" onClick={handleSend} disabled={!draft.trim()}><IconSend size={18} /></button>
+        </div>
 
         {showEmoji && (
           <div className="emoji-picker">

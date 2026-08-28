@@ -169,9 +169,11 @@ body{
 .image-lightbox img{max-width:90vw;max-height:90vh;border-radius:8px;object-fit:contain}
 
 .composer{
-  min-height:70px;background:#202c33;display:flex;align-items:center;
+  min-height:70px;background:#202c33;display:flex;align-items:center;flex-wrap:wrap;
   padding:12px 18px;gap:10px;border-top:1px solid #2a3942;flex-shrink:0;position:relative;
 }
+.composer-icons{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.composer-input-row{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
 .compose-btn{
   width:44px;height:44px;border:0;border-radius:50%;background:transparent;
   color:#aebac1;font-size:22px;cursor:pointer;flex-shrink:0;
@@ -385,11 +387,20 @@ body{
   .main{display:none;min-width:0}
   .app.chat-open .chats{display:none}
   .app.chat-open .main{display:flex}
-  .back-mobile{display:inline-flex}
 
   .rail{width:65px}
   .rail button{width:47px;height:47px;font-size:20px}
   .logo{width:40px;height:40px;font-size:20px}
   .avatar-sm{width:32px;height:32px}
   .messages{padding-left:4%;padding-right:4%}
+
+  .composer{padding:8px 10px;gap:6px;min-height:auto}
+  .composer-icons{width:100%;order:1;justify-content:flex-start}
+  .composer-input-row{width:100%;order:2;flex-basis:100%}
+  .compose-btn{width:38px;height:38px;font-size:19px}
+  .nudge-btn{width:38px;height:38px}
+  .send{width:40px;height:40px}
+  .input{min-height:40px}
+  .emoji-picker{max-width:190px}
+  .emoji-picker button{font-size:1.1rem;padding:3px}
 }
