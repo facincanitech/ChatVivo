@@ -189,8 +189,9 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       if (!cancelled && msgs) {
         setMessages(msgs as Message[])
         const edited = new Set<string>()
-        for (const m of msgs as (Message & { message_replays: { events: ReplayEvent[] }[] })[]) {
-          const events = m.message_replays?.[0]?.events
+        for (const m of msgs as (Message & { message_replays: { events: ReplayEvent[] }[] | { events: ReplayEvent[] } | null })[]) {
+          const raw = m.message_replays
+          const events = Array.isArray(raw) ? raw[0]?.events : raw?.events
           if (events && hasHiddenEdit(events, m.content)) edited.add(m.id)
         }
         setEditedIds(edited)
