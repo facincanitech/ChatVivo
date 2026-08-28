@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { getErrorMessage } from '../lib/errors'
-import { IconArrowLeft, IconGroup, IconHash, IconHeart, IconSearch, IconUser } from './icons'
+import { IconArrowLeft, IconGroup, IconHash, IconHeart, IconMore, IconSearch, IconUser } from './icons'
 import type { Conversation, PanelView, Profile } from '../types'
 
 type Props = {
@@ -19,6 +19,12 @@ type FriendRequest = {
   id: string
   from_id: string
   from_profile: { id: string; username: string; email: string }
+}
+type OutgoingRequest = {
+  id: string
+  to_id: string
+  status: string
+  to_profile: { id: string; username: string; email: string }
 }
 
 export function ChatList({
@@ -42,6 +48,8 @@ export function ChatList({
   const [friendEmail, setFriendEmail] = useState('')
   const [friendInfo, setFriendInfo] = useState<string | null>(null)
   const [incoming, setIncoming] = useState<FriendRequest[]>([])
+  const [outgoing, setOutgoing] = useState<OutgoingRequest[]>([])
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
 
   async function loadConversations() {
     if (!me) {
@@ -95,9 +103,23 @@ export function ChatList({
     setIncoming((data as unknown as FriendRequest[]) || [])
   }
 
+  async function loadOutgoingRequests() {
+    if (!me) {
+      setOutgoing([])
+      return
+    }
+    const { data } = await supabase
+      .from('friend_requests')
+      .select('id, to_id, status, to_profile:profiles!friend_requests_to_id_fkey(id, username, email)')
+      .eq('from_id', me.id)
+      .neq('status', 'accepted')
+    setOutgoing((data as unknown as OutgoingRequest[]) || [])
+  }
+
   useEffect(() => {
     loadConversations()
     loadIncomingRequests()
+    loadOutgoingRequests()
     if (!me) return
     const channel = supabase
       .channel(`member-updates:${me.id}`)
@@ -108,8 +130,13 @@ export function ChatList({
       )
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'friend_requests', filter: `to_id=eq.${me.id}` },
+        { event: '*', schema: 'public', table: 'friend_requests', filter: `to_id=eq.${me.id}` },
         () => loadIncomingRequests(),
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'friend_requests', filter: `from_id=eq.${me.id}` },
+        () => loadOutgoingRequests(),
       )
       .subscribe()
     return () => {
@@ -275,12 +302,45 @@ export function ChatList({
       const { error: reqErr } = await supabase
         .from('friend_requests')
         .insert({ from_id: me.id, to_id: target.id })
-      if (reqErr && !reqErr.message.includes('duplicate')) throw reqErr
+
+      if (reqErr) {
+        if (!reqErr.message.includes('duplicate')) throw reqErr
+        const { error: retryErr } = await supabase
+          .from('friend_requests')
+          .update({ status: 'pending' })
+          .eq('from_id', me.id)
+          .eq('to_id', target.id)
+        if (retryErr) throw retryErr
+      }
 
       setFriendEmail('')
       setFriendInfo('Solicitação enviada')
+      await loadOutgoingRequests()
     } catch (err) {
       setError(getErrorMessage(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function retryRequest(req: OutgoingRequest) {
+    setBusy(true)
+    try {
+      await supabase.from('friend_requests').update({ status: 'pending' }).eq('id', req.id)
+      await loadOutgoingRequests()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function blockUser(req: FriendRequest) {
+    if (!me) return
+    setBusy(true)
+    try {
+      await supabase.from('blocks').insert({ blocker_id: me.id, blocked_id: req.from_id })
+      await supabase.from('friend_requests').update({ status: 'declined' }).eq('id', req.id)
+      setOpenMenuId(null)
+      await loadIncomingRequests()
     } finally {
       setBusy(false)
     }
@@ -351,7 +411,7 @@ export function ChatList({
         : panelView === 'group'
           ? 'Novo grupo'
           : panelView === 'friends'
-            ? 'Solicitação de amizade'
+            ? 'Amizades'
             : 'Entrar com código'
 
   return (
@@ -450,6 +510,40 @@ export function ChatList({
                   </div>
                   <button type="button" disabled={busy} onClick={() => acceptRequest(req)}>Aceitar</button>
                   <button type="button" disabled={busy} className="decline" onClick={() => declineRequest(req)}>Recusar</button>
+                  <div style={{ position: 'relative' }}>
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      style={{ width: 28, height: 28 }}
+                      onClick={() => setOpenMenuId(openMenuId === req.id ? null : req.id)}
+                    >
+                      <IconMore size={16} />
+                    </button>
+                    {openMenuId === req.id && (
+                      <div className="request-menu">
+                        <button type="button" disabled={busy} onClick={() => blockUser(req)}>Bloquear</button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <label style={{ marginTop: 10 }}>Enviadas</label>
+            <div className="friend-request-list">
+              {outgoing.length === 0 && <span className="invite-code">nenhuma solicitação enviada</span>}
+              {outgoing.map((req) => (
+                <div key={req.id} className="friend-request-row">
+                  <div className="photo" style={{ width: 40, height: 40 }}>
+                    {req.to_profile.username[0]?.toUpperCase()}
+                  </div>
+                  <div className="friend-request-info">
+                    <div className="name">@{req.to_profile.username}</div>
+                    <div className="preview">{req.status === 'declined' ? 'pedido recusado' : 'aguardando resposta'}</div>
+                  </div>
+                  {req.status === 'declined' && (
+                    <button type="button" disabled={busy} onClick={() => retryRequest(req)}>Tentar de novo</button>
+                  )}
                 </div>
               ))}
             </div>

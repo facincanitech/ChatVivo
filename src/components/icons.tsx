@@ -136,6 +136,25 @@ export function IconCheckDouble({ size = 16 }: IconProps) {
   )
 }
 
+export function IconMore({ size = 18 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size} fill="currentColor" stroke="none">
+      <circle cx="12" cy="5" r="1.6" />
+      <circle cx="12" cy="12" r="1.6" />
+      <circle cx="12" cy="19" r="1.6" />
+    </svg>
+  )
+}
+
+export function IconLock({ size = 18 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size}>
+      <rect x="5" y="11" width="14" height="9" rx="2" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+    </svg>
+  )
+}
+
 export function IconBell({ size = 20 }: IconProps) {
   return (
     <svg {...base} width={size} height={size}>
