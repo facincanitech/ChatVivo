@@ -445,13 +445,16 @@ export function ChatList({
         .eq('id', req.id)
       if (updateErr) throw updateErr
 
-      // reuse an existing DM with this person instead of creating a duplicate
+      // reuse an existing DM (or organic group, which keeps the 1x1 essence) with this person instead of creating a duplicate
       const { data: myConvs } = await supabase
         .from('conversation_members')
-        .select('conversation_id, conversation:conversations(type)')
+        .select('conversation_id, role, conversation:conversations(type)')
         .eq('user_id', me.id)
       const myDmIds = (myConvs || [])
-        .filter((r) => (r.conversation as unknown as Conversation)?.type === 'dm')
+        .filter((r) => {
+          const type = (r.conversation as unknown as Conversation)?.type
+          return type === 'dm' || (type === 'group' && !r.role)
+        })
         .map((r) => r.conversation_id)
 
       let conv: Conversation | null = null
