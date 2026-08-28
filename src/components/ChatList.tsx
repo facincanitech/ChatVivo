@@ -1,13 +1,29 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { getErrorMessage } from '../lib/errors'
-import { IconArrowLeft, IconGroup, IconHash, IconHeart, IconMore, IconSearch, IconUser } from './icons'
+import {
+  IconArchive,
+  IconArrowLeft,
+  IconBellOff,
+  IconGroup,
+  IconHash,
+  IconHeart,
+  IconListPlus,
+  IconLogout,
+  IconMailUnread,
+  IconMinusCircle,
+  IconMore,
+  IconPinOff,
+  IconSearch,
+  IconTrash,
+  IconUser,
+} from './icons'
 import type { Conversation, PanelView, Profile } from '../types'
 
 type Props = {
   me: Profile | null
   selected: Conversation | null
-  onSelect: (c: Conversation) => void
+  onSelect: (c: Conversation | null) => void
   panelOpen: boolean
   panelView: PanelView
   onPanelOpenChange: (open: boolean) => void
@@ -50,6 +66,7 @@ export function ChatList({
   const [incoming, setIncoming] = useState<FriendRequest[]>([])
   const [outgoing, setOutgoing] = useState<OutgoingRequest[]>([])
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [contextMenu, setContextMenu] = useState<{ conv: ConvWithLabel; x: number; y: number } | null>(null)
 
   async function loadConversations() {
     if (!me) {
@@ -393,6 +410,23 @@ export function ChatList({
     }
   }
 
+  async function leaveConversation(conv: ConvWithLabel) {
+    if (!me) return
+    await supabase
+      .from('conversation_members')
+      .delete()
+      .eq('conversation_id', conv.id)
+      .eq('user_id', me.id)
+    setConversations((prev) => prev.filter((c) => c.id !== conv.id))
+    if (selected?.id === conv.id) onSelect(null)
+    setContextMenu(null)
+  }
+
+  function handleContextMenu(e: React.MouseEvent, conv: ConvWithLabel) {
+    e.preventDefault()
+    setContextMenu({ conv, x: e.clientX, y: e.clientY })
+  }
+
   function goBack() {
     if (panelView === 'root') closePanel()
     else {
@@ -444,6 +478,7 @@ export function ChatList({
             key={c.id}
             className={`chat${selected?.id === c.id ? ' selected' : ''}`}
             onClick={() => onSelect(c)}
+            onContextMenu={(e) => handleContextMenu(e, c)}
           >
             <div className="photo">{c.label[0]?.toUpperCase()}</div>
             <div className="chat-info">
@@ -454,6 +489,36 @@ export function ChatList({
           </div>
         ))}
       </div>
+
+      {contextMenu && (
+        <div className="context-menu-backdrop" onClick={() => setContextMenu(null)} onContextMenu={(e) => { e.preventDefault(); setContextMenu(null) }}>
+          <div
+            className="context-menu"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button type="button"><IconArchive size={16} /> Arquivar conversa</button>
+            {contextMenu.conv.type === 'group' ? (
+              <button type="button"><IconBellOff size={16} /> Silenciar notificações</button>
+            ) : (
+              <button type="button"><IconPinOff size={16} /> Desafixar conversa</button>
+            )}
+            <button type="button"><IconMailUnread size={16} /> Marcar como não lida</button>
+            <button type="button"><IconHeart size={16} /> Adicionar aos Favoritos</button>
+            <button type="button"><IconListPlus size={16} /> Adicionar à lista</button>
+            <button type="button"><IconMinusCircle size={16} /> Limpar conversa</button>
+            {contextMenu.conv.type === 'group' ? (
+              <button type="button" className="danger" onClick={() => leaveConversation(contextMenu.conv)}>
+                <IconLogout size={16} /> Sair do grupo
+              </button>
+            ) : (
+              <button type="button" className="danger" onClick={() => leaveConversation(contextMenu.conv)}>
+                <IconTrash size={16} /> Apagar conversa
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className={`new-conv-panel${panelOpen ? ' open' : ''}`}>
         <div className="new-conv-header">
