@@ -71,6 +71,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     setFriendRequestState('idle')
   }, [profilePopup?.id])
   const [atBottom, setAtBottom] = useState(true)
+  const [nudgeFrom, setNudgeFrom] = useState<string | null>(null)
 
   const channelRef = useRef<RealtimeChannel | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -83,6 +84,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     setLiveMedia({})
     setDraft('')
     setAtBottom(true)
+    setNudgeFrom(null)
     if (!conversation || !me) return
 
     let cancelled = false
@@ -160,6 +162,8 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
         if (userId === me.id) return
         triggerNudgeShake()
         playNudgeSound()
+        setNudgeFrom(userId)
+        setTimeout(() => setNudgeFrom((prev) => (prev === userId ? null : prev)), 3000)
       })
       .on('broadcast', { event: 'media' }, ({ payload }) => {
         const { userId, dataUrl } = payload as { userId: string; dataUrl: string | null }
@@ -629,6 +633,12 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
             onClick={() => otherMember && me && setProfilePopup({ id: otherMemberEntry![0], meta: otherMember })}
           >
             {displayTitle}
+            {nudgeFrom && (
+              <span className="nudge-indicator" title="chamou sua atenção">
+                <IconBell size={14} />
+                {conversation.type === 'group' && members[nudgeFrom] && ` @${displayName(members[nudgeFrom])}`}
+              </span>
+            )}
           </div>
           {subtitle && <div className="status">{subtitle}</div>}
         </div>

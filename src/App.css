@@ -123,7 +123,11 @@ body{
 .presence-dot.afk{background:#f0b429}
 .presence-dot.offline{background:#e5484d}
 .header-text{min-width:0}
-.header-name{font-weight:700;font-size:17px}
+.header-name{font-weight:700;font-size:17px;display:flex;align-items:center;gap:6px}
+.nudge-indicator{
+  display:inline-flex;align-items:center;gap:4px;color:var(--green);font-size:12px;
+  font-weight:600;animation:pulse 1.2s ease-in-out infinite;
+}
 .status{font-size:12px;color:#8696a0;margin-top:4px}
 .header-actions{margin-left:auto;display:flex;gap:7px}
 .back-mobile{display:none}
