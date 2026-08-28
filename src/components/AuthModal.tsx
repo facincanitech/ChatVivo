@@ -20,7 +20,7 @@ export function AuthModal({ onClose }: Props) {
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-        <h2>Entrar no ChatVivo</h2>
+        <h2>Entrar no Eros</h2>
         <p>Você precisa de uma conta pra fazer isso.</p>
         <button type="button" className="google-btn" onClick={handleGoogle}>
           Entrar com Google
