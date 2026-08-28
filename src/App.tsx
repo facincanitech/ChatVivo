@@ -24,6 +24,7 @@ function App() {
   const [accountOpen, setAccountOpen] = useState(false)
   const [groupsOpen, setGroupsOpen] = useState(false)
   const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set())
+  const [nudgers, setNudgers] = useState<{ fromId: string; conversationId: string; at: number }[]>([])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
@@ -114,15 +115,40 @@ function App() {
     if (!profile) return
     const channel = supabase
       .channel(`nudge:${profile.id}`)
-      .on('broadcast', { event: 'nudge' }, () => {
+      .on('broadcast', { event: 'nudge' }, ({ payload }) => {
+        const { userId, conversationId } = payload as { userId: string; conversationId?: string }
         triggerNudgeShake()
         playNudgeSound()
+        if (!conversationId) return
+        setNudgers((prev) => {
+          if (prev.some((n) => n.conversationId === conversationId)) return prev
+          return [...prev, { fromId: userId, conversationId, at: Date.now() }]
+        })
+        setTimeout(() => {
+          setNudgers((prev) => prev.filter((n) => n.conversationId !== conversationId))
+        }, 600000)
       })
       .subscribe()
     return () => {
       supabase.removeChannel(channel)
     }
   }, [profile?.id])
+
+  useEffect(() => {
+    if (!selected) return
+    setNudgers((prev) => prev.filter((n) => n.conversationId !== selected.id))
+  }, [selected?.id])
+
+  async function openNudger() {
+    if (nudgers.length === 0) {
+      goHome()
+      return
+    }
+    const target = nudgers[0]
+    setNudgers((prev) => prev.filter((n) => n.conversationId !== target.conversationId))
+    const { data } = await supabase.from('conversations').select('*').eq('id', target.conversationId).single()
+    if (data) setSelected(data as Conversation)
+  }
 
   function requireAuth(action: () => void) {
     if (session === undefined) return
@@ -173,7 +199,8 @@ function App() {
         onNewConversation={openNewConversation}
         onOpenAccount={openAccount}
         onOpenGroups={openGroups}
-        onGoHome={goHome}
+        onGoHome={openNudger}
+        nudgeCount={nudgers.length}
       />
       <ChatList
         me={profile}

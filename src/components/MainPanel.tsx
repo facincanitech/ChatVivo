@@ -26,6 +26,7 @@ type ReplayEvent = { t: number; text: string }
 type MemberMeta = {
   username: string
   display_name: string | null
+  email: string
   avatar_url: string | null
   status: string | null
   last_seen_at: string | null
@@ -56,6 +57,18 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const [replayFor, setReplayFor] = useState<Message | null>(null)
   const [replayEvents, setReplayEvents] = useState<ReplayEvent[] | null>(null)
   const [showChatConfig, setShowChatConfig] = useState(false)
+  const chatConfigRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!showChatConfig) return
+    function handleClickOutside(e: MouseEvent) {
+      if (chatConfigRef.current && !chatConfigRef.current.contains(e.target as Node)) {
+        setShowChatConfig(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showChatConfig])
   const [configView, setConfigView] = useState<'root' | 'invite' | 'edit'>('root')
   const [editName, setEditName] = useState('')
   const [editDesc, setEditDesc] = useState('')
@@ -66,10 +79,21 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
   const [profilePopup, setProfilePopup] = useState<{ id: string; meta: MemberMeta } | null>(null)
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
-  const [friendRequestState, setFriendRequestState] = useState<'idle' | 'sent' | 'error'>('idle')
+  const [friendRequestState, setFriendRequestState] = useState<'idle' | 'sent' | 'friends' | 'error'>('idle')
   useEffect(() => {
     setFriendRequestState('idle')
-  }, [profilePopup?.id])
+    if (!me || !profilePopup) return
+    supabase
+      .from('friend_requests')
+      .select('status, from_id')
+      .or(`and(from_id.eq.${me.id},to_id.eq.${profilePopup.id}),and(from_id.eq.${profilePopup.id},to_id.eq.${me.id})`)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data) return
+        if (data.status === 'accepted') setFriendRequestState('friends')
+        else if (data.status === 'pending' && data.from_id === me.id) setFriendRequestState('sent')
+      })
+  }, [profilePopup?.id, me?.id])
   const [atBottom, setAtBottom] = useState(true)
   const [nudgeFrom, setNudgeFrom] = useState<string | null>(null)
 
@@ -85,6 +109,8 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     setDraft('')
     setAtBottom(true)
     setNudgeFrom(null)
+    setShowChatConfig(false)
+    setConfigView('root')
     if (!conversation || !me) return
 
     let cancelled = false
@@ -102,7 +128,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       if (!conversation) return
       const { data: rows } = await supabase
         .from('conversation_members')
-        .select('user_id, last_read_at, added_by, is_leader, role, profile:profiles!conversation_members_user_id_fkey(id, username, display_name, avatar_url, status, last_seen_at, is_idle)')
+        .select('user_id, last_read_at, added_by, is_leader, role, profile:profiles!conversation_members_user_id_fkey(id, username, display_name, email, avatar_url, status, last_seen_at, is_idle)')
         .eq('conversation_id', conversation.id)
 
       if (!cancelled && rows) {
@@ -113,6 +139,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
             map[p.id] = {
               username: p.username,
               display_name: p.display_name ?? null,
+              email: p.email,
               avatar_url: p.avatar_url ?? null,
               status: p.status ?? null,
               last_seen_at: p.last_seen_at ?? null,
@@ -217,6 +244,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                 ...prev[p.id],
                 username: p.username,
                 display_name: p.display_name ?? null,
+                email: p.email,
                 avatar_url: p.avatar_url ?? null,
                 status: p.status ?? null,
                 last_seen_at: p.last_seen_at ?? null,
@@ -285,7 +313,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   }
 
   function sendNudge() {
-    if (!me) return
+    if (!me || !conversation) return
     channelRef.current?.send({ type: 'broadcast', event: 'nudge', payload: { userId: me.id } })
     triggerNudgeShake()
     playNudgeSound()
@@ -296,7 +324,11 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
         const personalChannel = supabase.channel(`nudge:${id}`)
         personalChannel.subscribe((status) => {
           if (status === 'SUBSCRIBED') {
-            personalChannel.send({ type: 'broadcast', event: 'nudge', payload: { userId: me.id } })
+            personalChannel.send({
+              type: 'broadcast',
+              event: 'nudge',
+              payload: { userId: me.id, conversationId: conversation.id },
+            })
             setTimeout(() => supabase.removeChannel(personalChannel), 1000)
           }
         })
@@ -321,16 +353,17 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     setAddBusy(true)
     setAddError(null)
     try {
-      let target: { id: string; username: string } | undefined
+      let target: { id: string; username: string; email?: string } | undefined
 
       if (input.startsWith('@')) {
+        const handle = input.slice(1)
         const { data, error: findErr } = await supabase
           .from('profiles')
-          .select('id, username')
-          .eq('username', input.slice(1))
-          .maybeSingle()
+          .select('id, username, email')
+          .or(`username.ilike.${handle},display_name.ilike.${handle}`)
+          .limit(1)
         if (findErr) throw findErr
-        target = data || undefined
+        target = data?.[0] || undefined
       } else {
         const { data: found, error: findErr } = await supabase.rpc('find_profile_by_email', {
           p_email: input.toLowerCase(),
@@ -365,6 +398,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
         [target!.id]: {
           username: target!.username,
           display_name: null,
+          email: target!.email || input,
           avatar_url: null,
           status: null,
           last_seen_at: null,
@@ -652,7 +686,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
           </div>
           {subtitle && <div className="status">{subtitle}</div>}
         </div>
-        <div className="header-actions" style={{ position: 'relative' }}>
+        <div className="header-actions" style={{ position: 'relative' }} ref={chatConfigRef}>
           <button
             type="button"
             className="nudge-btn"
@@ -872,9 +906,12 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
               </div>
             </div>
             <h2>@{displayName(profilePopup.meta)}</h2>
+            <p style={{ fontSize: '.75rem', color: '#8696a0' }}>{profilePopup.meta.email}</p>
             <p>{profilePopup.meta.status || 'sem status'}</p>
             <p style={{ fontSize: '.75rem' }}>{formatPresence(profilePopup.meta.last_seen_at)}</p>
-            {friendRequestState === 'sent' ? (
+            {friendRequestState === 'friends' ? (
+              <p style={{ fontSize: '.75rem', color: '#a9e7d8' }}>✓ Amigos</p>
+            ) : friendRequestState === 'sent' ? (
               <p style={{ fontSize: '.75rem', color: '#a9e7d8' }}>solicitação de amizade enviada</p>
             ) : (
               <button type="button" className="google-btn" onClick={sendFriendFromPopup}>

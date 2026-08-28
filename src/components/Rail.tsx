@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { IconChat, IconGroup, IconPlus, IconStar, IconUser } from './icons'
+import { IconBell, IconChat, IconGroup, IconPlus, IconStar, IconUser } from './icons'
 import type { Profile } from '../types'
 
 type Props = {
@@ -10,9 +10,10 @@ type Props = {
   onOpenAccount: () => void
   onOpenGroups: () => void
   onGoHome: () => void
+  nudgeCount: number
 }
 
-export function Rail({ me, onRequireAuth, onNewConversation, onOpenAccount, onOpenGroups, onGoHome }: Props) {
+export function Rail({ me, onRequireAuth, onNewConversation, onOpenAccount, onOpenGroups, onGoHome, nudgeCount }: Props) {
   const [pendingCount, setPendingCount] = useState(0)
 
   useEffect(() => {
@@ -65,8 +66,15 @@ export function Rail({ me, onRequireAuth, onNewConversation, onOpenAccount, onOp
 
   return (
     <aside className="rail">
-      <div className="logo" onClick={onGoHome} style={{ cursor: 'pointer' }} title="Início">
-        <IconChat size={22} />
+      <div style={{ position: 'relative' }}>
+        <div className="logo" onClick={onGoHome} style={{ cursor: 'pointer' }} title={nudgeCount > 0 ? 'Alguém chamou sua atenção' : 'Início'}>
+          <IconChat size={22} />
+        </div>
+        {nudgeCount > 0 && (
+          <span className="rail-badge" style={{ background: 'var(--green)' }}>
+            <IconBell size={11} />
+          </span>
+        )}
       </div>
       <div style={{ position: 'relative' }}>
         <button title="Nova conversa" onClick={onNewConversation}><IconPlus /></button>
