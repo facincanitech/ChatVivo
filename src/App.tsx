@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
-import { Login } from './screens/Login'
-import { Conversations } from './screens/Conversations'
-import { Chat } from './screens/Chat'
+import { Rail } from './components/Rail'
+import { ChatList } from './components/ChatList'
+import { MainPanel } from './components/MainPanel'
+import { AuthModal } from './components/AuthModal'
 import type { Conversation, Profile } from './types'
 import './App.css'
 
 function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
   const [profile, setProfile] = useState<Profile | null>(null)
-  const [openConversation, setOpenConversation] = useState<Conversation | null>(null)
+  const [selected, setSelected] = useState<Conversation | null>(null)
+  const [authOpen, setAuthOpen] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
@@ -18,7 +20,9 @@ function App() {
       setSession(s)
       if (!s) {
         setProfile(null)
-        setOpenConversation(null)
+        setSelected(null)
+      } else {
+        setAuthOpen(false)
       }
     })
     return () => sub.subscription.unsubscribe()
@@ -34,21 +38,23 @@ function App() {
       .then(({ data }) => setProfile(data as Profile))
   }, [session])
 
-  if (session === undefined) return null
-  if (!session) return <Login />
-  if (!profile) return <div className="auth-screen"><p>carregando...</p></div>
-
-  if (openConversation) {
-    return (
-      <Chat
-        me={profile}
-        conversation={openConversation}
-        onBack={() => setOpenConversation(null)}
-      />
-    )
+  function requireAuth(action: () => void) {
+    if (session === undefined) return
+    if (!session) {
+      setAuthOpen(true)
+      return
+    }
+    action()
   }
 
-  return <Conversations me={profile} onOpen={setOpenConversation} />
+  return (
+    <div className="app">
+      <Rail me={profile} onRequireAuth={() => requireAuth(() => {})} />
+      <ChatList me={profile} selected={selected} onSelect={setSelected} requireAuth={requireAuth} />
+      <MainPanel me={profile} conversation={selected} />
+      {authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}
+    </div>
+  )
 }
 
 export default App

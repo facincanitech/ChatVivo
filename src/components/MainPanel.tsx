@@ -9,12 +9,11 @@ const REPLAY_WINDOW_MS = 20000
 type ReplayEvent = { t: number; text: string }
 
 type Props = {
-  me: Profile
-  conversation: Conversation
-  onBack: () => void
+  me: Profile | null
+  conversation: Conversation | null
 }
 
-export function Chat({ me, conversation, onBack }: Props) {
+export function MainPanel({ me, conversation }: Props) {
   const [messages, setMessages] = useState<Message[]>([])
   const [usernames, setUsernames] = useState<Record<string, string>>({})
   const [draft, setDraft] = useState('')
@@ -30,9 +29,16 @@ export function Chat({ me, conversation, onBack }: Props) {
   const replayBuffer = useRef<ReplayEvent[]>([])
 
   useEffect(() => {
+    setMessages([])
+    setLiveTyping({})
+    setLiveMedia({})
+    setDraft('')
+    if (!conversation || !me) return
+
     let cancelled = false
 
     async function load() {
+      if (!conversation) return
       const { data: members } = await supabase
         .from('conversation_members')
         .select('user_id, profile:profiles(id, username)')
@@ -107,7 +113,7 @@ export function Chat({ me, conversation, onBack }: Props) {
       cancelled = true
       supabase.removeChannel(channel)
     }
-  }, [conversation.id, me.id])
+  }, [conversation?.id, me?.id])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -120,10 +126,12 @@ export function Chat({ me, conversation, onBack }: Props) {
   }
 
   function broadcastTyping(text: string) {
+    if (!me) return
     channelRef.current?.send({ type: 'broadcast', event: 'typing', payload: { userId: me.id, text } })
   }
 
   function broadcastMedia(dataUrl: string | null) {
+    if (!me) return
     channelRef.current?.send({ type: 'broadcast', event: 'media', payload: { userId: me.id, dataUrl } })
   }
 
@@ -161,7 +169,7 @@ export function Chat({ me, conversation, onBack }: Props) {
 
   async function handleSend() {
     const content = draft.trim()
-    if (!content) return
+    if (!content || !conversation || !me) return
 
     const eventsToStore = [...replayBuffer.current]
     broadcastTyping('')
@@ -199,90 +207,117 @@ export function Chat({ me, conversation, onBack }: Props) {
   }
 
   const title = useMemo(() => {
+    if (!conversation) return ''
     if (conversation.type === 'group') return conversation.name || 'grupo'
-    const other = Object.entries(usernames).find(([id]) => id !== me.id)
+    const other = Object.entries(usernames).find(([id]) => id !== me?.id)
     return other ? other[1] : 'conversa'
-  }, [conversation, usernames, me.id])
+  }, [conversation, usernames, me?.id])
+
+  if (!conversation || !me) {
+    return (
+      <main className="main">
+        <div className="empty">
+          <div className="empty-card">
+            <div style={{ fontSize: 46 }}>💬</div>
+            <h2>Nenhuma conversa selecionada</h2>
+            <p>Escolha uma conversa ou comece uma nova pra ver o mecanismo ao vivo em ação.</p>
+          </div>
+        </div>
+      </main>
+    )
+  }
 
   return (
-    <div className="room">
-      <header className="room-header">
-        <button type="button" className="back" onClick={onBack}>← voltar</button>
-        <h1>{title}</h1>
+    <main className="main">
+      <header className="chat-header">
+        <div className="header-photo">{title[0]?.toUpperCase()}</div>
+        <div className="header-text">
+          <div className="header-name">{title}</div>
+        </div>
       </header>
 
-      <div className="messages">
+      <section className="messages">
         {messages.map((m) => (
-          <div key={m.id} className="message">
-            <span className="message-author">{usernames[m.author_id] || '...'}</span>
-            <span className="message-content">{m.content}</span>
-            {m.author_id === me.id && (
-              <button type="button" className="replay-btn" onClick={() => openReplay(m)}>replay</button>
-            )}
+          <div key={m.id} className={`message ${m.author_id === me.id ? 'out' : 'in'}`}>
+            <div className="bubble">
+              {m.author_id !== me.id && conversation.type === 'group' && (
+                <span className="author-label">{usernames[m.author_id] || '...'}</span>
+              )}
+              {m.content}
+              {m.author_id === me.id && (
+                <button type="button" className="replay-btn" onClick={() => openReplay(m)}>replay</button>
+              )}
+            </div>
           </div>
         ))}
 
         {Object.entries(liveTyping).map(([userId, text]) => (
-          <div key={userId} className="message message-live">
-            <span className="message-author">{usernames[userId] || '...'}</span>
-            <span className="message-content">{text}<span className="cursor">|</span></span>
+          <div key={userId} className="message in live">
+            <div className="bubble">
+              <span className="author-label">{usernames[userId] || '...'}</span>
+              {text}
+            </div>
           </div>
         ))}
 
         {Object.entries(liveMedia).map(([userId, dataUrl]) => (
-          <div key={`media-${userId}`} className="message message-live">
-            <span className="message-author">{usernames[userId] || '...'}</span>
-            <img src={dataUrl} alt="preview ao vivo" className="live-media-preview" />
+          <div key={`media-${userId}`} className="message in live">
+            <div className="bubble">
+              <span className="author-label">{usernames[userId] || '...'}</span>
+              <img src={dataUrl} alt="preview ao vivo" className="live-media-preview" />
+            </div>
           </div>
         ))}
 
         <div ref={bottomRef} />
-      </div>
-
-      <div className="composer">
-        <button type="button" onClick={() => setShowEmoji((v) => !v)}>😊</button>
-        <button type="button" onClick={() => fileInputRef.current?.click()}>📎</button>
-        <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handleFileChange} />
-        <textarea
-          value={draft}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-          placeholder="digite... tudo aqui é visto ao vivo pelo grupo"
-          rows={2}
-        />
-        <button type="button" onClick={handleSend} disabled={!draft.trim()}>Enviar</button>
-      </div>
-
-      {showEmoji && (
-        <div className="emoji-picker">
-          {EMOJIS.map((e) => (
-            <button
-              key={e}
-              type="button"
-              onMouseEnter={() => pickEmojiPreview(e)}
-              onMouseLeave={() => pickEmojiPreview(null)}
-              onClick={() => appendEmoji(e)}
-            >
-              {e}
-            </button>
-          ))}
-        </div>
-      )}
+      </section>
 
       <p className="media-note">imagens só aparecem ao vivo pra quem está na sala — não ficam salvas no histórico</p>
 
+      <footer className="composer">
+        <button type="button" className="compose-btn" onClick={() => setShowEmoji((v) => !v)} title="Emoji">☺</button>
+        <button type="button" className="compose-btn" onClick={() => fileInputRef.current?.click()} title="Anexar">＋</button>
+        <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handleFileChange} />
+        <div className="input">
+          <textarea
+            value={draft}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            placeholder="Digite uma mensagem... tudo aqui é visto ao vivo"
+            rows={1}
+          />
+        </div>
+        <button type="button" className="send" onClick={handleSend} disabled={!draft.trim()}>➤</button>
+
+        {showEmoji && (
+          <div className="emoji-picker">
+            {EMOJIS.map((e) => (
+              <button
+                key={e}
+                type="button"
+                onMouseEnter={() => pickEmojiPreview(e)}
+                onMouseLeave={() => pickEmojiPreview(null)}
+                onClick={() => appendEmoji(e)}
+              >
+                {e}
+              </button>
+            ))}
+          </div>
+        )}
+      </footer>
+
       {replayFor && (
-        <div className="replay-modal" onClick={() => setReplayFor(null)}>
-          <div className="replay-content" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-backdrop" onClick={() => setReplayFor(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <h2>replay: "{replayFor.content}"</h2>
             {replayEvents === null && <p>carregando...</p>}
             {replayEvents?.length === 0 && <p>sem hesitação registrada pra essa mensagem</p>}
             {replayEvents && replayEvents.length > 0 && <ReplayPlayer events={replayEvents} />}
-            <button type="button" onClick={() => setReplayFor(null)}>fechar</button>
+            <button type="button" className="modal-close" onClick={() => setReplayFor(null)}>fechar</button>
           </div>
         </div>
       )}
-    </div>
+    </main>
   )
 }
 
@@ -300,5 +335,5 @@ function ReplayPlayer({ events }: { events: ReplayEvent[] }) {
     return () => timers.forEach(clearTimeout)
   }, [events])
 
-  return <p className="replay-text">{events[index]?.text}</p>
+  return <p style={{ minHeight: '2.5em', fontStyle: 'italic', color: '#8696a0' }}>{events[index]?.text}</p>
 }
