@@ -26,6 +26,9 @@ function App() {
       } else {
         setAuthOpen(false)
       }
+      if (window.location.hash || window.location.search) {
+        window.history.replaceState(null, '', window.location.pathname)
+      }
     })
     return () => sub.subscription.unsubscribe()
   }, [])
