@@ -31,6 +31,8 @@ type MemberMeta = {
   last_seen_at: string | null
   is_idle: boolean
   last_read_at: string
+  added_by: string | null
+  is_leader: boolean
 }
 
 type Props = {
@@ -52,7 +54,8 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
   const [replayFor, setReplayFor] = useState<Message | null>(null)
   const [replayEvents, setReplayEvents] = useState<ReplayEvent[] | null>(null)
-  const [showAddMember, setShowAddMember] = useState(false)
+  const [showChatConfig, setShowChatConfig] = useState(false)
+  const [configView, setConfigView] = useState<'root' | 'invite'>('root')
   const [addEmail, setAddEmail] = useState('')
   const [addError, setAddError] = useState<string | null>(null)
   const [addBusy, setAddBusy] = useState(false)
@@ -89,7 +92,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       if (!conversation) return
       const { data: rows } = await supabase
         .from('conversation_members')
-        .select('user_id, last_read_at, profile:profiles(id, username, display_name, avatar_url, status, last_seen_at, is_idle)')
+        .select('user_id, last_read_at, added_by, is_leader, profile:profiles(id, username, display_name, avatar_url, status, last_seen_at, is_idle)')
         .eq('conversation_id', conversation.id)
 
       if (!cancelled && rows) {
@@ -105,6 +108,8 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
               last_seen_at: p.last_seen_at ?? null,
               is_idle: p.is_idle ?? false,
               last_read_at: row.last_read_at as string,
+              added_by: row.added_by as string | null,
+              is_leader: row.is_leader as boolean,
             }
           }
         }
@@ -269,14 +274,29 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
 
   async function addMember() {
     if (!me || !conversation) return
-    const email = addEmail.trim().toLowerCase()
-    if (!email) return
+    const input = addEmail.trim()
+    if (!input) return
     setAddBusy(true)
     setAddError(null)
     try {
-      const { data: found, error: findErr } = await supabase.rpc('find_profile_by_email', { p_email: email })
-      if (findErr) throw findErr
-      const target = found?.[0]
+      let target: { id: string; username: string } | undefined
+
+      if (input.startsWith('@')) {
+        const { data, error: findErr } = await supabase
+          .from('profiles')
+          .select('id, username')
+          .eq('username', input.slice(1))
+          .maybeSingle()
+        if (findErr) throw findErr
+        target = data || undefined
+      } else {
+        const { data: found, error: findErr } = await supabase.rpc('find_profile_by_email', {
+          p_email: input.toLowerCase(),
+        })
+        if (findErr) throw findErr
+        target = found?.[0]
+      }
+
       if (!target) {
         setAddError('Essa pessoa ainda não tem conta no Ferus')
         return
@@ -284,19 +304,21 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
 
       const { error: memberErr } = await supabase
         .from('conversation_members')
-        .insert({ conversation_id: conversation.id, user_id: target.id })
+        .insert({ conversation_id: conversation.id, user_id: target.id, added_by: me.id })
       if (memberErr && !memberErr.message.includes('duplicate')) throw memberErr
 
       setMembers((prev) => ({
         ...prev,
-        [target.id]: {
-          username: target.username,
+        [target!.id]: {
+          username: target!.username,
           display_name: null,
           avatar_url: null,
           status: null,
           last_seen_at: null,
           is_idle: false,
           last_read_at: new Date().toISOString(),
+          added_by: me.id,
+          is_leader: false,
         },
       }))
 
@@ -307,15 +329,49 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
           .eq('id', conversation.id)
         if (convErr) throw convErr
         onConversationUpdate({ type: 'group' })
+
+        await supabase
+          .from('conversation_members')
+          .update({ is_leader: true })
+          .eq('conversation_id', conversation.id)
+          .eq('user_id', me.id)
+        setMembers((prev) => (prev[me.id] ? { ...prev, [me.id]: { ...prev[me.id], is_leader: true } } : prev))
       }
 
       setAddEmail('')
-      setShowAddMember(false)
+      setConfigView('root')
     } catch (err) {
       setAddError(getErrorMessage(err))
     } finally {
       setAddBusy(false)
     }
+  }
+
+  const myMembership = me ? members[me.id] : undefined
+  const canManageMembers = !!myMembership && (myMembership.added_by === null || myMembership.is_leader)
+
+  async function removeMember(targetId: string) {
+    if (!conversation) return
+    await supabase
+      .from('conversation_members')
+      .delete()
+      .eq('conversation_id', conversation.id)
+      .eq('user_id', targetId)
+    setMembers((prev) => {
+      const next = { ...prev }
+      delete next[targetId]
+      return next
+    })
+  }
+
+  async function promoteLeader(targetId: string) {
+    if (!conversation) return
+    await supabase
+      .from('conversation_members')
+      .update({ is_leader: true })
+      .eq('conversation_id', conversation.id)
+      .eq('user_id', targetId)
+    setMembers((prev) => (prev[targetId] ? { ...prev, [targetId]: { ...prev[targetId], is_leader: true } } : prev))
   }
 
   function handleChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
@@ -501,23 +557,47 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
           <button
             type="button"
             className="nudge-btn"
-            title="Adicionar pessoa"
-            onClick={() => { setShowAddMember((v) => !v); setAddError(null) }}
+            title="Config do chat"
+            onClick={() => { setShowChatConfig((v) => !v); setConfigView('root'); setAddError(null) }}
           >
             <IconPlus size={20} />
           </button>
           <button type="button" className="nudge-btn" title="Chamar atenção" onClick={sendNudge}><IconBell size={20} /></button>
 
-          {showAddMember && (
+          {showChatConfig && (
             <div className="add-member-popover">
-              <input
-                type="email"
-                placeholder="email da pessoa"
-                value={addEmail}
-                onChange={(e) => setAddEmail(e.target.value)}
-                autoFocus
-              />
-              <button type="button" disabled={addBusy} onClick={addMember}>Adicionar</button>
+              {configView === 'root' && (
+                <>
+                  <div className="chat-config-members">
+                    {Object.entries(members).map(([id, meta]) => (
+                      <div key={id} className="chat-config-row">
+                        <span>@{displayName(meta)}{meta.added_by === null && ' ★'}{meta.is_leader && ' 👑'}</span>
+                        {id !== me?.id && meta.added_by !== null && canManageMembers && (
+                          <span className="chat-config-actions">
+                            {!meta.is_leader && (
+                              <button type="button" onClick={() => promoteLeader(id)}>líder</button>
+                            )}
+                            <button type="button" onClick={() => removeMember(id)}>remover</button>
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <button type="button" onClick={() => setConfigView('invite')}>Convidar amigo</button>
+                </>
+              )}
+              {configView === 'invite' && (
+                <>
+                  <input
+                    placeholder="email ou @usuário"
+                    value={addEmail}
+                    onChange={(e) => setAddEmail(e.target.value)}
+                    autoFocus
+                  />
+                  <button type="button" disabled={addBusy} onClick={addMember}>Adicionar</button>
+                  <button type="button" onClick={() => setConfigView('root')}>voltar</button>
+                </>
+              )}
               {addError && <span className="auth-error">{addError}</span>}
             </div>
           )}

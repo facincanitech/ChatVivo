@@ -344,8 +344,8 @@ body{
 
 .add-member-popover{
   position:absolute;top:54px;right:0;background:#202c33;border:1px solid #34434b;
-  border-radius:10px;padding:10px;width:220px;z-index:45;box-shadow:0 8px 24px #0006;
-  display:flex;flex-direction:column;gap:8px;
+  border-radius:10px;padding:10px;width:260px;z-index:45;box-shadow:0 8px 24px #0006;
+  display:flex;flex-direction:column;gap:8px;text-align:left;
 }
 .add-member-popover input{
   padding:8px;border-radius:6px;border:1px solid #34434b;background:#111b21;color:var(--text);
@@ -353,6 +353,15 @@ body{
 .add-member-popover button{
   padding:8px;border-radius:6px;border:0;background:var(--green);color:#fff;
   font-weight:600;cursor:pointer;
+}
+.chat-config-members{display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto}
+.chat-config-row{
+  display:flex;align-items:center;justify-content:space-between;gap:6px;
+  font-size:.8rem;padding:4px 0;border-bottom:1px solid #2a3942;
+}
+.chat-config-actions{display:flex;gap:4px}
+.chat-config-actions button{
+  padding:3px 6px;font-size:.68rem;font-weight:400;background:#2b3a42;
 }
 
 .rail-badge{
