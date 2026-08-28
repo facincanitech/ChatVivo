@@ -6,7 +6,6 @@ import {
   IconArchive,
   IconArrowLeft,
   IconBellOff,
-  IconGroup,
   IconHash,
   IconHeart,
   IconKey,
@@ -653,10 +652,6 @@ export function ChatList({
 
         {panelView === 'root' && (
           <div className="new-conv-list">
-            <div className="new-conv-option" onClick={() => onPanelViewChange('group')}>
-              <div className="option-icon"><IconGroup size={20} /></div>
-              <span>Novo grupo</span>
-            </div>
             <div className="new-conv-option" onClick={() => onPanelViewChange('contact')}>
               <div className="option-icon"><IconUser size={20} /></div>
               <span>Novo contato</span>
