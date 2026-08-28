@@ -720,7 +720,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
             onClick={() => otherMember && me && setProfilePopup({ id: otherMemberEntry![0], meta: otherMember })}
           >
             {displayTitle}
-            {isOrganicGroup && <span className="grupal-badge">Grupal</span>}
+            {isOrganicGroup && <span className="grupal-badge">Grupo</span>}
             {nudgeFrom && (
               <span className="nudge-indicator" title="chamou sua atenção">
                 <IconBell size={14} />
