@@ -400,9 +400,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate }: Pr
                   {isReadByOthers(m) ? <IconCheckDouble size={15} /> : <IconCheck size={13} />}
                 </span>
               )}
-              {m.author_id === me.id && (
-                <button type="button" className="replay-btn" onClick={() => openReplay(m)}>replay</button>
-              )}
+              <button type="button" className="replay-btn" onClick={() => openReplay(m)}>replay</button>
             </div>
           </div>
         ))}
