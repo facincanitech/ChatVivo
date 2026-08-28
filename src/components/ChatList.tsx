@@ -22,7 +22,7 @@ import {
 } from './icons'
 import type { Conversation, PanelView, Profile } from '../types'
 
-type AccountView = 'root' | 'profile' | 'account' | 'privacy' | 'blocked'
+type AccountView = 'root' | 'profile' | 'account' | 'privacy' | 'blocked' | 'terms'
 
 type Props = {
   me: Profile | null
@@ -541,7 +541,7 @@ export function ChatList({
   }
 
   function accountGoBack() {
-    if (accountView === 'blocked') setAccountView('privacy')
+    if (accountView === 'blocked' || accountView === 'terms') setAccountView('privacy')
     else if (accountView === 'root') onAccountOpenChange(false)
     else setAccountView('root')
   }
@@ -555,7 +555,9 @@ export function ChatList({
           ? 'Conta'
           : accountView === 'privacy'
             ? 'Privacidade'
-            : 'Bloqueados'
+            : accountView === 'terms'
+              ? 'Termo de uso'
+              : 'Bloqueados'
 
   const filtered = conversations.filter((c) => c.label.toLowerCase().includes(query.toLowerCase()))
 
@@ -883,6 +885,31 @@ export function ChatList({
               <div className="option-icon"><IconLock size={20} /></div>
               <span>Mensagens temporárias (em breve)</span>
             </div>
+            <div className="new-conv-option" onClick={() => setAccountView('terms')}>
+              <div className="option-icon"><IconKey size={20} /></div>
+              <span>Termo de uso</span>
+            </div>
+          </div>
+        )}
+
+        {accountView === 'terms' && (
+          <div className="new-conv-form terms-text">
+            <p>
+              O Ferus é fornecido "como está". Não nos responsabilizamos por uso indevido do
+              app por parte dos usuários, incluindo o conteúdo das mensagens trocadas.
+            </p>
+            <p>
+              Imagens e vídeos transmitidos ao vivo não são salvos no nosso banco de dados —
+              existem apenas enquanto estão sendo compartilhados em tempo real.
+            </p>
+            <p>
+              O texto das mensagens enviadas fica salvo no banco de dados junto com o
+              remetente, por tempo indeterminado.
+            </p>
+            <p>
+              Quebra de sigilo dessas informações só ocorre mediante requisição jurídica
+              (ordem judicial ou solicitação de autoridade competente).
+            </p>
           </div>
         )}
 
