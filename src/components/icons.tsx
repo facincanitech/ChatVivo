@@ -45,6 +45,15 @@ export function IconStar({ size = 20 }: IconProps) {
   )
 }
 
+export function IconCrown({ size = 20 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size}>
+      <path d="M3 8l4 3 5-6 5 6 4-3-2 10H5L3 8z" />
+      <line x1="5" y1="21" x2="19" y2="21" />
+    </svg>
+  )
+}
+
 export function IconSearch({ size = 20 }: IconProps) {
   return (
     <svg {...base} width={size} height={size}>

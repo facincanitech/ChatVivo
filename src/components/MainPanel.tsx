@@ -5,7 +5,7 @@ import { playNudgeSound, triggerNudgeShake } from '../lib/nudge'
 import { formatPresence, getPresenceColor } from '../lib/presence'
 import { getErrorMessage } from '../lib/errors'
 import { displayName } from '../lib/displayName'
-import { IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconMic, IconMore, IconPlus, IconSend, IconSmile, IconUser } from './icons'
+import { IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconCrown, IconMic, IconMore, IconPlus, IconSend, IconSmile, IconUser } from './icons'
 import type { Conversation, Message, Profile } from '../types'
 
 const EMOJIS = ['😀', '😂', '😍', '😭', '🔥', '👍', '🙏', '😡', '💀', '❤️']
@@ -454,6 +454,11 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     return target.added_by !== null && canManageMembers && !target.is_leader
   }
 
+  function canDemote(target: MemberMeta): boolean {
+    if (isRoleGroup) return false
+    return target.added_by !== null && canManageMembers && !!target.is_leader
+  }
+
   async function saveGroupInfo() {
     if (!conversation) return
     setEditBusy(true)
@@ -476,11 +481,16 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       .delete()
       .eq('conversation_id', conversation.id)
       .eq('user_id', targetId)
+    const remaining = Object.keys(members).filter((id) => id !== targetId)
     setMembers((prev) => {
       const next = { ...prev }
       delete next[targetId]
       return next
     })
+    if (!isRoleGroup && conversation.type === 'group' && remaining.length === 2) {
+      await supabase.from('conversations').update({ type: 'dm' }).eq('id', conversation.id)
+      onConversationUpdate({ type: 'dm' })
+    }
   }
 
   async function promoteLeader(targetId: string) {
@@ -500,6 +510,16 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       .eq('conversation_id', conversation.id)
       .eq('user_id', targetId)
     setMembers((prev) => (prev[targetId] ? { ...prev, [targetId]: { ...prev[targetId], is_leader: true } } : prev))
+  }
+
+  async function demoteLeader(targetId: string) {
+    if (!conversation) return
+    await supabase
+      .from('conversation_members')
+      .update({ is_leader: false })
+      .eq('conversation_id', conversation.id)
+      .eq('user_id', targetId)
+    setMembers((prev) => (prev[targetId] ? { ...prev, [targetId]: { ...prev[targetId], is_leader: false } } : prev))
   }
 
   function handleChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
@@ -720,7 +740,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                   <div className="chat-config-members">
                     {Object.entries(members).map(([id, meta]) => (
                       <div key={id} className="chat-config-row">
-                        <span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                           @{displayName(meta)}
                           {isRoleGroup
                             ? meta.role === 'admin'
@@ -728,14 +748,17 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                               : meta.role === 'moderator'
                                 ? ' (mod)'
                                 : ''
-                            : <>{meta.added_by === null && ' ★'}{meta.is_leader && ' 👑'}</>}
+                            : (meta.added_by === null || meta.is_leader) && <IconCrown size={12} />}
                         </span>
                         {id !== me?.id && (
                           <span className="chat-config-actions">
                             {canPromote(meta) && (
                               <button type="button" onClick={() => promoteLeader(id)}>
-                                {isRoleGroup ? 'mod' : 'líder'}
+                                {isRoleGroup ? 'mod' : 'dar coroa'}
                               </button>
+                            )}
+                            {canDemote(meta) && (
+                              <button type="button" onClick={() => demoteLeader(id)}>tirar coroa</button>
                             )}
                             {canKick(meta) && (
                               <button type="button" onClick={() => removeMember(id)}>remover</button>
