@@ -33,6 +33,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate }: Pr
   const [addEmail, setAddEmail] = useState('')
   const [addError, setAddError] = useState<string | null>(null)
   const [addBusy, setAddBusy] = useState(false)
+  const [expandedImage, setExpandedImage] = useState<string | null>(null)
 
   const channelRef = useRef<RealtimeChannel | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -190,6 +191,12 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate }: Pr
   function broadcastMedia(dataUrl: string | null) {
     if (!me) return
     channelRef.current?.send({ type: 'broadcast', event: 'media', payload: { userId: me.id, dataUrl } })
+    setLiveMedia((prev) => {
+      const next = { ...prev }
+      if (dataUrl) next[me.id] = dataUrl
+      else delete next[me.id]
+      return next
+    })
   }
 
   async function addMember() {
@@ -415,10 +422,15 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate }: Pr
         ))}
 
         {Object.entries(liveMedia).map(([userId, dataUrl]) => (
-          <div key={`media-${userId}`} className="message in live">
+          <div key={`media-${userId}`} className={`message live ${userId === me.id ? 'out' : 'in'}`}>
             <div className="bubble">
               <span className="author-label">@{members[userId]?.username || '...'}</span>
-              <img src={dataUrl} alt="preview ao vivo" className="live-media-preview" />
+              <img
+                src={dataUrl}
+                alt="preview ao vivo"
+                className="live-media-preview"
+                onClick={() => setExpandedImage(dataUrl)}
+              />
             </div>
           </div>
         ))}
@@ -469,6 +481,12 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate }: Pr
             {replayEvents && replayEvents.length > 0 && <ReplayPlayer events={replayEvents} />}
             <button type="button" className="modal-close" onClick={() => setReplayFor(null)}>fechar</button>
           </div>
+        </div>
+      )}
+
+      {expandedImage && (
+        <div className="image-lightbox" onClick={() => setExpandedImage(null)}>
+          <img src={expandedImage} alt="preview ao vivo expandido" />
         </div>
       )}
     </main>

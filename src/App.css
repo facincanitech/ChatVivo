@@ -146,7 +146,13 @@ body{
   align-self:center;margin:0 6px;font-size:10px;color:#8696a0;background:none;
   border:1px solid #34434b;border-radius:4px;cursor:pointer;padding:1px 6px;
 }
-.live-media-preview{max-width:160px;max-height:160px;border-radius:8px;display:block}
+.live-media-preview{max-width:160px;max-height:160px;border-radius:8px;display:block;cursor:zoom-in}
+
+.image-lightbox{
+  position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:70;
+  display:flex;align-items:center;justify-content:center;padding:24px;cursor:zoom-out;
+}
+.image-lightbox img{max-width:90vw;max-height:90vh;border-radius:8px;object-fit:contain}
 
 .composer{
   min-height:70px;background:#202c33;display:flex;align-items:center;
