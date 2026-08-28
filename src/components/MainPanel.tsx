@@ -5,7 +5,7 @@ import { playNudgeSound, triggerNudgeShake } from '../lib/nudge'
 import { formatPresence, getPresenceColor } from '../lib/presence'
 import { getErrorMessage } from '../lib/errors'
 import { displayName } from '../lib/displayName'
-import { IconArrowLeft, IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconMic, IconPlus, IconSend, IconSmile, IconUser } from './icons'
+import { IconArrowLeft, IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconMic, IconMore, IconPlus, IconSend, IconSmile, IconUser } from './icons'
 import type { Conversation, Message, Profile } from '../types'
 
 const EMOJIS = ['😀', '😂', '😍', '😭', '🔥', '👍', '🙏', '😡', '💀', '❤️']
@@ -38,9 +38,10 @@ type Props = {
   conversation: Conversation | null
   onBack: () => void
   onConversationUpdate: (patch: Partial<Conversation>) => void
+  blockedIds: Set<string>
 }
 
-export function MainPanel({ me, conversation, onBack, onConversationUpdate }: Props) {
+export function MainPanel({ me, conversation, onBack, onConversationUpdate, blockedIds }: Props) {
   const [messages, setMessages] = useState<Message[]>([])
   const [members, setMembers] = useState<Record<string, MemberMeta>>({})
   const [draft, setDraft] = useState('')
@@ -57,6 +58,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate }: Pr
   const [addBusy, setAddBusy] = useState(false)
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
   const [profilePopup, setProfilePopup] = useState<{ id: string; meta: MemberMeta } | null>(null)
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const [atBottom, setAtBottom] = useState(true)
 
   const channelRef = useRef<RealtimeChannel | null>(null)
@@ -237,6 +239,14 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate }: Pr
   function broadcastTyping(text: string) {
     if (!me) return
     channelRef.current?.send({ type: 'broadcast', event: 'typing', payload: { userId: me.id, text } })
+  }
+
+  async function blockFromPopup() {
+    if (!me || !profilePopup) return
+    await supabase.from('blocks').insert({ blocker_id: me.id, blocked_id: profilePopup.id })
+    setProfileMenuOpen(false)
+    setProfilePopup(null)
+    onBack()
   }
 
   function sendNudge() {
@@ -515,7 +525,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate }: Pr
       </header>
 
       <section className="messages" onScroll={handleMessagesScroll}>
-        {messages.map((m) => (
+        {messages.filter((m) => !blockedIds.has(m.author_id)).map((m) => (
           <div key={m.id} className={`message ${m.author_id === me.id ? 'out' : 'in'}`}>
             <div className="bubble">
               {m.author_id !== me.id && conversation.type === 'group' && (
@@ -538,7 +548,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate }: Pr
           </div>
         ))}
 
-        {Object.entries(liveTyping).map(([userId, text]) => (
+        {Object.entries(liveTyping).filter(([userId]) => !blockedIds.has(userId)).map(([userId, text]) => (
           <div key={userId} className="message in live">
             <div className="bubble">
               <span className="author-label">@{members[userId] ? displayName(members[userId]) : '...'}</span>
@@ -547,7 +557,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate }: Pr
           </div>
         ))}
 
-        {Object.entries(liveMedia).map(([userId, dataUrl]) => (
+        {Object.entries(liveMedia).filter(([userId]) => !blockedIds.has(userId)).map(([userId, dataUrl]) => (
           <div key={`media-${userId}`} className={`message live ${userId === me.id ? 'out' : 'in'}`}>
             <div className="bubble">
               <span className="author-label">@{members[userId] ? displayName(members[userId]) : '...'}</span>
@@ -626,7 +636,20 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate }: Pr
 
       {profilePopup && (
         <div className="modal-backdrop" onClick={() => setProfilePopup(null)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-card" style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="icon-btn"
+              style={{ position: 'absolute', top: 8, right: 8 }}
+              onClick={() => setProfileMenuOpen((v) => !v)}
+            >
+              <IconMore size={18} />
+            </button>
+            {profileMenuOpen && (
+              <div className="request-menu" style={{ top: 40, right: 8 }}>
+                <button type="button" onClick={blockFromPopup}>Bloquear</button>
+              </div>
+            )}
             <div className="account-avatar-wrap">
               <div className="account-avatar" style={{ overflow: 'hidden' }}>
                 {profilePopup.meta.avatar_url ? (

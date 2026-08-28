@@ -35,9 +35,10 @@ type Props = {
   accountOpen: boolean
   onAccountOpenChange: (open: boolean) => void
   onProfileChange: (patch: Partial<Profile>) => void
+  blockedIds: Set<string>
 }
 
-type ConvWithLabel = Conversation & { label: string; avatarUrl: string | null }
+type ConvWithLabel = Conversation & { label: string; avatarUrl: string | null; otherId: string | null }
 type FriendRequest = {
   id: string
   from_id: string
@@ -63,6 +64,7 @@ export function ChatList({
   accountOpen,
   onAccountOpenChange,
   onProfileChange,
+  blockedIds,
 }: Props) {
   const [conversations, setConversations] = useState<ConvWithLabel[]>([])
   const [query, setQuery] = useState('')
@@ -117,12 +119,12 @@ export function ChatList({
 
     const labeled: ConvWithLabel[] = convs
       .map((c) => {
-        if (c.type === 'group') return { ...c, label: c.name || 'grupo', avatarUrl: null }
+        if (c.type === 'group') return { ...c, label: c.name || 'grupo', avatarUrl: null, otherId: null }
         const other = (allMembers || []).find(
           (m) => m.conversation_id === c.id && (m.profile as unknown as Profile)?.id !== me.id,
         )
         const p = other?.profile as unknown as Profile | undefined
-        return { ...c, label: p ? displayName(p) : 'conversa', avatarUrl: p?.avatar_url || null }
+        return { ...c, label: p ? displayName(p) : 'conversa', avatarUrl: p?.avatar_url || null, otherId: p?.id || null }
       })
       .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
 
@@ -538,6 +540,7 @@ export function ChatList({
     if (!me) return
     await supabase.from('blocks').delete().eq('blocker_id', me.id).eq('blocked_id', id)
     setBlocked((prev) => prev.filter((b) => b.id !== id))
+    onAccountOpenChange(false)
   }
 
   function accountGoBack() {
@@ -559,7 +562,9 @@ export function ChatList({
               ? 'Termo de uso'
               : 'Bloqueados'
 
-  const filtered = conversations.filter((c) => c.label.toLowerCase().includes(query.toLowerCase()))
+  const filtered = conversations
+    .filter((c) => !(c.otherId && blockedIds.has(c.otherId)))
+    .filter((c) => c.label.toLowerCase().includes(query.toLowerCase()))
 
   const panelTitle =
     panelView === 'root'

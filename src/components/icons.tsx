@@ -127,11 +127,11 @@ export function IconCheck({ size = 14 }: IconProps) {
   )
 }
 
-export function IconCheckDouble({ size = 16 }: IconProps) {
+export function IconCheckDouble({ size = 18 }: IconProps) {
   return (
-    <svg {...base} width={size} height={size}>
-      <polyline points="18 6 7 17 2 12" />
-      <polyline points="22 6 11 17" />
+    <svg {...base} viewBox="0 0 30 24" width={size * 1.4} height={size}>
+      <polyline points="16 6 8 17 3 12" />
+      <polyline points="27 6 15.5 20" />
     </svg>
   )
 }

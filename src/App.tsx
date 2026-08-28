@@ -16,6 +16,7 @@ function App() {
   const [panelOpen, setPanelOpen] = useState(false)
   const [panelView, setPanelView] = useState<PanelView>('root')
   const [accountOpen, setAccountOpen] = useState(false)
+  const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
@@ -74,6 +75,34 @@ function App() {
     }
   }, [session])
 
+  useEffect(() => {
+    if (!profile) {
+      setBlockedIds(new Set())
+      return
+    }
+
+    async function load() {
+      if (!profile) return
+      const { data } = await supabase.from('blocks').select('blocked_id').eq('blocker_id', profile.id)
+      setBlockedIds(new Set((data || []).map((r) => r.blocked_id as string)))
+    }
+
+    load()
+
+    const channel = supabase
+      .channel(`blocks:${profile.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'blocks', filter: `blocker_id=eq.${profile.id}` },
+        () => load(),
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [profile?.id])
+
   function requireAuth(action: () => void) {
     if (session === undefined) return
     if (!session) {
@@ -124,10 +153,12 @@ function App() {
         accountOpen={accountOpen}
         onAccountOpenChange={setAccountOpen}
         onProfileChange={(patch) => setProfile((p) => (p ? { ...p, ...patch } : p))}
+        blockedIds={blockedIds}
       />
       <MainPanel
         me={profile}
         conversation={selected}
+        blockedIds={blockedIds}
         onBack={() => setSelected(null)}
         onConversationUpdate={(patch) => setSelected((c) => (c ? { ...c, ...patch } : c))}
       />
