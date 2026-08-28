@@ -171,6 +171,11 @@ body{
   color:#aebac1;font-size:22px;cursor:pointer;flex-shrink:0;
 }
 .compose-btn:hover{background:#2b3a42}
+.compose-btn.recording{background:var(--green);color:#fff;animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(229,72,77,.5)}
+  50%{box-shadow:0 0 0 8px rgba(229,72,77,0)}
+}
 .input{
   flex:1;background:#2a3942;border-radius:10px;min-height:46px;
   display:flex;align-items:center;padding:0 15px;

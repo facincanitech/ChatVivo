@@ -5,11 +5,22 @@ import { playNudgeSound, triggerNudgeShake } from '../lib/nudge'
 import { formatPresence, getPresenceColor } from '../lib/presence'
 import { getErrorMessage } from '../lib/errors'
 import { displayName } from '../lib/displayName'
-import { IconArrowLeft, IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconPlus, IconSend, IconSmile, IconUser } from './icons'
+import { IconArrowLeft, IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconMic, IconPlus, IconSend, IconSmile, IconUser } from './icons'
 import type { Conversation, Message, Profile } from '../types'
 
 const EMOJIS = ['😀', '😂', '😍', '😭', '🔥', '👍', '🙏', '😡', '💀', '❤️']
 const REPLAY_WINDOW_MS = 20000
+
+type SpeechRecognitionLike = {
+  lang: string
+  continuous: boolean
+  interimResults: boolean
+  onresult: ((e: any) => void) | null
+  onend: (() => void) | null
+  onerror: (() => void) | null
+  start: () => void
+  stop: () => void
+}
 
 type ReplayEvent = { t: number; text: string }
 type MemberMeta = {
@@ -36,6 +47,8 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate }: Pr
   const [liveTyping, setLiveTyping] = useState<Record<string, string>>({})
   const [liveMedia, setLiveMedia] = useState<Record<string, string>>({})
   const [showEmoji, setShowEmoji] = useState(false)
+  const [recording, setRecording] = useState(false)
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
   const [replayFor, setReplayFor] = useState<Message | null>(null)
   const [replayEvents, setReplayEvents] = useState<ReplayEvent[] | null>(null)
   const [showAddMember, setShowAddMember] = useState(false)
@@ -305,6 +318,44 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate }: Pr
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
+  function toggleRecording() {
+    if (recording) {
+      recognitionRef.current?.stop()
+      return
+    }
+
+    const SpeechRecognitionCtor =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SpeechRecognitionCtor) {
+      alert('Reconhecimento de voz não é suportado nesse navegador (funciona no Chrome/Edge).')
+      return
+    }
+
+    const recognition: SpeechRecognitionLike = new SpeechRecognitionCtor()
+    recognition.lang = 'pt-BR'
+    recognition.continuous = true
+    recognition.interimResults = true
+
+    const baseDraft = draft ? `${draft} ` : ''
+
+    recognition.onresult = (e: any) => {
+      let transcript = ''
+      for (let i = 0; i < e.results.length; i++) {
+        transcript += e.results[i][0].transcript
+      }
+      const next = baseDraft + transcript
+      setDraft(next)
+      recordReplayEvent(next)
+      broadcastTyping(next)
+    }
+    recognition.onend = () => setRecording(false)
+    recognition.onerror = () => setRecording(false)
+
+    recognitionRef.current = recognition
+    setRecording(true)
+    recognition.start()
+  }
+
   async function handleSend() {
     const content = draft.trim()
     if (!content || !conversation || !me) return
@@ -496,6 +547,14 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate }: Pr
       <footer className="composer">
         <button type="button" className="compose-btn" onClick={() => setShowEmoji((v) => !v)} title="Emoji"><IconSmile size={20} /></button>
         <button type="button" className="compose-btn" onClick={() => fileInputRef.current?.click()} title="Anexar"><IconAttach size={20} /></button>
+        <button
+          type="button"
+          className={`compose-btn${recording ? ' recording' : ''}`}
+          onClick={toggleRecording}
+          title="Falar (transcreve pra texto, áudio não é salvo)"
+        >
+          <IconMic size={20} />
+        </button>
         <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handleFileChange} />
         <div className="input">
           <textarea
