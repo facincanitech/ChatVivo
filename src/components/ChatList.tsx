@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { getErrorMessage } from '../lib/errors'
 import type { Conversation, Profile } from '../types'
 
 type Props = {
@@ -129,7 +130,7 @@ export function ChatList({ me, selected, onSelect, requireAuth }: Props) {
       await loadConversations()
       onSelect(conv as Conversation)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro inesperado')
+      setError(getErrorMessage(err))
     } finally {
       setBusy(false)
     }
@@ -167,7 +168,7 @@ export function ChatList({ me, selected, onSelect, requireAuth }: Props) {
       await loadConversations()
       onSelect(conv as Conversation)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro inesperado')
+      setError(getErrorMessage(err))
     } finally {
       setBusy(false)
     }
@@ -201,7 +202,7 @@ export function ChatList({ me, selected, onSelect, requireAuth }: Props) {
       setMenuOpen(false)
       await loadConversations()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro inesperado')
+      setError(getErrorMessage(err))
     } finally {
       setBusy(false)
     }
