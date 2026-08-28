@@ -15,6 +15,22 @@ function App() {
     document.title = `Ferus v${APP_VERSION}`
   }, [])
 
+  useEffect(() => {
+    let hiddenAt: number | null = null
+    function onVisibility() {
+      if (document.hidden) {
+        hiddenAt = Date.now()
+        return
+      }
+      if (hiddenAt && Date.now() - hiddenAt > 60000) {
+        window.location.reload()
+      }
+      hiddenAt = null
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => document.removeEventListener('visibilitychange', onVisibility)
+  }, [])
+
   const [session, setSession] = useState<Session | null | undefined>(undefined)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [selected, setSelected] = useState<Conversation | null>(null)
