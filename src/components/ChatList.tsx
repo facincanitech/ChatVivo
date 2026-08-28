@@ -135,7 +135,7 @@ export function ChatList({
       if (attempt > 0) await new Promise((r) => setTimeout(r, 400 * attempt))
       const { data, error } = await supabase
         .from('conversation_members')
-        .select('conversation_id, profile:profiles(id, username, display_name, avatar_url)')
+        .select('conversation_id, profile:profiles!conversation_members_user_id_fkey(id, username, display_name, avatar_url)')
         .in('conversation_id', ids)
       if (error) {
         console.error('loadConversations: allMembers query failed', error)

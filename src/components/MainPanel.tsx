@@ -96,7 +96,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       if (!conversation) return
       const { data: rows } = await supabase
         .from('conversation_members')
-        .select('user_id, last_read_at, added_by, is_leader, role, profile:profiles(id, username, display_name, avatar_url, status, last_seen_at, is_idle)')
+        .select('user_id, last_read_at, added_by, is_leader, role, profile:profiles!conversation_members_user_id_fkey(id, username, display_name, avatar_url, status, last_seen_at, is_idle)')
         .eq('conversation_id', conversation.id)
 
       if (!cancelled && rows) {
