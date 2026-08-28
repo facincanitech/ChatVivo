@@ -49,6 +49,7 @@ type ConvWithLabel = Conversation & {
   isMuted: boolean
   isManuallyUnread: boolean
   unreadCount: number
+  lastMessageAt: string | null
 }
 type FriendRequest = {
   id: string
@@ -138,12 +139,19 @@ export function ChatList({
       return
     }
 
-    const { data: unreadRows } = await supabase.rpc('get_unread_counts', { p_user_id: me.id })
+    const ids = convs.map((c) => c.id)
+
+    const [{ data: unreadRows }, { data: lastMsgRows }] = await Promise.all([
+      supabase.rpc('get_unread_counts', { p_user_id: me.id }),
+      supabase.rpc('get_last_message_at', { p_conversation_ids: ids }),
+    ])
     const unreadMap = new Map<string, number>(
       (unreadRows || []).map((r: { conversation_id: string; unread_count: number }) => [r.conversation_id, Number(r.unread_count)]),
     )
+    const lastMsgMap = new Map<string, string>(
+      (lastMsgRows || []).map((r: { conversation_id: string; last_message_at: string }) => [r.conversation_id, r.last_message_at]),
+    )
 
-    const ids = convs.map((c) => c.id)
     let allMembers: { conversation_id: string; added_by: string | null; role: string | null; profile: unknown }[] | null = null
     for (let attempt = 0; attempt < 3 && allMembers === null; attempt++) {
       if (attempt > 0) await new Promise((r) => setTimeout(r, 400 * attempt))
@@ -167,7 +175,8 @@ export function ChatList({
         const isMuted = !!mine?.muted
         const isManuallyUnread = !!mine?.manually_unread
         const unreadCount = unreadMap.get(c.id) || 0
-        const extra = { isFavorite, favoritedAt, isArchived, isMuted, isManuallyUnread, unreadCount }
+        const lastMessageAt = lastMsgMap.get(c.id) || null
+        const extra = { isFavorite, favoritedAt, isArchived, isMuted, isManuallyUnread, unreadCount, lastMessageAt }
         const membersOfConv = (allMembers || []).filter((m) => m.conversation_id === c.id)
         const anyOther = membersOfConv.find((m) => (m.profile as unknown as Profile)?.id !== me.id)
 
@@ -187,7 +196,7 @@ export function ChatList({
         const p = anyOther?.profile as unknown as Profile | undefined
         return { ...c, label: p ? displayName(p) : 'conversa', avatarUrl: p?.avatar_url || null, otherId: p?.id || null, ...extra, isOrganicGroup: false }
       })
-      .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
+      .sort((a, b) => ((a.lastMessageAt || a.created_at) < (b.lastMessageAt || b.created_at) ? 1 : -1))
 
     setConversations(labeled)
   }
@@ -269,10 +278,7 @@ export function ChatList({
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages' },
-        (payload) => {
-          const msg = payload.new as { author_id: string }
-          if (msg.author_id !== me.id) loadConversations()
-        },
+        () => loadConversations(),
       )
       .on(
         'postgres_changes',
