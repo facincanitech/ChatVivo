@@ -64,7 +64,7 @@ export function Rail({ me, onRequireAuth, onNewConversation, onOpenAccount }: Pr
           </span>
         )}
       </div>
-      <button title="Comunidades (em breve)"><IconGroup /></button>
+      <button title="Grupos (em breve)"><IconGroup /></button>
       <button title="Status (em breve)"><IconStar /></button>
       <div className="spacer" />
       <div

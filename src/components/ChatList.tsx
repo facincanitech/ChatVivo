@@ -589,8 +589,8 @@ export function ChatList({
       </div>
 
       <div className="filters">
-        <button className="filter active">Todas</button>
-        <button className="filter">Grupos</button>
+        <button className="filter active">Todos</button>
+        <button className="filter">Favoritos</button>
       </div>
 
       <div className="chat-list">
