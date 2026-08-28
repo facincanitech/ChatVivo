@@ -7,6 +7,7 @@ import { MainPanel } from './components/MainPanel'
 import { AuthModal } from './components/AuthModal'
 import type { Conversation, PanelView, Profile } from './types'
 import { APP_VERSION } from './version'
+import { playNudgeSound, triggerNudgeShake } from './lib/nudge'
 import './App.css'
 
 function App() {
@@ -104,6 +105,20 @@ function App() {
       )
       .subscribe()
 
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [profile?.id])
+
+  useEffect(() => {
+    if (!profile) return
+    const channel = supabase
+      .channel(`nudge:${profile.id}`)
+      .on('broadcast', { event: 'nudge' }, () => {
+        triggerNudgeShake()
+        playNudgeSound()
+      })
+      .subscribe()
     return () => {
       supabase.removeChannel(channel)
     }

@@ -801,6 +801,28 @@ export function ChatList({
                 <span>Adicionar amigo</span>
               </div>
             </div>
+            {incoming.length > 0 && (
+              <>
+                <label style={{ padding: '0 22px', fontSize: '.7rem', color: '#8696a0', textTransform: 'uppercase' }}>
+                  Pedidos recebidos
+                </label>
+                <div className="friend-request-list" style={{ padding: '0 22px 10px' }}>
+                  {incoming.map((req) => (
+                    <div key={req.id} className="friend-request-row">
+                      <div className="photo" style={{ width: 40, height: 40 }}>
+                        {req.from_profile.username[0]?.toUpperCase()}
+                      </div>
+                      <div className="friend-request-info">
+                        <div className="name">@{req.from_profile.username}</div>
+                        <div className="preview">{req.from_profile.email}</div>
+                      </div>
+                      <button type="button" disabled={busy} onClick={() => acceptRequest(req)}>Aceitar</button>
+                      <button type="button" disabled={busy} className="decline" onClick={() => declineRequest(req)}>Recusar</button>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
             <div className="friend-request-list" style={{ padding: '0 22px' }}>
               {friends.length === 0 && <span className="invite-code">você ainda não tem amigos</span>}
               {friends.map((f) => (

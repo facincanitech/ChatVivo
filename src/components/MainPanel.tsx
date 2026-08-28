@@ -160,8 +160,6 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       .on('broadcast', { event: 'nudge' }, ({ payload }) => {
         const { userId } = payload as { userId: string }
         if (userId === me.id) return
-        triggerNudgeShake()
-        playNudgeSound()
         setNudgeFrom(userId)
         setTimeout(() => setNudgeFrom((prev) => (prev === userId ? null : prev)), 3000)
       })
@@ -291,6 +289,18 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     channelRef.current?.send({ type: 'broadcast', event: 'nudge', payload: { userId: me.id } })
     triggerNudgeShake()
     playNudgeSound()
+
+    Object.keys(members)
+      .filter((id) => id !== me.id)
+      .forEach((id) => {
+        const personalChannel = supabase.channel(`nudge:${id}`)
+        personalChannel.subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            personalChannel.send({ type: 'broadcast', event: 'nudge', payload: { userId: me.id } })
+            setTimeout(() => supabase.removeChannel(personalChannel), 1000)
+          }
+        })
+      })
   }
 
   function broadcastMedia(dataUrl: string | null) {
