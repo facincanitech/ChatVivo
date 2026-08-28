@@ -6,9 +6,14 @@ import { ChatList } from './components/ChatList'
 import { MainPanel } from './components/MainPanel'
 import { AuthModal } from './components/AuthModal'
 import type { Conversation, PanelView, Profile } from './types'
+import { APP_VERSION } from './version'
 import './App.css'
 
 function App() {
+  useEffect(() => {
+    document.title = `Ferus v${APP_VERSION}`
+  }, [])
+
   const [session, setSession] = useState<Session | null | undefined>(undefined)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [selected, setSelected] = useState<Conversation | null>(null)

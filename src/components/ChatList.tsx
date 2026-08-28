@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { getErrorMessage } from '../lib/errors'
 import { displayName } from '../lib/displayName'
+import { APP_VERSION } from '../version'
 import {
   IconArchive,
   IconArrowLeft,
@@ -273,34 +274,40 @@ export function ChatList({
         .single()
       if (convErr) throw convErr
 
-      const { error: selfErr } = await supabase
-        .from('conversation_members')
-        .insert({ conversation_id: conv.id, user_id: me.id })
-      if (selfErr) throw selfErr
-
-      const { data: found, error: findErr } = await supabase.rpc('find_profile_by_email', { p_email: email })
-      if (findErr) throw findErr
-      const target = found?.[0]
-
-      if (target) {
-        const { error: memberErr } = await supabase
+      try {
+        const { error: selfErr } = await supabase
           .from('conversation_members')
-          .insert({ conversation_id: conv.id, user_id: target.id })
-        if (memberErr) throw memberErr
-      } else {
-        const { data: sessionData } = await supabase.auth.getSession()
-        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invite-by-email`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${sessionData.session?.access_token}`,
-            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-          },
-          body: JSON.stringify({ email, conversationId: conv.id }),
-        })
-        const body = await res.json()
-        if (!res.ok) throw new Error(body.error || 'Falha ao convidar')
-        setInviteSent(true)
+          .insert({ conversation_id: conv.id, user_id: me.id })
+        if (selfErr) throw selfErr
+
+        const { data: found, error: findErr } = await supabase.rpc('find_profile_by_email', { p_email: email })
+        if (findErr) throw findErr
+        const target = found?.[0]
+
+        if (target) {
+          const { error: memberErr } = await supabase
+            .from('conversation_members')
+            .insert({ conversation_id: conv.id, user_id: target.id })
+          if (memberErr) throw memberErr
+        } else {
+          await supabase.auth.refreshSession()
+          const { data: sessionData } = await supabase.auth.getSession()
+          const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invite-by-email`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${sessionData.session?.access_token}`,
+              apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+            },
+            body: JSON.stringify({ email, conversationId: conv.id }),
+          })
+          const body = await res.json()
+          if (!res.ok) throw new Error(body.error || 'Falha ao convidar')
+          setInviteSent(true)
+        }
+      } catch (innerErr) {
+        await supabase.from('conversations').delete().eq('id', conv.id)
+        throw innerErr
       }
 
       setDmEmail('')
@@ -684,7 +691,7 @@ export function ChatList({
   return (
     <section className="chats">
       <div className="top">
-        <div className="brand">Ferus</div>
+        <div className="brand">Ferus <span className="app-version">v{APP_VERSION}</span></div>
       </div>
 
       <div className="search-wrap">
