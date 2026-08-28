@@ -186,6 +186,28 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate }: Pr
           })
         },
       )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'profiles' },
+        (payload) => {
+          const p = payload.new as Profile
+          setMembers((prev) => {
+            if (!prev[p.id]) return prev
+            return {
+              ...prev,
+              [p.id]: {
+                ...prev[p.id],
+                username: p.username,
+                display_name: p.display_name ?? null,
+                avatar_url: p.avatar_url ?? null,
+                status: p.status ?? null,
+                last_seen_at: p.last_seen_at ?? null,
+                is_idle: p.is_idle ?? false,
+              },
+            }
+          })
+        },
+      )
       .subscribe()
 
     channelRef.current = channel
