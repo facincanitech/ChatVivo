@@ -810,7 +810,7 @@ export function ChatList({
             </button>
             <div className="chat-info">
               <div className="row">
-                <div className="name">{c.type === 'group' && !c.isOrganicGroup ? `# ${c.label}` : `@${c.label}`}</div>
+                <div className="name">{c.type === 'group' && !c.isOrganicGroup ? `# ${c.label}` : c.label}</div>
               </div>
             </div>
           </div>
@@ -890,7 +890,7 @@ export function ChatList({
                         {req.from_profile.username[0]?.toUpperCase()}
                       </div>
                       <div className="friend-request-info">
-                        <div className="name">@{req.from_profile.username}</div>
+                        <div className="name">{req.from_profile.username}</div>
                         <div className="preview">{req.from_profile.email}</div>
                       </div>
                       <button type="button" disabled={busy} onClick={() => acceptRequest(req)}>Aceitar</button>
@@ -908,7 +908,7 @@ export function ChatList({
                     {f.avatar_url ? <img src={f.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : f.username[0]?.toUpperCase()}
                   </div>
                   <div className="friend-request-info">
-                    <div className="name">@{displayName(f)}</div>
+                    <div className="name">{displayName(f)}</div>
                   </div>
                   <button type="button" className="decline" onClick={() => unfriend(f.id)}>Desfazer</button>
                 </div>
@@ -940,7 +940,7 @@ export function ChatList({
                     {req.from_profile.username[0]?.toUpperCase()}
                   </div>
                   <div className="friend-request-info">
-                    <div className="name">@{req.from_profile.username}</div>
+                    <div className="name">{req.from_profile.username}</div>
                     <div className="preview">{req.from_profile.email}</div>
                   </div>
                   <button type="button" disabled={busy} onClick={() => acceptRequest(req)}>Aceitar</button>
@@ -973,7 +973,7 @@ export function ChatList({
                     {req.to_profile.username[0]?.toUpperCase()}
                   </div>
                   <div className="friend-request-info">
-                    <div className="name">@{req.to_profile.username}</div>
+                    <div className="name">{req.to_profile.username}</div>
                     <div className="preview">{req.status === 'declined' ? 'pedido recusado' : 'aguardando resposta'}</div>
                   </div>
                   {req.status === 'declined' && (
@@ -1164,7 +1164,7 @@ export function ChatList({
                 <div key={b.id} className="friend-request-row">
                   <div className="photo" style={{ width: 40, height: 40 }}>{b.username[0]?.toUpperCase()}</div>
                   <div className="friend-request-info">
-                    <div className="name">@{b.username}</div>
+                    <div className="name">{b.username}</div>
                     <div className="preview">{b.email}</div>
                   </div>
                   <button type="button" onClick={() => unblock(b.id)}>Desbloquear</button>

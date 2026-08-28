@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { playNudgeSound, triggerNudgeShake } from '../lib/nudge'
@@ -10,6 +10,26 @@ import type { Conversation, Message, Profile } from '../types'
 
 const EMOJIS = ['😀', '😂', '😍', '😭', '🔥', '👍', '🙏', '😡', '💀', '❤️']
 const REPLAY_WINDOW_MS = 20000
+
+function formatMessageTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+}
+
+function isSameDay(a: string, b: string): boolean {
+  const da = new Date(a)
+  const db = new Date(b)
+  return da.getFullYear() === db.getFullYear() && da.getMonth() === db.getMonth() && da.getDate() === db.getDate()
+}
+
+function formatDateLabel(iso: string): string {
+  const d = new Date(iso)
+  const today = new Date()
+  const yesterday = new Date()
+  yesterday.setDate(today.getDate() - 1)
+  if (isSameDay(iso, today.toISOString())) return 'Hoje'
+  if (isSameDay(iso, yesterday.toISOString())) return 'Ontem'
+  return d.toLocaleDateString('pt-BR')
+}
 
 type SpeechRecognitionLike = {
   lang: string
@@ -471,7 +491,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
         setMembers((prev) => (prev[me.id] ? { ...prev, [me.id]: { ...prev[me.id], is_leader: true } } : prev))
       }
 
-      await postSystemMessage(`${displayName(me)} adicionou @${target.username} ao chat`)
+      await postSystemMessage(`${displayName(me)} adicionou ${target.username} ao chat`)
 
       setAddEmail('')
       setConfigView('root')
@@ -540,7 +560,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       onConversationUpdate({ type: 'dm' })
     }
     if (targetMeta) {
-      await postSystemMessage(`${displayName(me)} removeu @${displayName(targetMeta)} do chat`)
+      await postSystemMessage(`${displayName(me)} removeu ${displayName(targetMeta)} do chat`)
     }
   }
 
@@ -554,7 +574,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
         .eq('conversation_id', conversation.id)
         .eq('user_id', targetId)
       setMembers((prev) => (prev[targetId] ? { ...prev, [targetId]: { ...prev[targetId], role: 'moderator' } } : prev))
-      if (targetMeta) await postSystemMessage(`${displayName(me)} promoveu @${displayName(targetMeta)} a moderador`)
+      if (targetMeta) await postSystemMessage(`${displayName(me)} promoveu ${displayName(targetMeta)} a moderador`)
       return
     }
     await supabase
@@ -563,7 +583,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       .eq('conversation_id', conversation.id)
       .eq('user_id', targetId)
     setMembers((prev) => (prev[targetId] ? { ...prev, [targetId]: { ...prev[targetId], is_leader: true } } : prev))
-    if (targetMeta) await postSystemMessage(`${displayName(me)} deu a coroa pra @${displayName(targetMeta)}`)
+    if (targetMeta) await postSystemMessage(`${displayName(me)} deu a coroa pra ${displayName(targetMeta)}`)
   }
 
   async function demoteLeader(targetId: string) {
@@ -575,7 +595,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       .eq('conversation_id', conversation.id)
       .eq('user_id', targetId)
     setMembers((prev) => (prev[targetId] ? { ...prev, [targetId]: { ...prev[targetId], is_leader: false } } : prev))
-    if (targetMeta) await postSystemMessage(`${displayName(me)} tirou a coroa de @${displayName(targetMeta)}`)
+    if (targetMeta) await postSystemMessage(`${displayName(me)} tirou a coroa de ${displayName(targetMeta)}`)
   }
 
   function handleChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
@@ -716,7 +736,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     return otherMember ? displayName(otherMember) : 'conversa'
   }, [conversation, otherMember, isOrganicGroup])
 
-  const displayTitle = conversation?.type === 'dm' ? `@${title}` : title
+  const displayTitle = title
 
   const subtitle = useMemo(() => {
     if (!otherMember) return ''
@@ -776,7 +796,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
             {nudgeFrom && (
               <span className="nudge-indicator" title="chamou sua atenção">
                 <IconBell size={14} />
-                {conversation.type === 'group' && members[nudgeFrom] && ` @${displayName(members[nudgeFrom])}`}
+                {conversation.type === 'group' && members[nudgeFrom] && ` ${displayName(members[nudgeFrom])}`}
               </span>
             )}
           </div>
@@ -800,7 +820,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                     {Object.entries(members).map(([id, meta]) => (
                       <div key={id} className="chat-config-row">
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                          @{displayName(meta)}
+                          {displayName(meta)}
                           {isRoleGroup
                             ? meta.role === 'admin'
                               ? ' (adm)'
@@ -865,39 +885,49 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       </header>
 
       <section className="messages" onScroll={handleMessagesScroll}>
-        {messages.filter((m) => !blockedIds.has(m.author_id)).map((m) => (
-          m.kind === 'system' ? (
-            <div key={m.id} className="system-message">{m.content}</div>
-          ) : (
-          <div key={m.id} className={`message ${m.author_id === me.id ? 'out' : 'in'}`}>
-            <div className="bubble">
-              {m.author_id !== me.id && conversation.type === 'group' && (
-                <span
-                  className="author-label"
-                  style={{ cursor: members[m.author_id] ? 'pointer' : 'default' }}
-                  onClick={() => members[m.author_id] && setProfilePopup({ id: m.author_id, meta: members[m.author_id] })}
-                >
-                  @{members[m.author_id] ? displayName(members[m.author_id]) : '...'}
-                </span>
-              )}
-              {m.content}
-              {m.author_id === me.id && (
-                <span className={`read-receipt${isReadByOthers(m) ? ' read' : ''}`}>
-                  {isReadByOthers(m) ? <IconCheckDouble size={15} /> : <IconCheck size={13} />}
-                </span>
-              )}
-              <button type="button" className="replay-btn" onClick={() => openReplay(m)}>
-                replay{editedIds.has(m.id) && <span className="replay-edited" title="tem coisa diferente do texto final">!</span>}
-              </button>
-            </div>
-          </div>
+        {messages.filter((m) => !blockedIds.has(m.author_id)).map((m, idx, arr) => {
+          const prev = arr[idx - 1]
+          const showDate = !prev || !isSameDay(prev.created_at, m.created_at)
+          return (
+          <Fragment key={m.id}>
+            {showDate && <div className="date">{formatDateLabel(m.created_at)}</div>}
+            {m.kind === 'system' ? (
+              <div className="system-message">{m.content}</div>
+            ) : (
+              <div className={`message ${m.author_id === me.id ? 'out' : 'in'}`}>
+                <div className="bubble">
+                  {m.author_id !== me.id && conversation.type === 'group' && (
+                    <span
+                      className="author-label"
+                      style={{ cursor: members[m.author_id] ? 'pointer' : 'default' }}
+                      onClick={() => members[m.author_id] && setProfilePopup({ id: m.author_id, meta: members[m.author_id] })}
+                    >
+                      {members[m.author_id] ? displayName(members[m.author_id]) : '...'}
+                    </span>
+                  )}
+                  {m.content}
+                  <span className="meta">
+                    {formatMessageTime(m.created_at)}
+                    {m.author_id === me.id && (
+                      <span className={`read-receipt${isReadByOthers(m) ? ' read' : ''}`}>
+                        {isReadByOthers(m) ? <IconCheckDouble size={15} /> : <IconCheck size={13} />}
+                      </span>
+                    )}
+                  </span>
+                  <button type="button" className="replay-btn" onClick={() => openReplay(m)}>
+                    replay{editedIds.has(m.id) && <span className="replay-edited" title="tem coisa diferente do texto final">!</span>}
+                  </button>
+                </div>
+              </div>
+            )}
+          </Fragment>
           )
-        ))}
+        })}
 
         {Object.entries(liveTyping).filter(([userId]) => !blockedIds.has(userId)).map(([userId, text]) => (
           <div key={userId} className="message in live">
             <div className="bubble">
-              <span className="author-label">@{members[userId] ? displayName(members[userId]) : '...'}</span>
+              <span className="author-label">{members[userId] ? displayName(members[userId]) : '...'}</span>
               {text}
             </div>
           </div>
@@ -906,7 +936,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
         {Object.entries(liveMedia).filter(([userId]) => !blockedIds.has(userId)).map(([userId, dataUrl]) => (
           <div key={`media-${userId}`} className={`message live ${userId === me.id ? 'out' : 'in'}`}>
             <div className="bubble">
-              <span className="author-label">@{members[userId] ? displayName(members[userId]) : '...'}</span>
+              <span className="author-label">{members[userId] ? displayName(members[userId]) : '...'}</span>
               <img
                 src={dataUrl}
                 alt="preview ao vivo"
@@ -1010,7 +1040,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                 )}
               </div>
             </div>
-            <h2>@{displayName(profilePopup.meta)}</h2>
+            <h2>{displayName(profilePopup.meta)}</h2>
             <p style={{ fontSize: '.75rem', color: '#8696a0' }}>{profilePopup.meta.email}</p>
             <p>{profilePopup.meta.status || 'sem status'}</p>
             <p style={{ fontSize: '.75rem' }}>{formatPresence(profilePopup.meta.last_seen_at)}</p>

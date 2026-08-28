@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { displayName } from '../lib/displayName'
 import { IconBell, IconChat, IconGroup, IconPlus, IconStar, IconUser } from './icons'
 import type { Profile } from '../types'
 
@@ -90,7 +91,7 @@ export function Rail({ me, onRequireAuth, onNewConversation, onOpenAccount, onOp
       <div
         className="avatar-sm"
         onClick={handleAvatarClick}
-        title={me ? `@${me.username} — conta` : 'Entrar'}
+        title={me ? `${displayName(me)} — conta` : 'Entrar'}
       >
         <IconUser size={18} />
       </div>
