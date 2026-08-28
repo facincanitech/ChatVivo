@@ -32,7 +32,7 @@ function App() {
     if (!session) return
     supabase
       .from('profiles')
-      .select('id, username')
+      .select('id, username, email')
       .eq('id', session.user.id)
       .single()
       .then(({ data }) => setProfile(data as Profile))

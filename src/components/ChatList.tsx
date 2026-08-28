@@ -15,10 +15,11 @@ export function ChatList({ me, selected, onSelect, requireAuth }: Props) {
   const [conversations, setConversations] = useState<ConvWithLabel[]>([])
   const [query, setQuery] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
-  const [dmUsername, setDmUsername] = useState('')
+  const [dmEmail, setDmEmail] = useState('')
   const [groupName, setGroupName] = useState('')
   const [joinCode, setJoinCode] = useState('')
   const [lastInvite, setLastInvite] = useState<string | null>(null)
+  const [inviteSent, setInviteSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -81,17 +82,11 @@ export function ChatList({ me, selected, onSelect, requireAuth }: Props) {
     if (!me) return
     setError(null)
     setBusy(true)
+    setInviteSent(false)
     try {
-      const uname = dmUsername.trim()
-      if (!uname) return
-      const { data: target, error: findErr } = await supabase
-        .from('profiles')
-        .select('id, username')
-        .eq('username', uname)
-        .maybeSingle()
-      if (findErr) throw findErr
-      if (!target) throw new Error('Usuário não encontrado')
-      if (target.id === me.id) throw new Error('Esse é você')
+      const email = dmEmail.trim().toLowerCase()
+      if (!email) return
+      if (email === me.email) throw new Error('Esse é você')
 
       const { data: conv, error: convErr } = await supabase
         .from('conversations')
@@ -100,16 +95,37 @@ export function ChatList({ me, selected, onSelect, requireAuth }: Props) {
         .single()
       if (convErr) throw convErr
 
-      const { error: membersErr } = await supabase
+      const { error: selfErr } = await supabase
         .from('conversation_members')
-        .insert([
-          { conversation_id: conv.id, user_id: me.id },
-          { conversation_id: conv.id, user_id: target.id },
-        ])
-      if (membersErr) throw membersErr
+        .insert({ conversation_id: conv.id, user_id: me.id })
+      if (selfErr) throw selfErr
 
-      setDmUsername('')
-      setMenuOpen(false)
+      const { data: found, error: findErr } = await supabase.rpc('find_profile_by_email', { p_email: email })
+      if (findErr) throw findErr
+      const target = found?.[0]
+
+      if (target) {
+        const { error: memberErr } = await supabase
+          .from('conversation_members')
+          .insert({ conversation_id: conv.id, user_id: target.id })
+        if (memberErr) throw memberErr
+      } else {
+        const { data: sessionData } = await supabase.auth.getSession()
+        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invite-by-email`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${sessionData.session?.access_token}`,
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ email, conversationId: conv.id }),
+        })
+        const body = await res.json()
+        if (!res.ok) throw new Error(body.error || 'Falha ao convidar')
+        setInviteSent(true)
+      }
+
+      setDmEmail('')
       await loadConversations()
       onSelect(conv as Conversation)
     } catch (err) {
@@ -243,13 +259,19 @@ export function ChatList({ me, selected, onSelect, requireAuth }: Props) {
 
       {menuOpen && (
         <div className="new-conv-menu">
-          <label>Chamar em DM</label>
+          <label>Chamar em DM (email)</label>
           <input
-            placeholder="username"
-            value={dmUsername}
-            onChange={(e) => setDmUsername(e.target.value)}
+            type="email"
+            placeholder="email da pessoa"
+            value={dmEmail}
+            onChange={(e) => setDmEmail(e.target.value)}
           />
           <button type="button" disabled={busy} onClick={startDm}>Chamar</button>
+          {inviteSent && (
+            <span className="invite-code">
+              essa pessoa ainda não tem conta — mandamos um convite por email
+            </span>
+          )}
 
           <label>Criar grupo</label>
           <input

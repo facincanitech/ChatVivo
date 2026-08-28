@@ -1,6 +1,7 @@
 export type Profile = {
   id: string
   username: string
+  email: string
 }
 
 export type Conversation = {
