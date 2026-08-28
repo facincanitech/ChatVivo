@@ -16,6 +16,7 @@ function App() {
   const [panelOpen, setPanelOpen] = useState(false)
   const [panelView, setPanelView] = useState<PanelView>('root')
   const [accountOpen, setAccountOpen] = useState(false)
+  const [groupsOpen, setGroupsOpen] = useState(false)
   const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
@@ -115,6 +116,7 @@ function App() {
   function openNewConversation() {
     requireAuth(() => {
       setAccountOpen(false)
+      setGroupsOpen(false)
       setPanelView('root')
       setPanelOpen(true)
     })
@@ -123,7 +125,16 @@ function App() {
   function openAccount() {
     requireAuth(() => {
       setPanelOpen(false)
+      setGroupsOpen(false)
       setAccountOpen(true)
+    })
+  }
+
+  function openGroups() {
+    requireAuth(() => {
+      setPanelOpen(false)
+      setAccountOpen(false)
+      setGroupsOpen(true)
     })
   }
 
@@ -131,6 +142,7 @@ function App() {
     setSelected(null)
     setPanelOpen(false)
     setAccountOpen(false)
+    setGroupsOpen(false)
   }
 
   return (
@@ -140,6 +152,7 @@ function App() {
         onRequireAuth={() => requireAuth(() => {})}
         onNewConversation={openNewConversation}
         onOpenAccount={openAccount}
+        onOpenGroups={openGroups}
         onGoHome={goHome}
       />
       <ChatList
@@ -152,6 +165,8 @@ function App() {
         onPanelViewChange={setPanelView}
         accountOpen={accountOpen}
         onAccountOpenChange={setAccountOpen}
+        groupsOpen={groupsOpen}
+        onGroupsOpenChange={setGroupsOpen}
         onProfileChange={(patch) => setProfile((p) => (p ? { ...p, ...patch } : p))}
         blockedIds={blockedIds}
       />

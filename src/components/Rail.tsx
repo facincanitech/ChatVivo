@@ -8,10 +8,11 @@ type Props = {
   onRequireAuth: () => void
   onNewConversation: () => void
   onOpenAccount: () => void
+  onOpenGroups: () => void
   onGoHome: () => void
 }
 
-export function Rail({ me, onRequireAuth, onNewConversation, onOpenAccount, onGoHome }: Props) {
+export function Rail({ me, onRequireAuth, onNewConversation, onOpenAccount, onOpenGroups, onGoHome }: Props) {
   const [pendingCount, setPendingCount] = useState(0)
 
   useEffect(() => {
@@ -54,6 +55,14 @@ export function Rail({ me, onRequireAuth, onNewConversation, onOpenAccount, onGo
     onOpenAccount()
   }
 
+  function handleGroupsClick() {
+    if (!me) {
+      onRequireAuth()
+      return
+    }
+    onOpenGroups()
+  }
+
   return (
     <aside className="rail">
       <div className="logo" onClick={onGoHome} style={{ cursor: 'pointer' }} title="Início">
@@ -67,7 +76,7 @@ export function Rail({ me, onRequireAuth, onNewConversation, onOpenAccount, onGo
           </span>
         )}
       </div>
-      <button title="Grupos (em breve)"><IconGroup /></button>
+      <button title="Grupos e comunidades" onClick={handleGroupsClick}><IconGroup /></button>
       <button title="Status (em breve)"><IconStar /></button>
       <div className="spacer" />
       <div

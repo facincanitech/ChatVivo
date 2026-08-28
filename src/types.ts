@@ -13,6 +13,7 @@ export type Conversation = {
   id: string
   type: 'dm' | 'group'
   name: string | null
+  description?: string | null
   created_by: string
   created_at: string
 }

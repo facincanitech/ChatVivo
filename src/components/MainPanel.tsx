@@ -33,6 +33,7 @@ type MemberMeta = {
   last_read_at: string
   added_by: string | null
   is_leader: boolean
+  role: string | null
 }
 
 type Props = {
@@ -55,7 +56,10 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const [replayFor, setReplayFor] = useState<Message | null>(null)
   const [replayEvents, setReplayEvents] = useState<ReplayEvent[] | null>(null)
   const [showChatConfig, setShowChatConfig] = useState(false)
-  const [configView, setConfigView] = useState<'root' | 'invite'>('root')
+  const [configView, setConfigView] = useState<'root' | 'invite' | 'edit'>('root')
+  const [editName, setEditName] = useState('')
+  const [editDesc, setEditDesc] = useState('')
+  const [editBusy, setEditBusy] = useState(false)
   const [addEmail, setAddEmail] = useState('')
   const [addError, setAddError] = useState<string | null>(null)
   const [addBusy, setAddBusy] = useState(false)
@@ -92,7 +96,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       if (!conversation) return
       const { data: rows } = await supabase
         .from('conversation_members')
-        .select('user_id, last_read_at, added_by, is_leader, profile:profiles(id, username, display_name, avatar_url, status, last_seen_at, is_idle)')
+        .select('user_id, last_read_at, added_by, is_leader, role, profile:profiles(id, username, display_name, avatar_url, status, last_seen_at, is_idle)')
         .eq('conversation_id', conversation.id)
 
       if (!cancelled && rows) {
@@ -110,6 +114,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
               last_read_at: row.last_read_at as string,
               added_by: row.added_by as string | null,
               is_leader: row.is_leader as boolean,
+              role: row.role as string | null,
             }
           }
         }
@@ -302,9 +307,15 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
         return
       }
 
+      const isRoleGroup = !!members[me.id]?.role
       const { error: memberErr } = await supabase
         .from('conversation_members')
-        .insert({ conversation_id: conversation.id, user_id: target.id, added_by: me.id })
+        .insert({
+          conversation_id: conversation.id,
+          user_id: target.id,
+          added_by: me.id,
+          ...(isRoleGroup ? { role: 'member' } : {}),
+        })
       if (memberErr && !memberErr.message.includes('duplicate')) throw memberErr
 
       setMembers((prev) => ({
@@ -319,6 +330,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
           last_read_at: new Date().toISOString(),
           added_by: me.id,
           is_leader: false,
+          role: isRoleGroup ? 'member' : null,
         },
       }))
 
@@ -348,7 +360,38 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   }
 
   const myMembership = me ? members[me.id] : undefined
+  const isRoleGroup = !!myMembership?.role
   const canManageMembers = !!myMembership && (myMembership.added_by === null || myMembership.is_leader)
+
+  function canKick(target: MemberMeta): boolean {
+    if (!myMembership) return false
+    if (isRoleGroup) {
+      if (myMembership.role === 'admin') return target.role !== 'admin'
+      if (myMembership.role === 'moderator') return target.role === 'member'
+      return false
+    }
+    return target.added_by !== null && canManageMembers
+  }
+
+  function canPromote(target: MemberMeta): boolean {
+    if (isRoleGroup) return myMembership?.role === 'admin' && target.role === 'member'
+    return target.added_by !== null && canManageMembers && !target.is_leader
+  }
+
+  async function saveGroupInfo() {
+    if (!conversation) return
+    setEditBusy(true)
+    try {
+      await supabase
+        .from('conversations')
+        .update({ name: editName.trim(), description: editDesc.trim() || null })
+        .eq('id', conversation.id)
+      onConversationUpdate({ name: editName.trim() })
+      setConfigView('root')
+    } finally {
+      setEditBusy(false)
+    }
+  }
 
   async function removeMember(targetId: string) {
     if (!conversation) return
@@ -366,6 +409,15 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
 
   async function promoteLeader(targetId: string) {
     if (!conversation) return
+    if (isRoleGroup) {
+      await supabase
+        .from('conversation_members')
+        .update({ role: 'moderator' })
+        .eq('conversation_id', conversation.id)
+        .eq('user_id', targetId)
+      setMembers((prev) => (prev[targetId] ? { ...prev, [targetId]: { ...prev[targetId], role: 'moderator' } } : prev))
+      return
+    }
     await supabase
       .from('conversation_members')
       .update({ is_leader: true })
@@ -571,19 +623,48 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                   <div className="chat-config-members">
                     {Object.entries(members).map(([id, meta]) => (
                       <div key={id} className="chat-config-row">
-                        <span>@{displayName(meta)}{meta.added_by === null && ' ★'}{meta.is_leader && ' 👑'}</span>
-                        {id !== me?.id && meta.added_by !== null && canManageMembers && (
+                        <span>
+                          @{displayName(meta)}
+                          {isRoleGroup
+                            ? meta.role === 'admin'
+                              ? ' (adm)'
+                              : meta.role === 'moderator'
+                                ? ' (mod)'
+                                : ''
+                            : <>{meta.added_by === null && ' ★'}{meta.is_leader && ' 👑'}</>}
+                        </span>
+                        {id !== me?.id && (
                           <span className="chat-config-actions">
-                            {!meta.is_leader && (
-                              <button type="button" onClick={() => promoteLeader(id)}>líder</button>
+                            {canPromote(meta) && (
+                              <button type="button" onClick={() => promoteLeader(id)}>
+                                {isRoleGroup ? 'mod' : 'líder'}
+                              </button>
                             )}
-                            <button type="button" onClick={() => removeMember(id)}>remover</button>
+                            {canKick(meta) && (
+                              <button type="button" onClick={() => removeMember(id)}>remover</button>
+                            )}
                           </span>
                         )}
                       </div>
                     ))}
                   </div>
                   <button type="button" onClick={() => setConfigView('invite')}>Convidar amigo</button>
+                  {isRoleGroup && (myMembership?.role === 'admin' || myMembership?.role === 'moderator') && (
+                    <button
+                      type="button"
+                      onClick={() => { setEditName(conversation?.name || ''); setEditDesc(conversation?.description || ''); setConfigView('edit') }}
+                    >
+                      Editar nome/descrição
+                    </button>
+                  )}
+                </>
+              )}
+              {configView === 'edit' && (
+                <>
+                  <input placeholder="nome do grupo" value={editName} onChange={(e) => setEditName(e.target.value)} autoFocus />
+                  <input placeholder="descrição" value={editDesc} onChange={(e) => setEditDesc(e.target.value)} />
+                  <button type="button" disabled={editBusy} onClick={saveGroupInfo}>Salvar</button>
+                  <button type="button" onClick={() => setConfigView('root')}>voltar</button>
                 </>
               )}
               {configView === 'invite' && (

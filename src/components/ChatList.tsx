@@ -6,6 +6,7 @@ import {
   IconArchive,
   IconArrowLeft,
   IconBellOff,
+  IconGroup,
   IconHash,
   IconHeart,
   IconKey,
@@ -17,6 +18,7 @@ import {
   IconMore,
   IconPinOff,
   IconSearch,
+  IconStar,
   IconTrash,
   IconUser,
 } from './icons'
@@ -34,11 +36,19 @@ type Props = {
   onPanelViewChange: (view: PanelView) => void
   accountOpen: boolean
   onAccountOpenChange: (open: boolean) => void
+  groupsOpen: boolean
+  onGroupsOpenChange: (open: boolean) => void
   onProfileChange: (patch: Partial<Profile>) => void
   blockedIds: Set<string>
 }
 
-type ConvWithLabel = Conversation & { label: string; avatarUrl: string | null; otherId: string | null }
+type ConvWithLabel = Conversation & {
+  label: string
+  avatarUrl: string | null
+  otherId: string | null
+  isFavorite: boolean
+  favoritedAt: string | null
+}
 type FriendRequest = {
   id: string
   from_id: string
@@ -63,15 +73,22 @@ export function ChatList({
   onPanelViewChange,
   accountOpen,
   onAccountOpenChange,
+  groupsOpen,
+  onGroupsOpenChange,
   onProfileChange,
   blockedIds,
 }: Props) {
   const [conversations, setConversations] = useState<ConvWithLabel[]>([])
+  const [groupsView, setGroupsView] = useState<'root' | 'create'>('root')
+  const [myGroups, setMyGroups] = useState<{ id: string; name: string; role: string | null }[]>([])
+  const [newGroupName, setNewGroupName] = useState('')
+  const [newGroupDesc, setNewGroupDesc] = useState('')
+  const [groupsBusy, setGroupsBusy] = useState(false)
+  const [groupsError, setGroupsError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
+  const [activeFilter, setActiveFilter] = useState<'all' | 'favorites'>('all')
   const [dmEmail, setDmEmail] = useState('')
-  const [groupName, setGroupName] = useState('')
   const [joinCode, setJoinCode] = useState('')
-  const [lastInvite, setLastInvite] = useState<string | null>(null)
   const [inviteSent, setInviteSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -99,10 +116,11 @@ export function ChatList({
     }
     const { data: memberRows } = await supabase
       .from('conversation_members')
-      .select('conversation:conversations(*)')
+      .select('conversation:conversations(*), is_favorite, favorited_at')
       .eq('user_id', me.id)
 
-    const convs = (memberRows || [])
+    const myRows = memberRows || []
+    const convs = myRows
       .map((row) => row.conversation as unknown as Conversation)
       .filter(Boolean)
 
@@ -119,12 +137,15 @@ export function ChatList({
 
     const labeled: ConvWithLabel[] = convs
       .map((c) => {
-        if (c.type === 'group') return { ...c, label: c.name || 'grupo', avatarUrl: null, otherId: null }
+        const mine = myRows.find((r) => (r.conversation as unknown as Conversation)?.id === c.id)
+        const isFavorite = !!mine?.is_favorite
+        const favoritedAt = (mine?.favorited_at as string | null) || null
+        if (c.type === 'group') return { ...c, label: c.name || 'grupo', avatarUrl: null, otherId: null, isFavorite, favoritedAt }
         const other = (allMembers || []).find(
           (m) => m.conversation_id === c.id && (m.profile as unknown as Profile)?.id !== me.id,
         )
         const p = other?.profile as unknown as Profile | undefined
-        return { ...c, label: p ? displayName(p) : 'conversa', avatarUrl: p?.avatar_url || null, otherId: p?.id || null }
+        return { ...c, label: p ? displayName(p) : 'conversa', avatarUrl: p?.avatar_url || null, otherId: p?.id || null, isFavorite, favoritedAt }
       })
       .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
 
@@ -243,44 +264,6 @@ export function ChatList({
       await loadConversations()
       onSelect(conv as Conversation)
       closePanel()
-    } catch (err) {
-      setError(getErrorMessage(err))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function createGroup() {
-    if (!me) return
-    setError(null)
-    setBusy(true)
-    try {
-      const name = groupName.trim()
-      if (!name) return
-
-      const { data: conv, error: convErr } = await supabase
-        .from('conversations')
-        .insert({ type: 'group', name, created_by: me.id })
-        .select()
-        .single()
-      if (convErr) throw convErr
-
-      const { error: memberErr } = await supabase
-        .from('conversation_members')
-        .insert({ conversation_id: conv.id, user_id: me.id })
-      if (memberErr) throw memberErr
-
-      const { data: invite, error: inviteErr } = await supabase
-        .from('invites')
-        .insert({ conversation_id: conv.id, created_by: me.id })
-        .select()
-        .single()
-      if (inviteErr) throw inviteErr
-
-      setLastInvite(invite.code)
-      setGroupName('')
-      await loadConversations()
-      onSelect(conv as Conversation)
     } catch (err) {
       setError(getErrorMessage(err))
     } finally {
@@ -469,6 +452,60 @@ export function ChatList({
     }
   }, [accountOpen, me?.id])
 
+  async function loadMyGroups() {
+    if (!me) return
+    const { data } = await supabase
+      .from('conversation_members')
+      .select('role, conversation:conversations(id, name)')
+      .eq('user_id', me.id)
+      .not('role', 'is', null)
+    setMyGroups(
+      (data || []).map((row) => {
+        const c = row.conversation as unknown as Conversation
+        return { id: c.id, name: c.name || 'grupo', role: row.role as string | null }
+      }),
+    )
+  }
+
+  useEffect(() => {
+    if (groupsOpen && me) {
+      setGroupsView('root')
+      setGroupsError(null)
+      setNewGroupName('')
+      setNewGroupDesc('')
+      loadMyGroups()
+    }
+  }, [groupsOpen, me?.id])
+
+  async function createGroup2() {
+    if (!me) return
+    const name = newGroupName.trim()
+    if (!name) return
+    setGroupsBusy(true)
+    setGroupsError(null)
+    try {
+      const { data: conv, error: convErr } = await supabase
+        .from('conversations')
+        .insert({ type: 'group', name, description: newGroupDesc.trim() || null, created_by: me.id })
+        .select()
+        .single()
+      if (convErr) throw convErr
+
+      const { error: memberErr } = await supabase
+        .from('conversation_members')
+        .insert({ conversation_id: conv.id, user_id: me.id, role: 'admin' })
+      if (memberErr) throw memberErr
+
+      onGroupsOpenChange(false)
+      await loadConversations()
+      onSelect(conv as Conversation)
+    } catch (err) {
+      setGroupsError(getErrorMessage(err))
+    } finally {
+      setGroupsBusy(false)
+    }
+  }
+
   async function saveUsername() {
     if (!me) return
     const username = usernameDraft.trim()
@@ -562,9 +599,28 @@ export function ChatList({
               ? 'Termo de uso'
               : 'Bloqueados'
 
+  async function toggleFavorite(c: ConvWithLabel) {
+    if (!me) return
+    const next = !c.isFavorite
+    const favoritedAt = next ? new Date().toISOString() : null
+    await supabase
+      .from('conversation_members')
+      .update({ is_favorite: next, favorited_at: favoritedAt })
+      .eq('conversation_id', c.id)
+      .eq('user_id', me.id)
+    setConversations((prev) =>
+      prev.map((conv) => (conv.id === c.id ? { ...conv, isFavorite: next, favoritedAt } : conv)),
+    )
+  }
+
   const filtered = conversations
     .filter((c) => !(c.otherId && blockedIds.has(c.otherId)))
     .filter((c) => c.label.toLowerCase().includes(query.toLowerCase()))
+    .filter((c) => activeFilter === 'all' || c.isFavorite)
+    .sort((a, b) => {
+      if (activeFilter !== 'favorites') return 0
+      return (a.favoritedAt || '').localeCompare(b.favoritedAt || '')
+    })
 
   const panelTitle =
     panelView === 'root'
@@ -595,8 +651,8 @@ export function ChatList({
       </div>
 
       <div className="filters">
-        <button className="filter active">Todos</button>
-        <button className="filter">Favoritos</button>
+        <button className={`filter${activeFilter === 'all' ? ' active' : ''}`} onClick={() => setActiveFilter('all')}>Todos</button>
+        <button className={`filter${activeFilter === 'favorites' ? ' active' : ''}`} onClick={() => setActiveFilter('favorites')}>Favoritos</button>
       </div>
 
       <div className="chat-list">
@@ -612,6 +668,14 @@ export function ChatList({
             <div className="photo">
               {c.avatarUrl ? <img src={c.avatarUrl} alt="" /> : c.label[0]?.toUpperCase()}
             </div>
+            <button
+              type="button"
+              className={`favorite-star${c.isFavorite ? ' filled' : ''}`}
+              onClick={(e) => { e.stopPropagation(); toggleFavorite(c) }}
+              title={c.isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+            >
+              <IconStar size={16} />
+            </button>
             <div className="chat-info">
               <div className="row">
                 <div className="name">{c.type === 'group' ? `# ${c.label}` : `@${c.label}`}</div>
@@ -758,21 +822,6 @@ export function ChatList({
                 essa pessoa ainda não tem conta — mandamos um convite por email
               </span>
             )}
-            {error && <span className="auth-error">{error}</span>}
-          </div>
-        )}
-
-        {panelView === 'group' && (
-          <div className="new-conv-form">
-            <label>Nome do grupo</label>
-            <input
-              placeholder="nome do grupo"
-              value={groupName}
-              onChange={(e) => setGroupName(e.target.value)}
-              autoFocus
-            />
-            <button type="button" disabled={busy} onClick={createGroup}>Criar</button>
-            {lastInvite && <span className="invite-code">código: <strong>{lastInvite}</strong></span>}
             {error && <span className="auth-error">{error}</span>}
           </div>
         )}
@@ -938,6 +987,77 @@ export function ChatList({
 
         {me && (
           <button type="button" className="account-signout" onClick={() => supabase.auth.signOut()}>Sair</button>
+        )}
+      </div>
+
+      <div className={`new-conv-panel${groupsOpen ? ' open' : ''}`}>
+        <div className="new-conv-header">
+          <button
+            type="button"
+            className="icon-btn"
+            onClick={() => (groupsView === 'create' ? setGroupsView('root') : onGroupsOpenChange(false))}
+          >
+            <IconArrowLeft size={20} />
+          </button>
+          <div className="brand" style={{ fontSize: 18 }}>Ferus - Grupos</div>
+        </div>
+
+        {groupsView === 'root' && (
+          <>
+            <div className="new-conv-list">
+              <div className="new-conv-option" onClick={() => setGroupsView('create')}>
+                <div className="option-icon"><IconGroup size={20} /></div>
+                <span>Criar grupo</span>
+              </div>
+              <div className="new-conv-option" style={{ opacity: 0.5, cursor: 'default' }}>
+                <div className="option-icon"><IconHeart size={20} /></div>
+                <span>Criar comunidade (em breve)</span>
+              </div>
+            </div>
+            <label style={{ padding: '0 22px', fontSize: '.7rem', color: '#8696a0', textTransform: 'uppercase' }}>
+              Meus grupos
+            </label>
+            <div className="chat-list">
+              {myGroups.length === 0 && <div className="empty">Nenhum grupo ainda</div>}
+              {myGroups.map((g) => (
+                <div
+                  key={g.id}
+                  className="chat"
+                  onClick={() => {
+                    onSelect({ id: g.id, type: 'group', name: g.name, created_by: '', created_at: '' } as Conversation)
+                    onGroupsOpenChange(false)
+                  }}
+                >
+                  <div className="photo">{g.name[0]?.toUpperCase()}</div>
+                  <div className="chat-info">
+                    <div className="row">
+                      <div className="name"># {g.name}{g.role === 'admin' ? ' (adm)' : g.role === 'moderator' ? ' (mod)' : ''}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {groupsView === 'create' && (
+          <div className="new-conv-form">
+            <label>Nome do grupo</label>
+            <input
+              placeholder="nome do grupo"
+              value={newGroupName}
+              onChange={(e) => setNewGroupName(e.target.value)}
+              autoFocus
+            />
+            <label style={{ marginTop: 10 }}>Descrição</label>
+            <input
+              placeholder="descrição (opcional)"
+              value={newGroupDesc}
+              onChange={(e) => setNewGroupDesc(e.target.value)}
+            />
+            <button type="button" disabled={groupsBusy} onClick={createGroup2}>Criar</button>
+            {groupsError && <span className="auth-error">{groupsError}</span>}
+          </div>
         )}
       </div>
     </section>
