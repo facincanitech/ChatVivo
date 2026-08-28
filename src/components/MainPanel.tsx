@@ -611,20 +611,33 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     setReplayEvents((data?.events as ReplayEvent[]) || [])
   }
 
+  const isOrganicGroup = conversation?.type === 'group' && !isRoleGroup
+
   const otherMemberEntry = useMemo(() => {
-    if (!conversation || conversation.type !== 'dm') return null
-    const entry = Object.entries(members).find(([id]) => id !== me?.id)
-    return entry || null
-  }, [conversation, members, me?.id])
+    if (!conversation) return null
+    if (conversation.type === 'dm') {
+      const entry = Object.entries(members).find(([id]) => id !== me?.id)
+      return entry || null
+    }
+    if (isOrganicGroup) {
+      // show the other original DM member (added_by === null) as the "face" of the group
+      const entry = Object.entries(members).find(([id, meta]) => id !== me?.id && meta.added_by === null)
+      return entry || null
+    }
+    return null
+  }, [conversation, members, me?.id, isOrganicGroup])
   const otherMember = otherMemberEntry?.[1] || null
 
   const title = useMemo(() => {
     if (!conversation) return ''
-    if (conversation.type === 'group') return conversation.name || 'grupo'
+    if (conversation.type === 'group') {
+      if (isOrganicGroup && otherMember) return displayName(otherMember)
+      return conversation.name || 'grupo'
+    }
     return otherMember ? displayName(otherMember) : 'conversa'
-  }, [conversation, otherMember])
+  }, [conversation, otherMember, isOrganicGroup])
 
-  const displayTitle = conversation?.type === 'group' ? title : `@${title}`
+  const displayTitle = conversation?.type === 'dm' ? `@${title}` : title
 
   const subtitle = useMemo(() => {
     if (!otherMember) return ''
@@ -677,6 +690,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
             onClick={() => otherMember && me && setProfilePopup({ id: otherMemberEntry![0], meta: otherMember })}
           >
             {displayTitle}
+            {isOrganicGroup && <span className="grupal-badge">Grupal</span>}
             {nudgeFrom && (
               <span className="nudge-indicator" title="chamou sua atenção">
                 <IconBell size={14} />
