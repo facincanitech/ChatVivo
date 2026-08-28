@@ -31,7 +31,7 @@ body{
 .rail{
   width:72px;background:#111820;border-right:1px solid #202b31;
   display:flex;flex-direction:column;align-items:center;padding:12px 0;
-  flex-shrink:0;
+  flex-shrink:0;position:relative;z-index:100;
 }
 .logo{
   width:44px;height:44px;border-radius:50%;display:grid;place-items:center;
@@ -49,7 +49,7 @@ body{
 /* chats column */
 .chats{
   width:304px;background:#111b21;border-right:1px solid var(--line);
-  display:flex;flex-direction:column;flex-shrink:0;position:relative;
+  display:flex;flex-direction:column;flex-shrink:0;position:relative;overflow:hidden;
 }
 .top{
   height:78px;display:flex;align-items:center;padding:0 22px;
