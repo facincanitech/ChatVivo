@@ -79,7 +79,7 @@ function App() {
         me={profile}
         onRequireAuth={() => requireAuth(() => {})}
         onNewConversation={openNewConversation}
-        onStatusChange={(status) => setProfile((p) => (p ? { ...p, status } : p))}
+        onProfileChange={(patch) => setProfile((p) => (p ? { ...p, ...patch } : p))}
       />
       <ChatList
         me={profile}

@@ -388,7 +388,7 @@ export function ChatList({
             <div className="photo">{c.label[0]?.toUpperCase()}</div>
             <div className="chat-info">
               <div className="row">
-                <div className="name">{c.type === 'group' ? `# ${c.label}` : c.label}</div>
+                <div className="name">{c.type === 'group' ? `# ${c.label}` : `@${c.label}`}</div>
               </div>
             </div>
           </div>
@@ -445,7 +445,7 @@ export function ChatList({
                     {req.from_profile.username[0]?.toUpperCase()}
                   </div>
                   <div className="friend-request-info">
-                    <div className="name">{req.from_profile.username}</div>
+                    <div className="name">@{req.from_profile.username}</div>
                     <div className="preview">{req.from_profile.email}</div>
                   </div>
                   <button type="button" disabled={busy} onClick={() => acceptRequest(req)}>Aceitar</button>

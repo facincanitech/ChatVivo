@@ -269,6 +269,8 @@ export function MainPanel({ me, conversation, onBack }: Props) {
     return otherMember?.username || 'conversa'
   }, [conversation, otherMember])
 
+  const displayTitle = conversation?.type === 'group' ? title : `@${title}`
+
   const subtitle = useMemo(() => {
     if (!otherMember) return ''
     if (otherMember.status) return otherMember.status
@@ -301,7 +303,7 @@ export function MainPanel({ me, conversation, onBack }: Props) {
         <button type="button" className="icon-btn back-mobile" onClick={onBack}><IconArrowLeft size={20} /></button>
         <div className="header-photo">{title[0]?.toUpperCase()}</div>
         <div className="header-text">
-          <div className="header-name">{title}</div>
+          <div className="header-name">{displayTitle}</div>
           {subtitle && <div className="status">{subtitle}</div>}
         </div>
         <div className="header-actions">
@@ -314,7 +316,7 @@ export function MainPanel({ me, conversation, onBack }: Props) {
           <div key={m.id} className={`message ${m.author_id === me.id ? 'out' : 'in'}`}>
             <div className="bubble">
               {m.author_id !== me.id && conversation.type === 'group' && (
-                <span className="author-label">{members[m.author_id]?.username || '...'}</span>
+                <span className="author-label">@{members[m.author_id]?.username || '...'}</span>
               )}
               {m.content}
               {m.author_id === me.id && (
@@ -332,7 +334,7 @@ export function MainPanel({ me, conversation, onBack }: Props) {
         {Object.entries(liveTyping).map(([userId, text]) => (
           <div key={userId} className="message in live">
             <div className="bubble">
-              <span className="author-label">{members[userId]?.username || '...'}</span>
+              <span className="author-label">@{members[userId]?.username || '...'}</span>
               {text}
             </div>
           </div>
@@ -341,7 +343,7 @@ export function MainPanel({ me, conversation, onBack }: Props) {
         {Object.entries(liveMedia).map(([userId, dataUrl]) => (
           <div key={`media-${userId}`} className="message in live">
             <div className="bubble">
-              <span className="author-label">{members[userId]?.username || '...'}</span>
+              <span className="author-label">@{members[userId]?.username || '...'}</span>
               <img src={dataUrl} alt="preview ao vivo" className="live-media-preview" />
             </div>
           </div>
