@@ -103,11 +103,27 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   }, [profilePopup?.id, me?.id])
   const [atBottom, setAtBottom] = useState(true)
   const [nudgeFrom, setNudgeFrom] = useState<string | null>(null)
+  const [editedIds, setEditedIds] = useState<Set<string>>(new Set())
 
   const channelRef = useRef<RealtimeChannel | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const replayBuffer = useRef<ReplayEvent[]>([])
+  const messagesRef = useRef<Message[]>([])
+  useEffect(() => {
+    messagesRef.current = messages
+  }, [messages])
+
+  function hasHiddenEdit(events: ReplayEvent[], finalContent: string): boolean {
+    let prevLen = 0
+    for (const e of events) {
+      const t = e.text ?? ''
+      if (t.length < prevLen) return true
+      if (!finalContent.startsWith(t)) return true
+      prevLen = t.length
+    }
+    return false
+  }
 
   useEffect(() => {
     setMessages([])
@@ -116,6 +132,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     setDraft('')
     setAtBottom(true)
     setNudgeFrom(null)
+    setEditedIds(new Set())
     setShowChatConfig(false)
     setConfigView('root')
     if (!conversation || !me) return
@@ -164,12 +181,20 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
 
       const { data: msgs } = await supabase
         .from('messages')
-        .select('*')
+        .select('*, message_replays(events)')
         .eq('conversation_id', conversation.id)
         .order('created_at', { ascending: true })
         .limit(200)
 
-      if (!cancelled && msgs) setMessages(msgs as Message[])
+      if (!cancelled && msgs) {
+        setMessages(msgs as Message[])
+        const edited = new Set<string>()
+        for (const m of msgs as (Message & { message_replays: { events: ReplayEvent[] }[] })[]) {
+          const events = m.message_replays?.[0]?.events
+          if (events && hasHiddenEdit(events, m.content)) edited.add(m.id)
+        }
+        setEditedIds(edited)
+      }
       await markRead()
     }
 
@@ -220,6 +245,17 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
             return next
           })
           markRead()
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'message_replays' },
+        (payload) => {
+          const row = payload.new as { message_id: string; events: ReplayEvent[] }
+          const msg = messagesRef.current.find((m) => m.id === row.message_id)
+          if (msg && hasHiddenEdit(row.events, msg.content)) {
+            setEditedIds((prev) => (prev.has(msg.id) ? prev : new Set(prev).add(msg.id)))
+          }
         },
       )
       .on(
@@ -628,6 +664,9 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       .single()
 
     if (msg && eventsToStore.length > 1) {
+      if (hasHiddenEdit(eventsToStore, content)) {
+        setEditedIds((prev) => new Set(prev).add(msg.id))
+      }
       await supabase.from('message_replays').insert({ message_id: msg.id, events: eventsToStore })
     }
   }
@@ -846,7 +885,9 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                   {isReadByOthers(m) ? <IconCheckDouble size={15} /> : <IconCheck size={13} />}
                 </span>
               )}
-              <button type="button" className="replay-btn" onClick={() => openReplay(m)}>replay</button>
+              <button type="button" className="replay-btn" onClick={() => openReplay(m)}>
+                replay{editedIds.has(m.id) && <span className="replay-edited" title="tem coisa diferente do texto final">!</span>}
+              </button>
             </div>
           </div>
           )
