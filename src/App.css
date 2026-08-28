@@ -41,7 +41,7 @@ body{
 
 /* chats column */
 .chats{
-  width:380px;background:#111b21;border-right:1px solid var(--line);
+  width:304px;background:#111b21;border-right:1px solid var(--line);
   display:flex;flex-direction:column;flex-shrink:0;
 }
 .top{
