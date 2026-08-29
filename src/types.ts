@@ -7,6 +7,8 @@ export type Profile = {
   display_name?: string | null
   avatar_url?: string | null
   is_idle?: boolean
+  age?: number | null
+  city?: string | null
 }
 
 export type Conversation = {

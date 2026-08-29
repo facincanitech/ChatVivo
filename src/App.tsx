@@ -105,7 +105,7 @@ function App() {
     if (!session) return
     supabase
       .from('profiles')
-      .select('id, username, email, status, last_seen_at, display_name, avatar_url, is_idle')
+      .select('id, username, email, status, last_seen_at, display_name, avatar_url, is_idle, age, city')
       .eq('id', session.user.id)
       .single()
       .then(({ data }) => setProfile(data as Profile))

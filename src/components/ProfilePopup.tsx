@@ -14,6 +14,8 @@ type ProfileData = {
   status: string | null
   last_seen_at: string | null
   email: string
+  age: number | null
+  city: string | null
 }
 
 type ListPerson = { id: string; username: string; display_name: string | null; avatar_url: string | null }
@@ -52,7 +54,7 @@ export function ProfilePopup({ me, userId, onClose, onOpenCommunity, blockedIds,
     async function load() {
       const { data: p } = await supabase
         .from('profiles')
-        .select('id, username, display_name, avatar_url, status, last_seen_at, email')
+        .select('id, username, display_name, avatar_url, status, last_seen_at, email, age, city')
         .eq('id', currentId)
         .single()
       setProfile((p as ProfileData) || null)
@@ -166,6 +168,13 @@ export function ProfilePopup({ me, userId, onClose, onOpenCommunity, blockedIds,
             <h2>{displayName(profile)}</h2>
             {isRoot && <p style={{ fontSize: '.75rem', color: '#8696a0' }}>{profile.email}</p>}
             <p>{profile.status || 'sem status'}</p>
+            {(profile.age || profile.city) && (
+              <p style={{ fontSize: '.75rem', color: '#8696a0' }}>
+                {profile.age ? `${profile.age} anos` : ''}
+                {profile.age && profile.city ? ' · ' : ''}
+                {profile.city || ''}
+              </p>
+            )}
             <p style={{ fontSize: '.75rem' }}>{formatPresence(profile.last_seen_at)}</p>
 
             <div className="profile-popup-stats">

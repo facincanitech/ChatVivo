@@ -211,6 +211,8 @@ export function ChatList({
   const [usernameDraft, setUsernameDraft] = useState('')
   const [displayNameDraft, setDisplayNameDraft] = useState('')
   const [statusDraft, setStatusDraft] = useState('')
+  const [ageDraft, setAgeDraft] = useState('')
+  const [cityDraft, setCityDraft] = useState('')
   const [accountSaving, setAccountSaving] = useState(false)
   const [accountError, setAccountError] = useState<string | null>(null)
   const [blocked, setBlocked] = useState<BlockedUser[]>([])
@@ -722,6 +724,8 @@ export function ChatList({
       setUsernameDraft(me.username)
       setDisplayNameDraft(me.display_name || '')
       setStatusDraft(me.status || '')
+      setAgeDraft(me.age != null ? String(me.age) : '')
+      setCityDraft(me.city || '')
       setAccountView('root')
       setAccountError(null)
     }
@@ -943,6 +947,25 @@ export function ChatList({
     const status = statusDraft.trim()
     await supabase.from('profiles').update({ status }).eq('id', me.id)
     onProfileChange({ status })
+    setAccountSaving(false)
+  }
+
+  async function saveAge() {
+    if (!me) return
+    setAccountSaving(true)
+    const trimmed = ageDraft.trim()
+    const age = trimmed ? parseInt(trimmed, 10) : null
+    await supabase.from('profiles').update({ age }).eq('id', me.id)
+    onProfileChange({ age })
+    setAccountSaving(false)
+  }
+
+  async function saveCity() {
+    if (!me) return
+    setAccountSaving(true)
+    const city = cityDraft.trim() || null
+    await supabase.from('profiles').update({ city }).eq('id', me.id)
+    onProfileChange({ city })
     setAccountSaving(false)
   }
 
@@ -1440,6 +1463,23 @@ export function ChatList({
               onChange={(e) => setStatusDraft(e.target.value)}
             />
             <button type="button" disabled={accountSaving} onClick={saveStatus}>Salvar status</button>
+
+            <label style={{ marginTop: 10 }}>Idade</label>
+            <input
+              type="number"
+              placeholder="idade"
+              value={ageDraft}
+              onChange={(e) => setAgeDraft(e.target.value)}
+            />
+            <button type="button" disabled={accountSaving} onClick={saveAge}>Salvar idade</button>
+
+            <label style={{ marginTop: 10 }}>Cidade</label>
+            <input
+              placeholder="sua cidade"
+              value={cityDraft}
+              onChange={(e) => setCityDraft(e.target.value)}
+            />
+            <button type="button" disabled={accountSaving} onClick={saveCity}>Salvar cidade</button>
             {accountError && <span className="auth-error">{accountError}</span>}
           </div>
         )}
