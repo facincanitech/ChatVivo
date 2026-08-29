@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { displayName } from '../lib/displayName'
 import { getErrorMessage } from '../lib/errors'
-import { IconArrowLeft, IconSend, IconSmile, IconTrash, IconUser } from './icons'
+import { ReplayPlayer, type ReplayEvent } from './ReplayPlayer'
+import { IconArrowLeft, IconEdit, IconSend, IconSmile, IconUser } from './icons'
 import type { Community, Profile } from '../types'
 
 const REACTION_EMOJIS = ['😀', '😂', '😍', '😭', '🔥', '👍', '🙏', '😡']
+const REPLAY_WINDOW_MS = 20000
 
 type PostAuthor = { username: string; display_name: string | null; avatar_url: string | null }
 
@@ -16,7 +18,8 @@ type Post = {
   content: string | null
   image_url: string | null
   created_at: string
-  deleted_at: string | null
+  edited_at: string | null
+  events: ReplayEvent[] | null
 }
 
 type Comment = {
@@ -25,18 +28,25 @@ type Comment = {
   author_id: string
   content: string
   created_at: string
-  deleted_at: string | null
+  edited_at: string | null
+  events: ReplayEvent[] | null
 }
 
 type Reaction = { post_id: string; user_id: string; emoji: string }
 
-type MemberProfile = { id: string; username: string; display_name: string | null; avatar_url: string | null }
+type MemberProfile = { id: string; username: string; display_name: string | null; avatar_url: string | null; is_editor: boolean }
 
 type Props = {
   me: Profile
   community: Community
   onBack: () => void
   onCommunityUpdate: (patch: Partial<Community>) => void
+}
+
+function recordEvent(bufferRef: React.MutableRefObject<ReplayEvent[]>, text: string) {
+  const now = Date.now()
+  bufferRef.current.push({ t: now, text })
+  bufferRef.current = bufferRef.current.filter((e) => now - e.t <= REPLAY_WINDOW_MS)
 }
 
 export function CommunityView({ me, community, onBack, onCommunityUpdate }: Props) {
@@ -54,19 +64,30 @@ export function CommunityView({ me, community, onBack, onCommunityUpdate }: Prop
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({})
   const [reactionPickerFor, setReactionPickerFor] = useState<string | null>(null)
-  const [revealed, setRevealed] = useState<Set<string>>(new Set())
   const [showInfo, setShowInfo] = useState(false)
   const [editName, setEditName] = useState('')
   const [editImageUrl, setEditImageUrl] = useState('')
   const [infoBusy, setInfoBusy] = useState(false)
   const [infoError, setInfoError] = useState<string | null>(null)
+  const [editingPostId, setEditingPostId] = useState<string | null>(null)
+  const [editPostDraft, setEditPostDraft] = useState('')
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null)
+  const [editCommentDraft, setEditCommentDraft] = useState('')
+  const [replayFor, setReplayFor] = useState<{ events: ReplayEvent[] } | null>(null)
+
+  const newPostEvents = useRef<ReplayEvent[]>([])
+  const editPostEvents = useRef<ReplayEvent[]>([])
+  const commentEventsRef = useRef<Record<string, ReplayEvent[]>>({})
+  const editCommentEvents = useRef<ReplayEvent[]>([])
 
   const isOwner = community.created_by === me.id
+  const myMembership = memberList.find((m) => m.id === me.id)
+  const isManager = isOwner || !!myMembership?.is_editor
 
   async function load() {
     const { data: memberRows } = await supabase
       .from('community_members')
-      .select('user_id')
+      .select('user_id, is_editor')
       .eq('community_id', community.id)
     setMemberCount(memberRows?.length || 0)
     setIsMember(!!memberRows?.some((r) => r.user_id === me.id))
@@ -77,7 +98,13 @@ export function CommunityView({ me, community, onBack, onCommunityUpdate }: Prop
         .from('profiles')
         .select('id, username, display_name, avatar_url')
         .in('id', memberIds)
-      setMemberList((memberProfiles as MemberProfile[]) || [])
+      const editorMap = new Map((memberRows || []).map((r) => [r.user_id as string, !!r.is_editor]))
+      setMemberList(
+        ((memberProfiles as Omit<MemberProfile, 'is_editor'>[]) || []).map((p) => ({
+          ...p,
+          is_editor: editorMap.get(p.id) || false,
+        })),
+      )
     } else {
       setMemberList([])
     }
@@ -86,7 +113,6 @@ export function CommunityView({ me, community, onBack, onCommunityUpdate }: Prop
       .from('community_posts')
       .select('*')
       .eq('community_id', community.id)
-      .is('deleted_at', null)
       .order('created_at', { ascending: false })
     const loadedPosts = (postRows as Post[]) || []
     setPosts(loadedPosts)
@@ -168,6 +194,11 @@ export function CommunityView({ me, community, onBack, onCommunityUpdate }: Prop
     if (userId === me.id) setIsMember(false)
   }
 
+  async function toggleEditor(userId: string, next: boolean) {
+    await supabase.from('community_members').update({ is_editor: next }).eq('community_id', community.id).eq('user_id', userId)
+    setMemberList((prev) => prev.map((m) => (m.id === userId ? { ...m, is_editor: next } : m)))
+  }
+
   async function joinCommunity() {
     await supabase.from('community_members').insert({ community_id: community.id, user_id: me.id })
     setIsMember(true)
@@ -187,9 +218,10 @@ export function CommunityView({ me, community, onBack, onCommunityUpdate }: Prop
     setBusy(true)
     setError(null)
     try {
+      const eventsToStore = newPostEvents.current.length > 1 ? newPostEvents.current : null
       const { data, error: err } = await supabase
         .from('community_posts')
-        .insert({ community_id: community.id, author_id: me.id, content: content || null, image_url: img || null })
+        .insert({ community_id: community.id, author_id: me.id, content: content || null, image_url: img || null, events: eventsToStore })
         .select()
         .single()
       if (err) throw err
@@ -197,6 +229,7 @@ export function CommunityView({ me, community, onBack, onCommunityUpdate }: Prop
       setAuthors((prev) => (prev[me.id] ? prev : { ...prev, [me.id]: { username: me.username, display_name: me.display_name ?? null, avatar_url: me.avatar_url ?? null } }))
       setDraft('')
       setImageUrl('')
+      newPostEvents.current = []
     } catch (err) {
       setError(getErrorMessage(err))
     } finally {
@@ -204,9 +237,23 @@ export function CommunityView({ me, community, onBack, onCommunityUpdate }: Prop
     }
   }
 
-  async function deletePost(postId: string) {
-    await supabase.from('community_posts').update({ deleted_at: new Date().toISOString() }).eq('id', postId)
-    setPosts((prev) => prev.filter((p) => p.id !== postId))
+  function startEditPost(post: Post) {
+    setEditingPostId(post.id)
+    setEditPostDraft(post.content || '')
+    editPostEvents.current = []
+    recordEvent(editPostEvents, post.content || '')
+  }
+
+  async function saveEditPost(postId: string) {
+    const content = editPostDraft.trim()
+    if (!content) return
+    const eventsToStore = editPostEvents.current.length > 1 ? editPostEvents.current : null
+    const edited_at = new Date().toISOString()
+    await supabase.from('community_posts').update({ content, events: eventsToStore, edited_at }).eq('id', postId)
+    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, content, events: eventsToStore, edited_at } : p)))
+    setEditingPostId(null)
+    setEditPostDraft('')
+    editPostEvents.current = []
   }
 
   async function react(postId: string, emoji: string) {
@@ -224,9 +271,11 @@ export function CommunityView({ me, community, onBack, onCommunityUpdate }: Prop
   async function submitComment(postId: string) {
     const content = (commentDrafts[postId] || '').trim()
     if (!content) return
+    const buf = commentEventsRef.current[postId] || []
+    const eventsToStore = buf.length > 1 ? buf : null
     const { data, error: err } = await supabase
       .from('community_comments')
-      .insert({ post_id: postId, author_id: me.id, content })
+      .insert({ post_id: postId, author_id: me.id, content, events: eventsToStore })
       .select()
       .single()
     if (err) {
@@ -236,11 +285,26 @@ export function CommunityView({ me, community, onBack, onCommunityUpdate }: Prop
     setComments((prev) => [...prev, data as Comment])
     setAuthors((prev) => (prev[me.id] ? prev : { ...prev, [me.id]: { username: me.username, display_name: me.display_name ?? null, avatar_url: me.avatar_url ?? null } }))
     setCommentDrafts((prev) => ({ ...prev, [postId]: '' }))
+    commentEventsRef.current[postId] = []
   }
 
-  async function deleteComment(commentId: string) {
-    await supabase.from('community_comments').update({ deleted_at: new Date().toISOString() }).eq('id', commentId)
-    setComments((prev) => prev.map((c) => (c.id === commentId ? { ...c, deleted_at: new Date().toISOString() } : c)))
+  function startEditComment(c: Comment) {
+    setEditingCommentId(c.id)
+    setEditCommentDraft(c.content)
+    editCommentEvents.current = []
+    recordEvent(editCommentEvents, c.content)
+  }
+
+  async function saveEditComment(commentId: string) {
+    const content = editCommentDraft.trim()
+    if (!content) return
+    const eventsToStore = editCommentEvents.current.length > 1 ? editCommentEvents.current : null
+    const edited_at = new Date().toISOString()
+    await supabase.from('community_comments').update({ content, events: eventsToStore, edited_at }).eq('id', commentId)
+    setComments((prev) => prev.map((c) => (c.id === commentId ? { ...c, content, events: eventsToStore, edited_at } : c)))
+    setEditingCommentId(null)
+    setEditCommentDraft('')
+    editCommentEvents.current = []
   }
 
   function toggleExpanded(postId: string) {
@@ -248,15 +312,6 @@ export function CommunityView({ me, community, onBack, onCommunityUpdate }: Prop
       const next = new Set(prev)
       if (next.has(postId)) next.delete(postId)
       else next.add(postId)
-      return next
-    })
-  }
-
-  function toggleReveal(commentId: string) {
-    setRevealed((prev) => {
-      const next = new Set(prev)
-      if (next.has(commentId)) next.delete(commentId)
-      else next.add(commentId)
       return next
     })
   }
@@ -303,7 +358,7 @@ export function CommunityView({ me, community, onBack, onCommunityUpdate }: Prop
             <textarea
               placeholder="Novo tópico..."
               value={draft}
-              onChange={(e) => setDraft(e.target.value)}
+              onChange={(e) => { setDraft(e.target.value); recordEvent(newPostEvents, e.target.value) }}
               rows={2}
             />
             <input
@@ -323,22 +378,45 @@ export function CommunityView({ me, community, onBack, onCommunityUpdate }: Prop
           const postComments = comments.filter((c) => c.post_id === post.id)
           const isExpanded = expanded.has(post.id)
           const myReaction = reactions.find((r) => r.post_id === post.id && r.user_id === me.id)
+          const authorMember = memberList.find((m) => m.id === post.author_id)
           return (
             <div key={post.id} className="community-post">
               <div className="community-post-header">
                 <div className="option-icon"><IconUser size={18} /></div>
                 <div>
-                  <div className="author-label" style={{ marginBottom: 0 }}>{authorLabel(post.author_id)}</div>
-                  <div className="status" style={{ marginTop: 0 }}>{new Date(post.created_at).toLocaleString('pt-BR')}</div>
+                  <div className="author-label" style={{ marginBottom: 0 }}>
+                    {authorLabel(post.author_id)}
+                    {authorMember?.is_editor && <IconEdit size={11} />}
+                  </div>
+                  <div className="status" style={{ marginTop: 0 }}>
+                    {new Date(post.created_at).toLocaleString('pt-BR')}{post.edited_at ? ' (editado)' : ''}
+                  </div>
                 </div>
-                {post.author_id === me.id && (
-                  <button type="button" className="icon-btn" style={{ marginLeft: 'auto' }} onClick={() => deletePost(post.id)} title="Apagar tópico">
-                    <IconTrash size={16} />
+                {post.author_id === me.id && editingPostId !== post.id && (
+                  <button type="button" className="icon-btn" style={{ marginLeft: 'auto' }} onClick={() => startEditPost(post)} title="Editar tópico">
+                    <IconEdit size={16} />
                   </button>
                 )}
               </div>
-              {post.content && <p className="community-post-content">{post.content}</p>}
-              {post.image_url && <img src={post.image_url} alt="" className="community-post-image" />}
+
+              {editingPostId === post.id ? (
+                <div style={{ marginTop: 10 }}>
+                  <textarea
+                    className="edit-message-input"
+                    value={editPostDraft}
+                    onChange={(e) => { setEditPostDraft(e.target.value); recordEvent(editPostEvents, e.target.value) }}
+                    rows={2}
+                    autoFocus
+                  />
+                  <button type="button" className="replay-btn" onClick={() => saveEditPost(post.id)}>salvar</button>
+                  <button type="button" className="replay-btn" onClick={() => setEditingPostId(null)}>cancelar</button>
+                </div>
+              ) : (
+                <>
+                  {post.content && <p className="community-post-content">{post.content}</p>}
+                  {post.image_url && <img src={post.image_url} alt="" className="community-post-image" />}
+                </>
+              )}
 
               <div className="community-post-actions">
                 <div style={{ position: 'relative' }}>
@@ -363,31 +441,46 @@ export function CommunityView({ me, community, onBack, onCommunityUpdate }: Prop
                 <button type="button" className="replay-btn" onClick={() => toggleExpanded(post.id)}>
                   {postComments.length} {postComments.length === 1 ? 'comentário' : 'comentários'}
                 </button>
+                {post.events && (
+                  <button type="button" className="replay-btn" onClick={() => setReplayFor({ events: post.events! })}>replay</button>
+                )}
               </div>
 
               {isExpanded && (
                 <div className="community-comments">
                   {postComments.map((c) => {
-                    const isDeleted = !!c.deleted_at
-                    const isMineToDelete = c.author_id === me.id && !isDeleted
-                    const isRevealed = revealed.has(c.id)
+                    const isMine = c.author_id === me.id
+                    const commentAuthorMember = memberList.find((m) => m.id === c.author_id)
                     return (
                       <div key={c.id} className="community-comment">
-                        <span className="author-label">{authorLabel(c.author_id)}</span>
-                        {isDeleted && !isRevealed ? (
-                          <span className="community-comment-deleted" onClick={() => toggleReveal(c.id)}>
-                            comentário apagado (replay)
+                        <span className="author-label">
+                          {authorLabel(c.author_id)}
+                          {commentAuthorMember?.is_editor && <IconEdit size={10} />}
+                        </span>
+                        {editingCommentId === c.id ? (
+                          <span style={{ display: 'flex', gap: 4, flex: 1 }}>
+                            <input
+                              className="edit-message-input"
+                              style={{ margin: 0 }}
+                              value={editCommentDraft}
+                              onChange={(e) => { setEditCommentDraft(e.target.value); recordEvent(editCommentEvents, e.target.value) }}
+                              autoFocus
+                            />
+                            <button type="button" className="replay-btn" onClick={() => saveEditComment(c.id)}>salvar</button>
+                            <button type="button" className="replay-btn" onClick={() => setEditingCommentId(null)}>cancelar</button>
                           </span>
                         ) : (
-                          <span>{c.content}</span>
-                        )}
-                        {isDeleted && isRevealed && (
-                          <span className="community-comment-deleted-tag">apagado</span>
-                        )}
-                        {isMineToDelete && (
-                          <button type="button" className="icon-btn" onClick={() => deleteComment(c.id)} title="Apagar comentário">
-                            <IconTrash size={13} />
-                          </button>
+                          <>
+                            <span>{c.content}{c.edited_at ? ' (editado)' : ''}</span>
+                            {isMine && (
+                              <button type="button" className="icon-btn" onClick={() => startEditComment(c)} title="Editar comentário">
+                                <IconEdit size={13} />
+                              </button>
+                            )}
+                            {c.events && (
+                              <button type="button" className="replay-btn" onClick={() => setReplayFor({ events: c.events! })}>replay</button>
+                            )}
+                          </>
                         )}
                       </div>
                     )
@@ -397,7 +490,13 @@ export function CommunityView({ me, community, onBack, onCommunityUpdate }: Prop
                       <input
                         placeholder="Comentar..."
                         value={commentDrafts[post.id] || ''}
-                        onChange={(e) => setCommentDrafts((prev) => ({ ...prev, [post.id]: e.target.value }))}
+                        onChange={(e) => {
+                          setCommentDrafts((prev) => ({ ...prev, [post.id]: e.target.value }))
+                          const buf = commentEventsRef.current[post.id] || []
+                          const now = Date.now()
+                          buf.push({ t: now, text: e.target.value })
+                          commentEventsRef.current[post.id] = buf.filter((ev) => now - ev.t <= REPLAY_WINDOW_MS)
+                        }}
                         onKeyDown={(e) => { if (e.key === 'Enter') submitComment(post.id) }}
                       />
                       <button type="button" onClick={() => submitComment(post.id)}><IconSend size={16} /></button>
@@ -410,10 +509,30 @@ export function CommunityView({ me, community, onBack, onCommunityUpdate }: Prop
         })}
       </section>
 
+      {replayFor && (
+        <div className="modal-backdrop" onClick={() => setReplayFor(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <h2>replay</h2>
+            <ReplayPlayer events={replayFor.events} />
+            <button type="button" className="modal-close" onClick={() => setReplayFor(null)}>fechar</button>
+          </div>
+        </div>
+      )}
+
       {showInfo && (
         <div className="modal-backdrop" onClick={() => setShowInfo(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            {isOwner ? (
+            <div className="account-avatar-wrap">
+              <div className="account-avatar" style={{ overflow: 'hidden' }}>
+                {community.image_url ? (
+                  <img src={community.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <IconUser size={40} />
+                )}
+              </div>
+            </div>
+
+            {isManager ? (
               <>
                 <h2>Editar comunidade</h2>
                 <label>Nome</label>
@@ -422,30 +541,9 @@ export function CommunityView({ me, community, onBack, onCommunityUpdate }: Prop
                 <input value={editImageUrl} onChange={(e) => setEditImageUrl(e.target.value)} placeholder="link da imagem" />
                 <button type="button" disabled={infoBusy} onClick={saveCommunityInfo} style={{ marginTop: 10 }}>Salvar</button>
                 {infoError && <span className="auth-error">{infoError}</span>}
-
-                <label style={{ marginTop: 16 }}>Participantes</label>
-                <div className="chat-config-members">
-                  {memberList.map((m) => (
-                    <div key={m.id} className="chat-config-row">
-                      <span>{displayName(m)}{m.id === me.id ? ' (você)' : ''}</span>
-                      {m.id !== me.id && (
-                        <button type="button" onClick={() => removeParticipant(m.id)}>remover</button>
-                      )}
-                    </div>
-                  ))}
-                </div>
               </>
             ) : (
               <>
-                <div className="account-avatar-wrap">
-                  <div className="account-avatar" style={{ overflow: 'hidden' }}>
-                    {community.image_url ? (
-                      <img src={community.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : (
-                      <IconUser size={40} />
-                    )}
-                  </div>
-                </div>
                 <h2>{community.name}</h2>
                 {community.description && <p>{community.description}</p>}
                 <p style={{ fontSize: '.75rem', color: '#8696a0' }}>
@@ -453,6 +551,27 @@ export function CommunityView({ me, community, onBack, onCommunityUpdate }: Prop
                 </p>
               </>
             )}
+
+            <label style={{ marginTop: 16 }}>Participantes</label>
+            <div className="chat-config-members">
+              {memberList.map((m) => (
+                <div key={m.id} className="chat-config-row">
+                  <span>
+                    {displayName(m)}
+                    {m.id === community.created_by ? ' (dono)' : m.is_editor ? ' (editor)' : ''}
+                    {m.id === me.id ? ' (você)' : ''}
+                  </span>
+                  {isOwner && m.id !== community.created_by && (
+                    <span className="chat-config-actions">
+                      <button type="button" onClick={() => toggleEditor(m.id, !m.is_editor)}>
+                        {m.is_editor ? 'tirar editor' : 'tornar editor'}
+                      </button>
+                      <button type="button" onClick={() => removeParticipant(m.id)}>remover</button>
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
             <button type="button" className="modal-close" onClick={() => setShowInfo(false)}>fechar</button>
           </div>
         </div>

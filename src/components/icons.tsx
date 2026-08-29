@@ -54,6 +54,15 @@ export function IconCrown({ size = 20 }: IconProps) {
   )
 }
 
+export function IconEdit({ size = 20 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size}>
+      <path d="M4 20l4-1 11-11-3-3L5 16l-1 4z" />
+      <path d="M14 6l3 3" />
+    </svg>
+  )
+}
+
 export function IconSearch({ size = 20 }: IconProps) {
   return (
     <svg {...base} width={size} height={size}>

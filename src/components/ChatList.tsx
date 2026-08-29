@@ -83,13 +83,15 @@ export function ChatList({
   onSelectCommunity,
 }: Props) {
   const [conversations, setConversations] = useState<ConvWithLabel[]>([])
-  const [groupsView, setGroupsView] = useState<'root' | 'create' | 'community-create' | 'community-search'>('root')
+  const [groupsView, setGroupsView] = useState<'root' | 'group-root' | 'group-create' | 'community-root' | 'community-create' | 'community-search'>('root')
   const [myGroups, setMyGroups] = useState<{ id: string; name: string; role: string | null }[]>([])
   const [newGroupName, setNewGroupName] = useState('')
   const [newGroupDesc, setNewGroupDesc] = useState('')
   const [groupsBusy, setGroupsBusy] = useState(false)
   const [groupsError, setGroupsError] = useState<string | null>(null)
   const [communities, setCommunities] = useState<Community[]>([])
+  const [myCommunities, setMyCommunities] = useState<Community[]>([])
+  const [trendingCommunities, setTrendingCommunities] = useState<(Community & { comment_count: number })[]>([])
   const [newCommunityName, setNewCommunityName] = useState('')
   const [newCommunityDesc, setNewCommunityDesc] = useState('')
   const [newCommunityCategory, setNewCommunityCategory] = useState('')
@@ -264,6 +266,7 @@ export function ChatList({
     loadIncomingRequests()
     loadOutgoingRequests()
     loadFriends()
+    loadCommunities()
     if (!me) return
     const channel = supabase
       .channel(`member-updates:${me.id}`)
@@ -281,6 +284,11 @@ export function ChatList({
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages' },
         () => loadConversations(),
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'communities' },
+        () => loadCommunities(),
       )
       .on(
         'postgres_changes',
@@ -641,6 +649,24 @@ export function ChatList({
     setCommunities((data as Community[]) || [])
   }
 
+  async function loadMyCommunities() {
+    if (!me) return
+    const { data } = await supabase
+      .from('community_members')
+      .select('community:communities(*)')
+      .eq('user_id', me.id)
+    setMyCommunities(
+      (data || [])
+        .map((row) => row.community as unknown as Community)
+        .filter(Boolean),
+    )
+  }
+
+  async function loadTrendingCommunities() {
+    const { data } = await supabase.rpc('get_trending_communities', { p_limit: 5 })
+    setTrendingCommunities((data as (Community & { comment_count: number })[]) || [])
+  }
+
   useEffect(() => {
     if (groupsOpen && me) {
       setGroupsView('root')
@@ -653,6 +679,8 @@ export function ChatList({
       setNewCommunityImageUrl('')
       loadMyGroups()
       loadCommunities()
+      loadMyCommunities()
+      loadTrendingCommunities()
     }
   }, [groupsOpen, me?.id])
 
@@ -1240,7 +1268,12 @@ export function ChatList({
           <button
             type="button"
             className="icon-btn"
-            onClick={() => (groupsView === 'root' ? onGroupsOpenChange(false) : setGroupsView('root'))}
+            onClick={() => {
+              if (groupsView === 'root') { onGroupsOpenChange(false); return }
+              if (groupsView === 'group-create') { setGroupsView('group-root'); return }
+              if (groupsView === 'community-create' || groupsView === 'community-search') { setGroupsView('community-root'); return }
+              setGroupsView('root')
+            }}
           >
             <IconArrowLeft size={20} />
           </button>
@@ -1250,17 +1283,50 @@ export function ChatList({
         {groupsView === 'root' && (
           <>
             <div className="new-conv-list">
-              <div className="new-conv-option" onClick={() => setGroupsView('create')}>
+              <div className="new-conv-option" onClick={() => setGroupsView('group-root')}>
+                <div className="option-icon"><IconGroup size={20} /></div>
+                <span>Grupo</span>
+              </div>
+              <div className="new-conv-option" onClick={() => setGroupsView('community-root')}>
+                <div className="option-icon"><IconHeart size={20} /></div>
+                <span>Comunidade</span>
+              </div>
+            </div>
+            <label style={{ padding: '0 22px', fontSize: '.7rem', color: '#8696a0', textTransform: 'uppercase' }}>
+              Comunidades em alta
+            </label>
+            <div className="chat-list">
+              {trendingCommunities.length === 0 && <div className="empty">Nenhuma comunidade ainda</div>}
+              {trendingCommunities.map((c) => (
+                <div
+                  key={c.id}
+                  className="chat"
+                  onClick={() => {
+                    onGroupsOpenChange(false)
+                    onSelectCommunity(c)
+                  }}
+                >
+                  <div className="photo">
+                    {c.image_url ? <img src={c.image_url} alt="" /> : c.name[0]?.toUpperCase()}
+                  </div>
+                  <div className="chat-info">
+                    <div className="row">
+                      <div className="name">{c.name}</div>
+                    </div>
+                    <div className="preview">{c.comment_count} {c.comment_count === 1 ? 'comentário' : 'comentários'}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {groupsView === 'group-root' && (
+          <>
+            <div className="new-conv-list">
+              <div className="new-conv-option" onClick={() => setGroupsView('group-create')}>
                 <div className="option-icon"><IconGroup size={20} /></div>
                 <span>Criar grupo</span>
-              </div>
-              <div className="new-conv-option" onClick={() => setGroupsView('community-create')}>
-                <div className="option-icon"><IconHeart size={20} /></div>
-                <span>Criar comunidade</span>
-              </div>
-              <div className="new-conv-option" onClick={() => { setCommunityQuery(''); setGroupsView('community-search') }}>
-                <div className="option-icon"><IconSearch size={20} /></div>
-                <span>Buscar comunidades</span>
               </div>
             </div>
             <label style={{ padding: '0 22px', fontSize: '.7rem', color: '#8696a0', textTransform: 'uppercase' }}>
@@ -1286,12 +1352,27 @@ export function ChatList({
                 </div>
               ))}
             </div>
+          </>
+        )}
+
+        {groupsView === 'community-root' && (
+          <>
+            <div className="new-conv-list">
+              <div className="new-conv-option" onClick={() => setGroupsView('community-create')}>
+                <div className="option-icon"><IconHeart size={20} /></div>
+                <span>Criar comunidade</span>
+              </div>
+              <div className="new-conv-option" onClick={() => { setCommunityQuery(''); setGroupsView('community-search') }}>
+                <div className="option-icon"><IconSearch size={20} /></div>
+                <span>Buscar comunidades</span>
+              </div>
+            </div>
             <label style={{ padding: '0 22px', fontSize: '.7rem', color: '#8696a0', textTransform: 'uppercase' }}>
-              Comunidades
+              Minhas comunidades
             </label>
             <div className="chat-list">
-              {communities.length === 0 && <div className="empty">Nenhuma comunidade ainda</div>}
-              {communities.map((c) => (
+              {myCommunities.length === 0 && <div className="empty">Nenhuma comunidade ainda</div>}
+              {myCommunities.map((c) => (
                 <div
                   key={c.id}
                   className="chat"
@@ -1315,7 +1396,7 @@ export function ChatList({
           </>
         )}
 
-        {groupsView === 'create' && (
+        {groupsView === 'group-create' && (
           <div className="new-conv-form">
             <label>Nome do grupo</label>
             <input

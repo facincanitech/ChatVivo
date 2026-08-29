@@ -173,6 +173,12 @@ body{
   align-self:center;margin:0 6px;font-size:10px;color:#8696a0;background:none;
   border:1px solid #34434b;border-radius:4px;cursor:pointer;padding:1px 6px;
 }
+.edit-message-input{
+  width:100%;background:#0b141a;border:1px solid #34434b;border-radius:6px;
+  color:#e9edef;padding:6px 8px;font-family:inherit;font-size:14px;
+  resize:vertical;margin:2px 0 6px;
+}
+.editor-tag{color:#8696a0;display:inline-flex;vertical-align:middle;margin-left:5px}
 .replay-edited{
   color:#e5484d;font-weight:700;margin-left:3px;
 }
