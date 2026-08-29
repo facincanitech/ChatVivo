@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { getErrorMessage } from '../lib/errors'
+import { sanitizeImageUrl } from '../lib/imageUrl'
 import { displayName } from '../lib/displayName'
 import { colorFromId } from '../lib/avatarColor'
 import { APP_VERSION } from '../version'
@@ -732,7 +733,7 @@ export function ChatList({
           name,
           description: newCommunityDesc.trim() || null,
           category: newCommunityCategory.trim() || null,
-          image_url: newCommunityImageUrl.trim() || null,
+          image_url: sanitizeImageUrl(newCommunityImageUrl),
           language: newCommunityLanguage.trim() || null,
           is_private: newCommunityIsPrivate,
           created_by: me.id,
@@ -761,7 +762,7 @@ export function ChatList({
     try {
       const { data: conv, error: convErr } = await supabase
         .from('conversations')
-        .insert({ type: 'group', name, description: newGroupDesc.trim() || null, image_url: newGroupImageUrl.trim() || null, created_by: me.id })
+        .insert({ type: 'group', name, description: newGroupDesc.trim() || null, image_url: sanitizeImageUrl(newGroupImageUrl), created_by: me.id })
         .select()
         .single()
       if (convErr) throw convErr

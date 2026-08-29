@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { displayName } from '../lib/displayName'
+import { sanitizeImageUrl } from '../lib/imageUrl'
 import { getErrorMessage } from '../lib/errors'
 import { ReplayPlayer, type ReplayEvent } from './ReplayPlayer'
 import { IconEdit, IconSend, IconSmile, IconTrash, IconUser } from './icons'
@@ -179,7 +180,7 @@ export function CommunityView({ me, community, activeTab, onCommunityUpdate }: P
     try {
       const patch = {
         name,
-        image_url: editImageUrl.trim() || null,
+        image_url: sanitizeImageUrl(editImageUrl),
         category: editCategory.trim() || null,
         language: editLanguage.trim() || null,
         is_private: editIsPrivate,

@@ -6,6 +6,7 @@ import { formatPresence, getPresenceColor } from '../lib/presence'
 import { getErrorMessage } from '../lib/errors'
 import { displayName } from '../lib/displayName'
 import { colorFromId } from '../lib/avatarColor'
+import { sanitizeImageUrl } from '../lib/imageUrl'
 import { IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconCrown, IconMic, IconPlus, IconSend, IconSmile } from './icons'
 import { ReplayPlayer, type ReplayEvent } from './ReplayPlayer'
 import { ProfilePopup } from './ProfilePopup'
@@ -477,7 +478,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     if (!conversation) return
     setEditBusy(true)
     try {
-      const patch: Partial<Conversation> = { name: editName.trim(), description: editDesc.trim() || null, image_url: editImageUrl.trim() || null }
+      const patch: Partial<Conversation> = { name: editName.trim(), description: editDesc.trim() || null, image_url: sanitizeImageUrl(editImageUrl) }
       if (isRoleGroup) patch.invite_permission = editInvitePermission
       await supabase
         .from('conversations')
