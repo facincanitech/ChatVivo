@@ -1562,6 +1562,9 @@ export function ChatList({
               Quebra de sigilo dessas informações só ocorre mediante requisição jurídica
               (ordem judicial ou solicitação de autoridade competente).
             </p>
+            <p>
+              Contato: facincanitech@gmail.com
+            </p>
           </div>
         )}
 
