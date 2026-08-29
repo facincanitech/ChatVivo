@@ -56,7 +56,9 @@
 }
 [data-theme="contrast"] .in .bubble{border:1px solid #fff}
 [data-theme="contrast"] .out .bubble{border:1px solid #fff}
-*{box-sizing:border-box}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+button{-webkit-tap-highlight-color:transparent;outline:0}
+button:focus,button:focus-visible,button:active{outline:0}
 .app{user-select:none;-webkit-user-select:none}
 input,textarea,.bubble{user-select:text;-webkit-user-select:text}
 *{scrollbar-width:thin;scrollbar-color:var(--scrollbar) transparent}
