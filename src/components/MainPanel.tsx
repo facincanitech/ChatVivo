@@ -815,11 +815,22 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
               className="group-info-avatar"
               style={{
                 cursor: canEditGroupInfo ? 'pointer' : 'default',
-                ...(conversation.image_url && !groupImageFailed ? {} : { background: colorFromId(conversation.id), color: '#fff' }),
+                ...((configView === 'edit' ? editImageUrl : conversation.image_url && !groupImageFailed)
+                  ? {}
+                  : { background: colorFromId(conversation.id), color: '#fff' }),
               }}
-              onClick={() => canEditGroupInfo && configView === 'root' && openGroupEdit()}
+              onClick={() => {
+                if (configView === 'edit') groupImageInputRef.current?.click()
+                else if (canEditGroupInfo && configView === 'root') openGroupEdit()
+              }}
             >
-              {conversation.image_url && !groupImageFailed ? (
+              {configView === 'edit' ? (
+                editImageUrl ? (
+                  <img src={editImageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  'G'
+                )
+              ) : conversation.image_url && !groupImageFailed ? (
                 <img
                   src={conversation.image_url}
                   alt=""
@@ -902,11 +913,6 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
               <div className="new-conv-form" style={{ padding: 0 }}>
                 <input placeholder="nome do grupo" value={editName} onChange={(e) => setEditName(e.target.value)} autoFocus />
                 <input placeholder="descrição" value={editDesc} onChange={(e) => setEditDesc(e.target.value)} />
-                {editImageUrl && (
-                  <div className="group-info-avatar" style={{ width: 64, height: 64, margin: '0 auto' }}>
-                    <img src={editImageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  </div>
-                )}
                 <input ref={groupImageInputRef} type="file" accept="image/*" hidden onChange={uploadGroupImage} />
                 <button type="button" disabled={groupImageUploading} onClick={() => groupImageInputRef.current?.click()}>
                   {groupImageUploading ? 'enviando...' : editImageUrl ? 'Trocar foto' : 'Escolher foto'}
