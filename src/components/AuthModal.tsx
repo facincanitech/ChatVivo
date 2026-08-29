@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Capacitor } from '@capacitor/core'
 import { supabase } from '../lib/supabase'
 
 type Props = {
@@ -10,9 +11,12 @@ export function AuthModal({ onClose }: Props) {
 
   async function handleGoogle() {
     setError(null)
+    const redirectTo = Capacitor.isNativePlatform()
+      ? 'ferus://callback'
+      : `${window.location.origin}${import.meta.env.BASE_URL}`
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}${import.meta.env.BASE_URL}` },
+      options: { redirectTo },
     })
     if (oauthError) setError(oauthError.message)
   }

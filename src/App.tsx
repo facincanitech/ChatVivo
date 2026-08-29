@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
+import { App as CapacitorApp } from '@capacitor/app'
 import { supabase } from './lib/supabase'
 import { Rail } from './components/Rail'
 import { ChatList } from './components/ChatList'
@@ -37,6 +38,22 @@ function App() {
       // ignore
     }
   }, [theme])
+
+  useEffect(() => {
+    const listenerPromise = CapacitorApp.addListener('appUrlOpen', ({ url }) => {
+      const hashIndex = url.indexOf('#')
+      if (hashIndex === -1) return
+      const params = new URLSearchParams(url.slice(hashIndex + 1))
+      const access_token = params.get('access_token')
+      const refresh_token = params.get('refresh_token')
+      if (access_token && refresh_token) {
+        supabase.auth.setSession({ access_token, refresh_token })
+      }
+    })
+    return () => {
+      listenerPromise.then((l) => l.remove())
+    }
+  }, [])
 
   useEffect(() => {
     let hiddenAt: number | null = null
