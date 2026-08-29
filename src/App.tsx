@@ -20,7 +20,7 @@ type Theme = 'dark' | 'light' | 'contrast'
 
 function App() {
   useEffect(() => {
-    document.title = `Ferus v${APP_VERSION}`
+    document.title = `Flux v${APP_VERSION}`
   }, [])
 
   const [theme, setTheme] = useState<Theme>(() => {

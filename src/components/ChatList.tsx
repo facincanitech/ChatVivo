@@ -230,7 +230,7 @@ export function ChatList({
       .eq('user_id', me.id)
       .is('deleted_at', null)
 
-    // grupos dedicados (com role) so aparecem em "Ferus - Grupos", nao na lista de conversas
+    // grupos dedicados (com role) so aparecem em "Flux - Grupos", nao na lista de conversas
     const myRows = (memberRows || []).filter((r) => !r.role)
     const convs = myRows
       .map((row) => row.conversation as unknown as Conversation)
@@ -1073,7 +1073,7 @@ export function ChatList({
       ) : (
         <>
           <div className="top">
-            <div className="brand">Ferus <span className="app-version">v{APP_VERSION}</span></div>
+            <div className="brand">Flux <span className="app-version">v{APP_VERSION}</span></div>
           </div>
 
           <div className="search-wrap">
@@ -1547,7 +1547,7 @@ export function ChatList({
         {accountView === 'terms' && (
           <div className="new-conv-form terms-text">
             <p>
-              O Ferus é fornecido "como está". Não nos responsabilizamos por uso indevido do
+              O Flux é fornecido "como está". Não nos responsabilizamos por uso indevido do
               app por parte dos usuários, incluindo o conteúdo das mensagens trocadas.
             </p>
             <p>
@@ -1602,7 +1602,7 @@ export function ChatList({
           >
             <IconArrowLeft size={20} />
           </button>
-          <div className="brand" style={{ fontSize: 18 }}>Ferus - Grupos</div>
+          <div className="brand" style={{ fontSize: 18 }}>Flux - Grupos</div>
         </div>
 
         {groupsView === 'root' && (
