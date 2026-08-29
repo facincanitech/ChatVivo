@@ -15,6 +15,7 @@ export type Conversation = {
   name: string | null
   description?: string | null
   image_url?: string | null
+  invite_permission?: 'all' | 'owner'
   created_by: string
   created_at: string
 }

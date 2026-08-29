@@ -83,6 +83,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const [editName, setEditName] = useState('')
   const [editDesc, setEditDesc] = useState('')
   const [editImageUrl, setEditImageUrl] = useState('')
+  const [editInvitePermission, setEditInvitePermission] = useState<'all' | 'owner'>('all')
   const [editBusy, setEditBusy] = useState(false)
   const [inviteFriends, setInviteFriends] = useState<{ id: string; username: string; display_name: string | null; avatar_url: string | null; email: string }[]>([])
   const [addError, setAddError] = useState<string | null>(null)
@@ -466,6 +467,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     setEditName(conversation?.name || '')
     setEditDesc(conversation?.description || '')
     setEditImageUrl(conversation?.image_url || '')
+    setEditInvitePermission(conversation?.invite_permission || 'all')
     setShowChatConfig(true)
     setConfigView(canEditGroupInfo ? 'edit' : 'view')
   }
@@ -474,7 +476,8 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     if (!conversation) return
     setEditBusy(true)
     try {
-      const patch = { name: editName.trim(), description: editDesc.trim() || null, image_url: editImageUrl.trim() || null }
+      const patch: Partial<Conversation> = { name: editName.trim(), description: editDesc.trim() || null, image_url: editImageUrl.trim() || null }
+      if (isRoleGroup) patch.invite_permission = editInvitePermission
       await supabase
         .from('conversations')
         .update(patch)
@@ -485,6 +488,8 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       setEditBusy(false)
     }
   }
+
+  const canInvite = !isRoleGroup || conversation?.invite_permission !== 'owner' || myMembership?.role === 'admin'
 
   async function removeMember(targetId: string) {
     if (!conversation || !me) return
@@ -791,30 +796,34 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
             {configView === 'root' && (
               <>
                 <div className="group-info-actions">
-                  <button type="button" onClick={() => { loadInviteFriends(); setConfigView('invite') }}>Convidar amigo</button>
+                  {canInvite && (
+                    <button type="button" onClick={() => { loadInviteFriends(); setConfigView('invite') }}>Convidar amigo</button>
+                  )}
                   {canEditGroupInfo && (
                     <button type="button" onClick={openGroupEdit}>Editar nome/descrição/foto</button>
                   )}
                 </div>
-                <label style={{ fontSize: '.7rem', color: '#8696a0', textTransform: 'uppercase', display: 'block', margin: '14px 0 6px' }}>
+                <label className="group-info-section-label">
                   {Object.keys(members).length} membros
                 </label>
-                <div className="chat-config-members" style={{ maxHeight: 320 }}>
+                <div className="chat-config-members">
                   {Object.entries(members).map(([id, meta]) => (
                     <div key={id} className="chat-config-row">
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                        <span className="photo" style={{ width: 32, height: 32 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                        <div className="photo" style={{ width: 32, height: 32, flexShrink: 0 }}>
                           {meta.avatar_url ? <img src={meta.avatar_url} alt="" /> : (meta.username[0] || '?').toUpperCase()}
+                        </div>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {displayName(meta)}
+                          {isRoleGroup
+                            ? meta.role === 'admin'
+                              ? ' (adm)'
+                              : meta.role === 'moderator'
+                                ? ' (mod)'
+                                : ''
+                            : (meta.added_by === null || meta.is_leader) && <IconCrown size={12} />}
                         </span>
-                        {displayName(meta)}
-                        {isRoleGroup
-                          ? meta.role === 'admin'
-                            ? ' (adm)'
-                            : meta.role === 'moderator'
-                              ? ' (mod)'
-                              : ''
-                          : (meta.added_by === null || meta.is_leader) && <IconCrown size={12} />}
-                      </span>
+                      </div>
                       {id !== me?.id && (
                         <span className="chat-config-actions">
                           {canPromote(meta) && (
@@ -840,6 +849,27 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                 <input placeholder="nome do grupo" value={editName} onChange={(e) => setEditName(e.target.value)} autoFocus />
                 <input placeholder="descrição" value={editDesc} onChange={(e) => setEditDesc(e.target.value)} />
                 <input placeholder="link da imagem" value={editImageUrl} onChange={(e) => setEditImageUrl(e.target.value)} />
+                {isRoleGroup && (
+                  <>
+                    <label className="group-info-section-label" style={{ marginTop: 6 }}>Quem pode convidar</label>
+                    <div className="theme-picker">
+                      <button
+                        type="button"
+                        className={`theme-option${editInvitePermission === 'all' ? ' active' : ''}`}
+                        onClick={() => setEditInvitePermission('all')}
+                      >
+                        Todos
+                      </button>
+                      <button
+                        type="button"
+                        className={`theme-option${editInvitePermission === 'owner' ? ' active' : ''}`}
+                        onClick={() => setEditInvitePermission('owner')}
+                      >
+                        Só o dono
+                      </button>
+                    </div>
+                  </>
+                )}
                 <button type="button" disabled={editBusy} onClick={saveGroupInfo}>Salvar</button>
                 <button type="button" onClick={() => setConfigView('root')}>voltar</button>
               </div>
@@ -849,7 +879,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
             )}
             {configView === 'invite' && (
               <>
-                <div className="chat-config-members" style={{ maxHeight: 320, marginTop: 10 }}>
+                <div className="chat-config-members">
                   {inviteFriends.filter((f) => !members[f.id]).length === 0 && (
                     <span style={{ fontSize: '.8rem', color: '#8696a0' }}>
                       {inviteFriends.length === 0 ? 'você ainda não tem amigos' : 'todos os seus amigos já estão aqui'}
@@ -857,12 +887,12 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                   )}
                   {inviteFriends.filter((f) => !members[f.id]).map((f) => (
                     <div key={f.id} className="chat-config-row" style={{ cursor: addBusy ? 'default' : 'pointer' }} onClick={() => !addBusy && addMember(f)}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span className="photo" style={{ width: 32, height: 32 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                        <div className="photo" style={{ width: 32, height: 32, flexShrink: 0 }}>
                           {f.avatar_url ? <img src={f.avatar_url} alt="" /> : (f.username[0] || '?').toUpperCase()}
-                        </span>
-                        {displayName(f)}
-                      </span>
+                        </div>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName(f)}</span>
+                      </div>
                     </div>
                   ))}
                 </div>

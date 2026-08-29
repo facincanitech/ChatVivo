@@ -307,6 +307,10 @@ body{
   color:var(--text-secondary);cursor:pointer;font-size:13px;
 }
 .group-info-actions button:hover{background:var(--bg-surface-2)}
+.group-info-section-label{
+  font-size:.7rem;color:var(--muted);text-transform:uppercase;display:block;
+  margin:14px 0 6px;text-align:left;
+}
 .modal-card p{color:var(--muted);font-size:.85rem;margin:0 0 18px}
 .google-btn{
   width:100%;padding:12px;border-radius:8px;border:1px solid var(--line-2);
@@ -476,7 +480,7 @@ body{
   padding:8px;border-radius:6px;border:0;background:var(--green);color:#fff;
   font-weight:600;cursor:pointer;
 }
-.chat-config-members{display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto}
+.chat-config-members{display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto;text-align:left}
 .chat-config-row{
   display:flex;align-items:center;justify-content:space-between;gap:6px;
   font-size:.8rem;padding:4px 0;border-bottom:1px solid var(--line);
