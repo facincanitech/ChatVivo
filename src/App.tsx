@@ -30,7 +30,7 @@ function App() {
     } catch {
       // ignore
     }
-    return 'dark'
+    return 'light'
   })
 
   useEffect(() => {
