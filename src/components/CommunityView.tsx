@@ -80,6 +80,7 @@ export function CommunityView({ me, community, activeTab, onCommunityUpdate, onD
   const [editImageUrl, setEditImageUrl] = useState('')
   const [imageUploading, setImageUploading] = useState(false)
   const [showMembers, setShowMembers] = useState(false)
+  const [confirmDeleteCommunity, setConfirmDeleteCommunity] = useState(false)
   const imageInputRef = useRef<HTMLInputElement>(null)
   const [editCategory, setEditCategory] = useState('')
   const [editLanguage, setEditLanguage] = useState('')
@@ -180,6 +181,7 @@ export function CommunityView({ me, community, activeTab, onCommunityUpdate, onD
     setEditLanguage(community.language || '')
     setEditIsPrivate(community.is_private)
     setInfoError(null)
+    setConfirmDeleteCommunity(false)
   }, [community.id, community.name, community.image_url, community.category, community.language, community.is_private])
 
   function authorLabel(id: string): string {
@@ -229,7 +231,6 @@ export function CommunityView({ me, community, activeTab, onCommunityUpdate, onD
   }
 
   async function deleteCommunity() {
-    if (!window.confirm('Excluir essa comunidade pra sempre? Isso apaga todos os tópicos, comentários e a lista de participantes. Não dá pra desfazer.')) return
     setInfoBusy(true)
     try {
       await supabase.from('communities').delete().eq('id', community.id)
@@ -581,11 +582,6 @@ export function CommunityView({ me, community, activeTab, onCommunityUpdate, onD
             <div className="community-composer">
               <label>Nome</label>
               <input value={editName} onChange={(e) => setEditName(e.target.value)} />
-              <label style={{ marginTop: 8 }}>Foto</label>
-              <input ref={imageInputRef} type="file" accept="image/*" hidden onChange={uploadCommunityImage} />
-              <button type="button" disabled={imageUploading} onClick={() => imageInputRef.current?.click()}>
-                {imageUploading ? 'enviando...' : editImageUrl ? 'Trocar foto' : 'Escolher foto'}
-              </button>
               <label style={{ marginTop: 8 }}>Categoria</label>
               <select value={editCategory} onChange={(e) => setEditCategory(e.target.value)}>
                 <option value="">categoria</option>
@@ -599,15 +595,29 @@ export function CommunityView({ me, community, activeTab, onCommunityUpdate, onD
                 <input type="checkbox" checked={editIsPrivate} onChange={(e) => setEditIsPrivate(e.target.checked)} style={{ width: 'auto' }} />
                 Comunidade particular (só membros veem tópicos e comentários)
               </label>
+              <input ref={imageInputRef} type="file" accept="image/*" hidden onChange={uploadCommunityImage} />
+              <button type="button" disabled={imageUploading} onClick={() => imageInputRef.current?.click()} style={{ marginTop: 8 }}>
+                {imageUploading ? 'enviando...' : 'Trocar imagem da comunidade'}
+              </button>
               <p className="status" style={{ margin: '4px 0 0' }}>
                 criada em {new Date(community.created_at).toLocaleDateString('pt-BR')}
               </p>
               <button type="button" disabled={infoBusy} onClick={saveCommunityInfo} style={{ marginTop: 8 }}>Salvar</button>
               {infoError && <span className="auth-error">{infoError}</span>}
-              {isOwner && (
-                <button type="button" className="danger" disabled={infoBusy} onClick={deleteCommunity} style={{ marginTop: 8 }}>
+              {isOwner && !confirmDeleteCommunity && (
+                <button type="button" className="danger" disabled={infoBusy} onClick={() => setConfirmDeleteCommunity(true)} style={{ marginTop: 8 }}>
                   Excluir comunidade
                 </button>
+              )}
+              {isOwner && confirmDeleteCommunity && (
+                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                  <button type="button" className="danger" disabled={infoBusy} onClick={deleteCommunity}>
+                    Confirmar exclusão
+                  </button>
+                  <button type="button" disabled={infoBusy} onClick={() => setConfirmDeleteCommunity(false)}>
+                    cancelar
+                  </button>
+                </div>
               )}
             </div>
           ) : (

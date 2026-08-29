@@ -89,6 +89,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const [editInvitePermission, setEditInvitePermission] = useState<'all' | 'owner'>('all')
   const [groupImageUploading, setGroupImageUploading] = useState(false)
   const [groupImageFailed, setGroupImageFailed] = useState(false)
+  const [confirmDeleteGroup, setConfirmDeleteGroup] = useState(false)
   const groupImageInputRef = useRef<HTMLInputElement>(null)
   const [editBusy, setEditBusy] = useState(false)
   const [inviteFriends, setInviteFriends] = useState<{ id: string; username: string; display_name: string | null; avatar_url: string | null; email: string }[]>([])
@@ -134,6 +135,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     setEditedIds(new Set())
     setShowChatConfig(false)
     setConfigView('root')
+    setConfirmDeleteGroup(false)
     if (!conversation || !me) return
 
     let cancelled = false
@@ -516,7 +518,6 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
 
   async function deleteGroup() {
     if (!conversation) return
-    if (!window.confirm('Excluir esse grupo pra sempre? Isso apaga o grupo, o histórico e remove todo mundo. Não dá pra desfazer.')) return
     setEditBusy(true)
     try {
       await supabase.from('conversations').delete().eq('id', conversation.id)
@@ -953,10 +954,20 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                 )}
                 <button type="button" disabled={editBusy} onClick={saveGroupInfo}>Salvar</button>
                 <button type="button" onClick={() => setConfigView('root')}>voltar</button>
-                {conversation.created_by === me?.id && (
-                  <button type="button" className="danger" disabled={editBusy} onClick={deleteGroup} style={{ marginTop: 10 }}>
+                {conversation.created_by === me?.id && !confirmDeleteGroup && (
+                  <button type="button" className="danger" disabled={editBusy} onClick={() => setConfirmDeleteGroup(true)} style={{ marginTop: 10 }}>
                     Excluir grupo
                   </button>
+                )}
+                {conversation.created_by === me?.id && confirmDeleteGroup && (
+                  <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                    <button type="button" className="danger" disabled={editBusy} onClick={deleteGroup}>
+                      Confirmar exclusão
+                    </button>
+                    <button type="button" disabled={editBusy} onClick={() => setConfirmDeleteGroup(false)}>
+                      cancelar
+                    </button>
+                  </div>
                 )}
               </div>
             )}
