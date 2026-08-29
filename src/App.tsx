@@ -10,6 +10,7 @@ import { AuthModal } from './components/AuthModal'
 import type { Community, Conversation, PanelView, Profile } from './types'
 import { APP_VERSION } from './version'
 import { playNudgeSound, triggerNudgeShake } from './lib/nudge'
+import { playWinkEffect } from './lib/winks'
 import './App.css'
 
 type Theme = 'dark' | 'light' | 'contrast'
@@ -224,6 +225,11 @@ function App() {
         setTimeout(() => {
           setNudgers((prev) => prev.filter((n) => n.conversationId !== conversationId))
         }, 600000)
+      })
+      .on('broadcast', { event: 'wink' }, ({ payload }) => {
+        const { conversationId, winkId } = payload as { conversationId?: string; winkId?: string }
+        if (conversationId && mutedIdsRef.current.has(conversationId)) return
+        if (winkId) playWinkEffect(winkId)
       })
       .subscribe()
     return () => {

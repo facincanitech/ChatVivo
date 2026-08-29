@@ -2,13 +2,14 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { playNudgeSound, triggerNudgeShake } from '../lib/nudge'
+import { WINKS, playWinkEffect } from '../lib/winks'
 import { formatPresence, getPresenceColor } from '../lib/presence'
 import { getErrorMessage } from '../lib/errors'
 import { displayName } from '../lib/displayName'
 import { colorFromId } from '../lib/avatarColor'
 import { sanitizeImageUrl } from '../lib/imageUrl'
 import { uploadImage } from '../lib/uploadImage'
-import { IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconCrown, IconMic, IconPlus, IconSend, IconSmile } from './icons'
+import { IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconCrown, IconHeart, IconMic, IconPlus, IconSend, IconSmile } from './icons'
 import { ReplayPlayer, type ReplayEvent } from './ReplayPlayer'
 import { ProfilePopup } from './ProfilePopup'
 import type { Community, Conversation, Message, Profile } from '../types'
@@ -77,6 +78,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const [liveTyping, setLiveTyping] = useState<Record<string, string>>({})
   const [liveMedia, setLiveMedia] = useState<Record<string, string>>({})
   const [showEmoji, setShowEmoji] = useState(false)
+  const [showWinks, setShowWinks] = useState(false)
   const [recording, setRecording] = useState(false)
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
   const [replayFor, setReplayFor] = useState<Message | null>(null)
@@ -349,6 +351,28 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
               type: 'broadcast',
               event: 'nudge',
               payload: { userId: me.id, conversationId: conversation.id },
+            })
+            setTimeout(() => supabase.removeChannel(personalChannel), 1000)
+          }
+        })
+      })
+  }
+
+  function sendWink(winkId: string) {
+    if (!me || !conversation) return
+    setShowWinks(false)
+    playWinkEffect(winkId)
+
+    Object.keys(members)
+      .filter((id) => id !== me.id)
+      .forEach((id) => {
+        const personalChannel = supabase.channel(`nudge:${id}`)
+        personalChannel.subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            personalChannel.send({
+              type: 'broadcast',
+              event: 'wink',
+              payload: { userId: me.id, conversationId: conversation.id, winkId },
             })
             setTimeout(() => supabase.removeChannel(personalChannel), 1000)
           }
@@ -1085,6 +1109,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
             <IconMic size={20} />
           </button>
           <button type="button" className="compose-btn" title="Chamar atenção" onClick={sendNudge}><IconBell size={20} /></button>
+          <button type="button" className="compose-btn" title="Mandar um wink" onClick={() => setShowWinks((v) => !v)}><IconHeart size={20} /></button>
           <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handleFileChange} />
         </div>
         <div className="composer-input-row">
@@ -1111,6 +1136,16 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                 onClick={() => appendEmoji(e)}
               >
                 {e}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {showWinks && (
+          <div className="emoji-picker wink-picker">
+            {WINKS.map((w) => (
+              <button key={w.id} type="button" title={w.label} onClick={() => sendWink(w.id)}>
+                {w.emoji}
               </button>
             ))}
           </div>
