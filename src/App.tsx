@@ -319,6 +319,7 @@ function App() {
           blockedIds={blockedIds}
           onBack={() => setSelected(null)}
           onConversationUpdate={(patch) => setSelected((c) => (c ? { ...c, ...patch } : c))}
+          onOpenCommunity={(c) => { setSelected(null); setCommunityTab('home'); setSelectedCommunity(c) }}
         />
       )}
       {authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}

@@ -5,9 +5,10 @@ import { playNudgeSound, triggerNudgeShake } from '../lib/nudge'
 import { formatPresence, getPresenceColor } from '../lib/presence'
 import { getErrorMessage } from '../lib/errors'
 import { displayName } from '../lib/displayName'
-import { IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconCrown, IconMic, IconMore, IconPlus, IconSend, IconSmile, IconUser } from './icons'
+import { IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconCrown, IconMic, IconPlus, IconSend, IconSmile } from './icons'
 import { ReplayPlayer, type ReplayEvent } from './ReplayPlayer'
-import type { Conversation, Message, Profile } from '../types'
+import { ProfilePopup } from './ProfilePopup'
+import type { Community, Conversation, Message, Profile } from '../types'
 
 const EMOJIS = ['😀', '😂', '😍', '😭', '🔥', '👍', '🙏', '😡', '💀', '❤️']
 const REPLAY_WINDOW_MS = 20000
@@ -63,9 +64,10 @@ type Props = {
   onBack: () => void
   onConversationUpdate: (patch: Partial<Conversation>) => void
   blockedIds: Set<string>
+  onOpenCommunity: (c: Community) => void
 }
 
-export function MainPanel({ me, conversation, onBack, onConversationUpdate, blockedIds }: Props) {
+export function MainPanel({ me, conversation, onBack, onConversationUpdate, blockedIds, onOpenCommunity }: Props) {
   const [messages, setMessages] = useState<Message[]>([])
   const [members, setMembers] = useState<Record<string, MemberMeta>>({})
   const [draft, setDraft] = useState('')
@@ -97,30 +99,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const [addError, setAddError] = useState<string | null>(null)
   const [addBusy, setAddBusy] = useState(false)
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
-  const [profilePopup, setProfilePopup] = useState<{ id: string; meta: MemberMeta } | null>(null)
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
-  const [friendRequestState, setFriendRequestState] = useState<'idle' | 'sent' | 'friends' | 'error'>('idle')
-  const [friendRequestLoading, setFriendRequestLoading] = useState(false)
-  useEffect(() => {
-    setFriendRequestState('idle')
-    if (!me || !profilePopup) {
-      setFriendRequestLoading(false)
-      return
-    }
-    setFriendRequestLoading(true)
-    supabase
-      .from('friend_requests')
-      .select('status, from_id')
-      .or(`and(from_id.eq.${me.id},to_id.eq.${profilePopup.id}),and(from_id.eq.${profilePopup.id},to_id.eq.${me.id})`)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data) {
-          if (data.status === 'accepted') setFriendRequestState('friends')
-          else if (data.status === 'pending' && data.from_id === me.id) setFriendRequestState('sent')
-        }
-        setFriendRequestLoading(false)
-      })
-  }, [profilePopup?.id, me?.id])
+  const [profilePopupId, setProfilePopupId] = useState<string | null>(null)
   const [atBottom, setAtBottom] = useState(true)
   const [nudgeFrom, setNudgeFrom] = useState<string | null>(null)
   const [editedIds, setEditedIds] = useState<Set<string>>(new Set())
@@ -349,31 +328,11 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     channelRef.current?.send({ type: 'broadcast', event: 'typing', payload: { userId: me.id, text } })
   }
 
-  async function sendFriendFromPopup() {
-    if (!me || !profilePopup) return
-    const { error: reqErr } = await supabase
-      .from('friend_requests')
-      .insert({ from_id: me.id, to_id: profilePopup.id })
-    if (reqErr && !reqErr.message.includes('duplicate')) {
-      setFriendRequestState('error')
-      return
-    }
-    if (reqErr) {
-      await supabase
-        .from('friend_requests')
-        .update({ status: 'pending' })
-        .eq('from_id', me.id)
-        .eq('to_id', profilePopup.id)
-    }
-    setFriendRequestState('sent')
-  }
-
-  async function blockFromPopup() {
-    if (!me || !profilePopup) return
-    await supabase.from('blocks').insert({ blocker_id: me.id, blocked_id: profilePopup.id })
-    setProfileMenuOpen(false)
-    setProfilePopup(null)
-    onBack()
+  async function blockUser(userId: string) {
+    if (!me) return
+    await supabase.from('blocks').insert({ blocker_id: me.id, blocked_id: userId })
+    setProfilePopupId(null)
+    if (conversation?.type === 'dm' && userId === otherMemberEntry?.[0]) onBack()
   }
 
   function sendNudge() {
@@ -822,7 +781,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       <header className="chat-header">
         <div
           style={{ position: 'relative', cursor: otherMember ? 'pointer' : 'default' }}
-          onClick={() => otherMember && me && setProfilePopup({ id: otherMemberEntry![0], meta: otherMember })}
+          onClick={() => otherMember && me && setProfilePopupId(otherMemberEntry![0])}
         >
           <div className="header-photo" style={{ overflow: 'hidden' }}>
             {otherMember?.avatar_url ? (
@@ -839,7 +798,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
           <div
             className="header-name"
             style={{ cursor: otherMember ? 'pointer' : 'default' }}
-            onClick={() => otherMember && me && setProfilePopup({ id: otherMemberEntry![0], meta: otherMember })}
+            onClick={() => otherMember && me && setProfilePopupId(otherMemberEntry![0])}
           >
             {displayTitle}
             {isOrganicGroup && <span className="grupal-badge">Grupo</span>}
@@ -950,7 +909,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                     <span
                       className="author-label"
                       style={{ cursor: members[m.author_id] ? 'pointer' : 'default' }}
-                      onClick={() => members[m.author_id] && setProfilePopup({ id: m.author_id, meta: members[m.author_id] })}
+                      onClick={() => members[m.author_id] && setProfilePopupId(m.author_id)}
                     >
                       {members[m.author_id] ? displayName(members[m.author_id]) : '...'}
                     </span>
@@ -1084,47 +1043,15 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
         </div>
       )}
 
-      {profilePopup && (
-        <div className="modal-backdrop" onClick={() => setProfilePopup(null)}>
-          <div className="modal-card" style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
-            <button
-              type="button"
-              className="icon-btn"
-              style={{ position: 'absolute', top: 8, right: 8 }}
-              onClick={() => setProfileMenuOpen((v) => !v)}
-            >
-              <IconMore size={18} />
-            </button>
-            {profileMenuOpen && (
-              <div className="request-menu" style={{ top: 40, right: 8 }}>
-                <button type="button" onClick={blockFromPopup}>Bloquear</button>
-              </div>
-            )}
-            <div className="account-avatar-wrap">
-              <div className="account-avatar" style={{ overflow: 'hidden' }}>
-                {profilePopup.meta.avatar_url ? (
-                  <img src={profilePopup.meta.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  <IconUser size={40} />
-                )}
-              </div>
-            </div>
-            <h2>{displayName(profilePopup.meta)}</h2>
-            <p style={{ fontSize: '.75rem', color: '#8696a0' }}>{profilePopup.meta.email}</p>
-            <p>{profilePopup.meta.status || 'sem status'}</p>
-            <p style={{ fontSize: '.75rem' }}>{formatPresence(profilePopup.meta.last_seen_at)}</p>
-            {friendRequestLoading ? null : friendRequestState === 'friends' ? (
-              <p style={{ fontSize: '.75rem', color: '#a9e7d8' }}>✓ Amigos</p>
-            ) : friendRequestState === 'sent' ? (
-              <p style={{ fontSize: '.75rem', color: '#a9e7d8' }}>solicitação de amizade enviada</p>
-            ) : (
-              <button type="button" className="google-btn" onClick={sendFriendFromPopup}>
-                <IconPlus size={14} /> Amigar
-              </button>
-            )}
-            <button type="button" className="modal-close" onClick={() => setProfilePopup(null)}>fechar</button>
-          </div>
-        </div>
+      {profilePopupId && me && (
+        <ProfilePopup
+          me={me}
+          userId={profilePopupId}
+          onClose={() => setProfilePopupId(null)}
+          onOpenCommunity={onOpenCommunity}
+          blockedIds={blockedIds}
+          onBlock={blockUser}
+        />
       )}
     </main>
   )
