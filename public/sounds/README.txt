@@ -5,7 +5,6 @@ wink-laugh.mp3
 wink-kiss.mp3
 wink-confetti.mp3
 wink-shock.mp3
-wink-fire.mp3
 wink-splash.mp3
 
 Se um arquivo nao existir ou nao carregar, o app cai automaticamente no beep padrao do nudge - nao quebra nada.

@@ -1,6 +1,6 @@
 import { playNudgeSound } from './nudge'
 
-export type WinkId = 'heart' | 'laugh' | 'kiss' | 'confetti' | 'shock' | 'fire' | 'splash'
+export type WinkId = 'heart' | 'laugh' | 'kiss' | 'confetti' | 'shock' | 'splash'
 
 type WinkEffect = 'mark' | 'flash' | 'bounce' | 'shake' | 'burst'
 
@@ -12,7 +12,6 @@ export const WINKS: WinkDef[] = [
   { id: 'kiss', emoji: '😘', label: 'Beijo', effect: 'mark', color: 'rgba(219,39,119,.55)' },
   { id: 'confetti', emoji: '🎉', label: 'Confete', effect: 'burst' },
   { id: 'shock', emoji: '😱', label: 'Susto', effect: 'shake' },
-  { id: 'fire', emoji: '🔥', label: 'Fogo', effect: 'flash', color: 'rgba(255,111,0,.5)' },
   { id: 'splash', emoji: '🪣', label: 'Baldaço', effect: 'flash', color: 'rgba(56,139,253,.5)', particleEmoji: '💧' },
 ]
 
