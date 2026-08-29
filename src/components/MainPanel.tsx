@@ -94,8 +94,9 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const [configView, setConfigView] = useState<'root' | 'invite' | 'edit'>('root')
   const [editName, setEditName] = useState('')
   const [editDesc, setEditDesc] = useState('')
+  const [editImageUrl, setEditImageUrl] = useState('')
   const [editBusy, setEditBusy] = useState(false)
-  const [addEmail, setAddEmail] = useState('')
+  const [inviteFriends, setInviteFriends] = useState<{ id: string; username: string; display_name: string | null; avatar_url: string | null; email: string }[]>([])
   const [addError, setAddError] = useState<string | null>(null)
   const [addBusy, setAddBusy] = useState(false)
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
@@ -374,37 +375,25 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     await supabase.from('messages').insert({ conversation_id: conversation.id, author_id: me.id, content, kind: 'system' })
   }
 
-  async function addMember() {
+  async function loadInviteFriends() {
+    if (!me) return
+    const { data } = await supabase
+      .from('friend_requests')
+      .select(
+        'from_id, to_id, from_profile:profiles!friend_requests_from_id_fkey(id, username, display_name, avatar_url, email), to_profile:profiles!friend_requests_to_id_fkey(id, username, display_name, avatar_url, email)',
+      )
+      .eq('status', 'accepted')
+      .or(`from_id.eq.${me.id},to_id.eq.${me.id}`)
+    setInviteFriends(
+      (data || []).map((row: any) => (row.from_id === me.id ? row.to_profile : row.from_profile)),
+    )
+  }
+
+  async function addMember(target: { id: string; username: string; email?: string; display_name?: string | null; avatar_url?: string | null }) {
     if (!me || !conversation) return
-    const input = addEmail.trim()
-    if (!input) return
     setAddBusy(true)
     setAddError(null)
     try {
-      let target: { id: string; username: string; email?: string } | undefined
-
-      if (input.startsWith('@')) {
-        const handle = input.slice(1)
-        const { data, error: findErr } = await supabase
-          .from('profiles')
-          .select('id, username, email')
-          .or(`username.ilike.${handle},display_name.ilike.${handle}`)
-          .limit(1)
-        if (findErr) throw findErr
-        target = data?.[0] || undefined
-      } else {
-        const { data: found, error: findErr } = await supabase.rpc('find_profile_by_email', {
-          p_email: input.toLowerCase(),
-        })
-        if (findErr) throw findErr
-        target = found?.[0]
-      }
-
-      if (!target) {
-        setAddError('Essa pessoa ainda não tem conta no Ferus')
-        return
-      }
-
       const isRoleGroup = !!members[me.id]?.role
       const { error: memberErr } = await supabase
         .from('conversation_members')
@@ -423,11 +412,11 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
 
       setMembers((prev) => ({
         ...prev,
-        [target!.id]: {
-          username: target!.username,
-          display_name: null,
-          email: target!.email || input,
-          avatar_url: null,
+        [target.id]: {
+          username: target.username,
+          display_name: target.display_name ?? null,
+          email: target.email || '',
+          avatar_url: target.avatar_url ?? null,
           status: null,
           last_seen_at: null,
           is_idle: false,
@@ -456,7 +445,6 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
 
       await postSystemMessage(`${displayName(me)} adicionou ${target.username} ao chat`)
 
-      setAddEmail('')
       setConfigView('root')
     } catch (err) {
       setAddError(getErrorMessage(err))
@@ -489,15 +477,24 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     return target.added_by !== null && canManageMembers && !!target.is_leader
   }
 
+  function openGroupEdit() {
+    setEditName(conversation?.name || '')
+    setEditDesc(conversation?.description || '')
+    setEditImageUrl(conversation?.image_url || '')
+    setShowChatConfig(true)
+    setConfigView('edit')
+  }
+
   async function saveGroupInfo() {
     if (!conversation) return
     setEditBusy(true)
     try {
+      const patch = { name: editName.trim(), description: editDesc.trim() || null, image_url: editImageUrl.trim() || null }
       await supabase
         .from('conversations')
-        .update({ name: editName.trim(), description: editDesc.trim() || null })
+        .update(patch)
         .eq('id', conversation.id)
-      onConversationUpdate({ name: editName.trim() })
+      onConversationUpdate(patch)
       setConfigView('root')
     } finally {
       setEditBusy(false)
@@ -780,12 +777,17 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     <main className="main">
       <header className="chat-header">
         <div
-          style={{ position: 'relative', cursor: otherMember ? 'pointer' : 'default' }}
-          onClick={() => otherMember && me && setProfilePopupId(otherMemberEntry![0])}
+          style={{ position: 'relative', cursor: otherMember || isRoleGroup ? 'pointer' : 'default' }}
+          onClick={() => {
+            if (otherMember && me) setProfilePopupId(otherMemberEntry![0])
+            else if (isRoleGroup) openGroupEdit()
+          }}
         >
           <div className="header-photo" style={{ overflow: 'hidden' }}>
             {otherMember?.avatar_url ? (
               <img src={otherMember.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : !otherMember && conversation.image_url ? (
+              <img src={conversation.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : (
               title[0]?.toUpperCase()
             )}
@@ -797,8 +799,11 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
         <div className="header-text">
           <div
             className="header-name"
-            style={{ cursor: otherMember ? 'pointer' : 'default' }}
-            onClick={() => otherMember && me && setProfilePopupId(otherMemberEntry![0])}
+            style={{ cursor: otherMember || isRoleGroup ? 'pointer' : 'default' }}
+            onClick={() => {
+            if (otherMember && me) setProfilePopupId(otherMemberEntry![0])
+            else if (isRoleGroup) openGroupEdit()
+          }}
           >
             {displayTitle}
             {isOrganicGroup && <span className="grupal-badge">Grupo</span>}
@@ -856,7 +861,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                       </div>
                     ))}
                   </div>
-                  <button type="button" onClick={() => setConfigView('invite')}>Convidar amigo</button>
+                  <button type="button" onClick={() => { loadInviteFriends(); setConfigView('invite') }}>Convidar amigo</button>
                   {isRoleGroup && (myMembership?.role === 'admin' || myMembership?.role === 'moderator') && (
                     <button
                       type="button"
@@ -871,19 +876,30 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                 <>
                   <input placeholder="nome do grupo" value={editName} onChange={(e) => setEditName(e.target.value)} autoFocus />
                   <input placeholder="descrição" value={editDesc} onChange={(e) => setEditDesc(e.target.value)} />
+                  <input placeholder="link da imagem" value={editImageUrl} onChange={(e) => setEditImageUrl(e.target.value)} />
                   <button type="button" disabled={editBusy} onClick={saveGroupInfo}>Salvar</button>
                   <button type="button" onClick={() => setConfigView('root')}>voltar</button>
                 </>
               )}
               {configView === 'invite' && (
                 <>
-                  <input
-                    placeholder="email ou @usuário"
-                    value={addEmail}
-                    onChange={(e) => setAddEmail(e.target.value)}
-                    autoFocus
-                  />
-                  <button type="button" disabled={addBusy} onClick={addMember}>Adicionar</button>
+                  <div className="chat-config-members" style={{ maxHeight: 260 }}>
+                    {inviteFriends.filter((f) => !members[f.id]).length === 0 && (
+                      <span style={{ fontSize: '.8rem', color: '#8696a0' }}>
+                        {inviteFriends.length === 0 ? 'você ainda não tem amigos' : 'todos os seus amigos já estão aqui'}
+                      </span>
+                    )}
+                    {inviteFriends.filter((f) => !members[f.id]).map((f) => (
+                      <div key={f.id} className="chat-config-row" style={{ cursor: addBusy ? 'default' : 'pointer' }} onClick={() => !addBusy && addMember(f)}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span className="photo" style={{ width: 28, height: 28 }}>
+                            {f.avatar_url ? <img src={f.avatar_url} alt="" /> : (f.username[0] || '?').toUpperCase()}
+                          </span>
+                          {displayName(f)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                   <button type="button" onClick={() => setConfigView('root')}>voltar</button>
                 </>
               )}

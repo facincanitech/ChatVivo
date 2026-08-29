@@ -96,9 +96,10 @@ export function ChatList({
 }: Props) {
   const [conversations, setConversations] = useState<ConvWithLabel[]>([])
   const [groupsView, setGroupsView] = useState<'root' | 'group-root' | 'group-create' | 'community-root' | 'community-create' | 'community-search'>('root')
-  const [myGroups, setMyGroups] = useState<{ id: string; name: string; role: string | null }[]>([])
+  const [myGroups, setMyGroups] = useState<{ id: string; name: string; role: string | null; image_url: string | null }[]>([])
   const [newGroupName, setNewGroupName] = useState('')
   const [newGroupDesc, setNewGroupDesc] = useState('')
+  const [newGroupImageUrl, setNewGroupImageUrl] = useState('')
   const [groupsBusy, setGroupsBusy] = useState(false)
   const [groupsError, setGroupsError] = useState<string | null>(null)
   const [communities, setCommunities] = useState<Community[]>([])
@@ -144,11 +145,12 @@ export function ChatList({
     }
     const { data: memberRows } = await supabase
       .from('conversation_members')
-      .select('conversation:conversations(*), is_favorite, favorited_at, archived_at, muted, manually_unread, deleted_at')
+      .select('role, conversation:conversations(*), is_favorite, favorited_at, archived_at, muted, manually_unread, deleted_at')
       .eq('user_id', me.id)
       .is('deleted_at', null)
 
-    const myRows = memberRows || []
+    // grupos dedicados (com role) so aparecem em "Ferus - Grupos", nao na lista de conversas
+    const myRows = (memberRows || []).filter((r) => !r.role)
     const convs = myRows
       .map((row) => row.conversation as unknown as Conversation)
       .filter(Boolean)
@@ -648,13 +650,13 @@ export function ChatList({
     if (!me) return
     const { data } = await supabase
       .from('conversation_members')
-      .select('role, conversation:conversations(id, name)')
+      .select('role, conversation:conversations(id, name, image_url)')
       .eq('user_id', me.id)
       .not('role', 'is', null)
     setMyGroups(
       (data || []).map((row) => {
         const c = row.conversation as unknown as Conversation
-        return { id: c.id, name: c.name || 'grupo', role: row.role as string | null }
+        return { id: c.id, name: c.name || 'grupo', role: row.role as string | null, image_url: c.image_url || null }
       }),
     )
   }
@@ -700,6 +702,7 @@ export function ChatList({
       setGroupsError(null)
       setNewGroupName('')
       setNewGroupDesc('')
+      setNewGroupImageUrl('')
       setNewCommunityName('')
       setNewCommunityDesc('')
       setNewCommunityCategory('')
@@ -755,7 +758,7 @@ export function ChatList({
     try {
       const { data: conv, error: convErr } = await supabase
         .from('conversations')
-        .insert({ type: 'group', name, description: newGroupDesc.trim() || null, created_by: me.id })
+        .insert({ type: 'group', name, description: newGroupDesc.trim() || null, image_url: newGroupImageUrl.trim() || null, created_by: me.id })
         .select()
         .single()
       if (convErr) throw convErr
@@ -977,7 +980,7 @@ export function ChatList({
                 <div className="chat-info">
                   <div className="row">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
-                      <div className="name">{c.type === 'group' && !c.isOrganicGroup ? `# ${c.label}` : c.label}</div>
+                      <div className="name">{c.label}</div>
                       {c.isFavorite && (
                         <span className="favorite-heart" title="Favoritado">
                           <IconHeart size={13} />
@@ -1437,14 +1440,16 @@ export function ChatList({
                   key={g.id}
                   className="chat"
                   onClick={() => {
-                    onSelect({ id: g.id, type: 'group', name: g.name, created_by: '', created_at: '' } as Conversation)
+                    onSelect({ id: g.id, type: 'group', name: g.name, image_url: g.image_url, created_by: '', created_at: '' } as Conversation)
                     onGroupsOpenChange(false)
                   }}
                 >
-                  <div className="photo">{g.name[0]?.toUpperCase()}</div>
+                  <div className="photo">
+                    {g.image_url ? <img src={g.image_url} alt="" /> : g.name[0]?.toUpperCase()}
+                  </div>
                   <div className="chat-info">
                     <div className="row">
-                      <div className="name"># {g.name}{g.role === 'admin' ? ' (adm)' : g.role === 'moderator' ? ' (mod)' : ''}</div>
+                      <div className="name">{g.name}{g.role === 'admin' ? ' (adm)' : g.role === 'moderator' ? ' (mod)' : ''}</div>
                     </div>
                   </div>
                 </div>
@@ -1508,6 +1513,12 @@ export function ChatList({
               placeholder="descrição (opcional)"
               value={newGroupDesc}
               onChange={(e) => setNewGroupDesc(e.target.value)}
+            />
+            <label style={{ marginTop: 10 }}>Foto (link)</label>
+            <input
+              placeholder="link da imagem (opcional, dá pra por depois)"
+              value={newGroupImageUrl}
+              onChange={(e) => setNewGroupImageUrl(e.target.value)}
             />
             <button type="button" disabled={groupsBusy} onClick={createGroup2}>Criar</button>
             {groupsError && <span className="auth-error">{groupsError}</span>}

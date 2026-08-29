@@ -14,6 +14,7 @@ export type Conversation = {
   type: 'dm' | 'group'
   name: string | null
   description?: string | null
+  image_url?: string | null
   created_by: string
   created_at: string
 }
