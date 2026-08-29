@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { displayName } from '../lib/displayName'
 import { getErrorMessage } from '../lib/errors'
 import { ReplayPlayer, type ReplayEvent } from './ReplayPlayer'
-import { IconArrowLeft, IconEdit, IconSend, IconSmile, IconTrash, IconUser } from './icons'
+import { IconEdit, IconSend, IconSmile, IconTrash, IconUser } from './icons'
 import type { Community, Profile } from '../types'
 
 const REACTION_EMOJIS = ['😀', '😂', '😍', '😭', '🔥', '👍', '🙏', '😡']
@@ -39,7 +39,7 @@ type MemberProfile = { id: string; username: string; display_name: string | null
 type Props = {
   me: Profile
   community: Community
-  onBack: () => void
+  activeTab: 'home' | 'info'
   onCommunityUpdate: (patch: Partial<Community>) => void
 }
 
@@ -49,7 +49,7 @@ function recordEvent(bufferRef: React.MutableRefObject<ReplayEvent[]>, text: str
   bufferRef.current = bufferRef.current.filter((e) => now - e.t <= REPLAY_WINDOW_MS)
 }
 
-export function CommunityView({ me, community, onBack, onCommunityUpdate }: Props) {
+export function CommunityView({ me, community, activeTab, onCommunityUpdate }: Props) {
   const [posts, setPosts] = useState<Post[]>([])
   const [comments, setComments] = useState<Comment[]>([])
   const [reactions, setReactions] = useState<Reaction[]>([])
@@ -64,9 +64,11 @@ export function CommunityView({ me, community, onBack, onCommunityUpdate }: Prop
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({})
   const [reactionPickerFor, setReactionPickerFor] = useState<string | null>(null)
-  const [showInfo, setShowInfo] = useState(false)
   const [editName, setEditName] = useState('')
   const [editImageUrl, setEditImageUrl] = useState('')
+  const [editCategory, setEditCategory] = useState('')
+  const [editLanguage, setEditLanguage] = useState('')
+  const [editIsPrivate, setEditIsPrivate] = useState(false)
   const [infoBusy, setInfoBusy] = useState(false)
   const [infoError, setInfoError] = useState<string | null>(null)
   const [editingPostId, setEditingPostId] = useState<string | null>(null)
@@ -155,16 +157,18 @@ export function CommunityView({ me, community, onBack, onCommunityUpdate }: Prop
     load()
   }, [community.id])
 
+  useEffect(() => {
+    setEditName(community.name)
+    setEditImageUrl(community.image_url || '')
+    setEditCategory(community.category || '')
+    setEditLanguage(community.language || '')
+    setEditIsPrivate(community.is_private)
+    setInfoError(null)
+  }, [community.id, community.name, community.image_url, community.category, community.language, community.is_private])
+
   function authorLabel(id: string): string {
     const a = authors[id]
     return a ? displayName(a) : '...'
-  }
-
-  function openInfo() {
-    setEditName(community.name)
-    setEditImageUrl(community.image_url || '')
-    setInfoError(null)
-    setShowInfo(true)
   }
 
   async function saveCommunityInfo() {
@@ -173,14 +177,19 @@ export function CommunityView({ me, community, onBack, onCommunityUpdate }: Prop
     setInfoBusy(true)
     setInfoError(null)
     try {
-      const image_url = editImageUrl.trim() || null
+      const patch = {
+        name,
+        image_url: editImageUrl.trim() || null,
+        category: editCategory.trim() || null,
+        language: editLanguage.trim() || null,
+        is_private: editIsPrivate,
+      }
       const { error: err } = await supabase
         .from('communities')
-        .update({ name, image_url })
+        .update(patch)
         .eq('id', community.id)
       if (err) throw err
-      onCommunityUpdate({ name, image_url })
-      setShowInfo(false)
+      onCommunityUpdate(patch)
     } catch (err) {
       setInfoError(getErrorMessage(err))
     } finally {
@@ -339,15 +348,7 @@ export function CommunityView({ me, community, onBack, onCommunityUpdate }: Prop
   return (
     <main className="main">
       <header className="chat-header">
-        <button type="button" className="icon-btn" onClick={onBack}><IconArrowLeft size={20} /></button>
-        <div className="header-photo" style={{ overflow: 'hidden', cursor: 'pointer' }} onClick={openInfo}>
-          {community.image_url ? (
-            <img src={community.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          ) : (
-            community.name[0]?.toUpperCase()
-          )}
-        </div>
-        <div className="header-text" style={{ cursor: 'pointer' }} onClick={openInfo}>
+        <div className="header-text">
           <div className="header-name">{community.name}</div>
           <div className="status">
             {memberCount} {memberCount === 1 ? 'participante' : 'participantes'}
@@ -361,6 +362,7 @@ export function CommunityView({ me, community, onBack, onCommunityUpdate }: Prop
         </div>
       </header>
 
+      {activeTab === 'home' && (
       <section className="messages community-feed">
         {community.description && <p className="community-description">{community.description}</p>}
 
@@ -529,6 +531,62 @@ export function CommunityView({ me, community, onBack, onCommunityUpdate }: Prop
           )
         })}
       </section>
+      )}
+
+      {activeTab === 'info' && (
+        <section className="messages community-feed">
+          {isManager ? (
+            <div className="community-composer">
+              <label>Nome</label>
+              <input value={editName} onChange={(e) => setEditName(e.target.value)} />
+              <label style={{ marginTop: 8 }}>Foto (link)</label>
+              <input value={editImageUrl} onChange={(e) => setEditImageUrl(e.target.value)} placeholder="link da imagem" />
+              <label style={{ marginTop: 8 }}>Categoria</label>
+              <input value={editCategory} onChange={(e) => setEditCategory(e.target.value)} placeholder="categoria" />
+              <label style={{ marginTop: 8 }}>Idioma</label>
+              <input value={editLanguage} onChange={(e) => setEditLanguage(e.target.value)} placeholder="idioma" />
+              <label style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input type="checkbox" checked={editIsPrivate} onChange={(e) => setEditIsPrivate(e.target.checked)} style={{ width: 'auto' }} />
+                Comunidade particular (só membros veem tópicos e comentários)
+              </label>
+              <button type="button" disabled={infoBusy} onClick={saveCommunityInfo} style={{ marginTop: 8 }}>Salvar</button>
+              {infoError && <span className="auth-error">{infoError}</span>}
+            </div>
+          ) : (
+            <div className="community-post">
+              {community.description && <p className="community-post-content">{community.description}</p>}
+              <p className="status">idioma: {community.language || '—'}</p>
+              <p className="status">categoria: {community.category || '—'}</p>
+              <p className="status">tipo: {community.is_private ? 'particular' : 'pública'}</p>
+              <p className="status">criada em: {new Date(community.created_at).toLocaleDateString('pt-BR')}</p>
+              <p className="status">dono: {authorLabel(community.created_by)}</p>
+            </div>
+          )}
+
+          <label style={{ padding: '0 4px', fontSize: '.7rem', color: '#8696a0', textTransform: 'uppercase' }}>
+            Participantes
+          </label>
+          <div className="chat-config-members">
+            {memberList.map((m) => (
+              <div key={m.id} className="chat-config-row">
+                <span>
+                  {displayName(m)}
+                  {m.id === community.created_by ? ' (dono)' : m.is_editor ? ' (editor)' : ''}
+                  {m.id === me.id ? ' (você)' : ''}
+                </span>
+                {isOwner && m.id !== community.created_by && (
+                  <span className="chat-config-actions">
+                    <button type="button" onClick={() => toggleEditor(m.id, !m.is_editor)}>
+                      {m.is_editor ? 'tirar editor' : 'tornar editor'}
+                    </button>
+                    <button type="button" onClick={() => removeParticipant(m.id)}>remover</button>
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {replayFor && (
         <div className="modal-backdrop" onClick={() => setReplayFor(null)}>
@@ -536,64 +594,6 @@ export function CommunityView({ me, community, onBack, onCommunityUpdate }: Prop
             <h2>replay</h2>
             <ReplayPlayer events={replayFor.events} />
             <button type="button" className="modal-close" onClick={() => setReplayFor(null)}>fechar</button>
-          </div>
-        </div>
-      )}
-
-      {showInfo && (
-        <div className="modal-backdrop" onClick={() => setShowInfo(false)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <div className="account-avatar-wrap">
-              <div className="account-avatar" style={{ overflow: 'hidden' }}>
-                {community.image_url ? (
-                  <img src={community.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  <IconUser size={40} />
-                )}
-              </div>
-            </div>
-
-            {isManager ? (
-              <>
-                <h2>Editar comunidade</h2>
-                <label>Nome</label>
-                <input value={editName} onChange={(e) => setEditName(e.target.value)} />
-                <label style={{ marginTop: 10 }}>Foto (link)</label>
-                <input value={editImageUrl} onChange={(e) => setEditImageUrl(e.target.value)} placeholder="link da imagem" />
-                <button type="button" disabled={infoBusy} onClick={saveCommunityInfo} style={{ marginTop: 10 }}>Salvar</button>
-                {infoError && <span className="auth-error">{infoError}</span>}
-              </>
-            ) : (
-              <>
-                <h2>{community.name}</h2>
-                {community.description && <p>{community.description}</p>}
-                <p style={{ fontSize: '.75rem', color: '#8696a0' }}>
-                  criada em {new Date(community.created_at).toLocaleDateString('pt-BR')}
-                </p>
-              </>
-            )}
-
-            <label style={{ marginTop: 16 }}>Participantes</label>
-            <div className="chat-config-members">
-              {memberList.map((m) => (
-                <div key={m.id} className="chat-config-row">
-                  <span>
-                    {displayName(m)}
-                    {m.id === community.created_by ? ' (dono)' : m.is_editor ? ' (editor)' : ''}
-                    {m.id === me.id ? ' (você)' : ''}
-                  </span>
-                  {isOwner && m.id !== community.created_by && (
-                    <span className="chat-config-actions">
-                      <button type="button" onClick={() => toggleEditor(m.id, !m.is_editor)}>
-                        {m.is_editor ? 'tirar editor' : 'tornar editor'}
-                      </button>
-                      <button type="button" onClick={() => removeParticipant(m.id)}>remover</button>
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-            <button type="button" className="modal-close" onClick={() => setShowInfo(false)}>fechar</button>
           </div>
         </div>
       )}

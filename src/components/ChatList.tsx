@@ -36,6 +36,10 @@ type Props = {
   onProfileChange: (patch: Partial<Profile>) => void
   blockedIds: Set<string>
   onSelectCommunity: (c: Community) => void
+  selectedCommunity: Community | null
+  communityTab: 'home' | 'info'
+  onCommunityTabChange: (tab: 'home' | 'info') => void
+  onCommunityBack: () => void
 }
 
 type ConvWithLabel = Conversation & {
@@ -81,6 +85,10 @@ export function ChatList({
   onProfileChange,
   blockedIds,
   onSelectCommunity,
+  selectedCommunity,
+  communityTab,
+  onCommunityTabChange,
+  onCommunityBack,
 }: Props) {
   const [conversations, setConversations] = useState<ConvWithLabel[]>([])
   const [groupsView, setGroupsView] = useState<'root' | 'group-root' | 'group-create' | 'community-root' | 'community-create' | 'community-search'>('root')
@@ -91,11 +99,14 @@ export function ChatList({
   const [groupsError, setGroupsError] = useState<string | null>(null)
   const [communities, setCommunities] = useState<Community[]>([])
   const [myCommunities, setMyCommunities] = useState<Community[]>([])
+  const [communityMemberCount, setCommunityMemberCount] = useState(0)
   const [trendingCommunities, setTrendingCommunities] = useState<(Community & { comment_count: number })[]>([])
   const [newCommunityName, setNewCommunityName] = useState('')
   const [newCommunityDesc, setNewCommunityDesc] = useState('')
   const [newCommunityCategory, setNewCommunityCategory] = useState('')
   const [newCommunityImageUrl, setNewCommunityImageUrl] = useState('')
+  const [newCommunityLanguage, setNewCommunityLanguage] = useState('Português (Brasil)')
+  const [newCommunityIsPrivate, setNewCommunityIsPrivate] = useState(false)
   const [communityQuery, setCommunityQuery] = useState('')
   const [query, setQuery] = useState('')
   const [activeFilter, setActiveFilter] = useState<'all' | 'favorites' | 'archived'>('all')
@@ -644,6 +655,18 @@ export function ChatList({
     )
   }
 
+  useEffect(() => {
+    if (!selectedCommunity) {
+      setCommunityMemberCount(0)
+      return
+    }
+    supabase
+      .from('community_members')
+      .select('user_id', { count: 'exact', head: true })
+      .eq('community_id', selectedCommunity.id)
+      .then(({ count }) => setCommunityMemberCount(count || 0))
+  }, [selectedCommunity?.id])
+
   async function loadCommunities() {
     const { data } = await supabase.from('communities').select('*').order('created_at', { ascending: false })
     setCommunities((data as Community[]) || [])
@@ -677,6 +700,8 @@ export function ChatList({
       setNewCommunityDesc('')
       setNewCommunityCategory('')
       setNewCommunityImageUrl('')
+      setNewCommunityLanguage('Português (Brasil)')
+      setNewCommunityIsPrivate(false)
       loadMyGroups()
       loadCommunities()
       loadMyCommunities()
@@ -698,6 +723,8 @@ export function ChatList({
           description: newCommunityDesc.trim() || null,
           category: newCommunityCategory.trim() || null,
           image_url: newCommunityImageUrl.trim() || null,
+          language: newCommunityLanguage.trim() || null,
+          is_private: newCommunityIsPrivate,
           created_by: me.id,
         })
         .select()
@@ -876,58 +903,93 @@ export function ChatList({
 
   return (
     <section className="chats">
-      <div className="top">
-        <div className="brand">Ferus <span className="app-version">v{APP_VERSION}</span></div>
-      </div>
-
-      <div className="search-wrap">
-        <div className="search">
-          <span><IconSearch size={18} /></span>
-          <input
-            placeholder="Pesquisar conversas"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-        </div>
-      </div>
-
-      <div className="filters">
-        <button className={`filter${activeFilter === 'all' ? ' active' : ''}`} onClick={() => setActiveFilter('all')}>Todos</button>
-        <button className={`filter${activeFilter === 'favorites' ? ' active' : ''}`} onClick={() => setActiveFilter('favorites')}>Favoritos</button>
-        <button className={`filter${activeFilter === 'archived' ? ' active' : ''}`} onClick={() => setActiveFilter('archived')}>Arquivo</button>
-      </div>
-
-      <div className="chat-list">
-        {!me && <div className="empty">Entre para ver suas conversas</div>}
-        {me && filtered.length === 0 && <div className="empty">Nenhuma conversa ainda</div>}
-        {filtered.map((c) => (
-          <div
-            key={c.id}
-            className={`chat${selected?.id === c.id ? ' selected' : ''}`}
-            onClick={() => selectConversation(c)}
-            onContextMenu={(e) => handleContextMenu(e, c)}
+      {selectedCommunity ? (
+        <div className="community-sidebar">
+          <button type="button" className="icon-btn" onClick={onCommunityBack} style={{ alignSelf: 'flex-start' }}>
+            <IconArrowLeft size={20} />
+          </button>
+          <div className="community-sidebar-photo">
+            {selectedCommunity.image_url ? (
+              <img src={selectedCommunity.image_url} alt="" />
+            ) : (
+              selectedCommunity.name[0]?.toUpperCase()
+            )}
+          </div>
+          <div className="community-sidebar-name">{selectedCommunity.name}</div>
+          <div className="community-sidebar-count">
+            {communityMemberCount} {communityMemberCount === 1 ? 'membro' : 'membros'}
+          </div>
+          <button
+            type="button"
+            className={`community-sidebar-nav${communityTab === 'info' ? ' active' : ''}`}
+            onClick={() => onCommunityTabChange('info')}
           >
-            <div className="photo">
-              {c.avatarUrl ? <img src={c.avatarUrl} alt="" /> : c.label[0]?.toUpperCase()}
-            </div>
-            <div className="chat-info">
-              <div className="row">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
-                  <div className="name">{c.type === 'group' && !c.isOrganicGroup ? `# ${c.label}` : c.label}</div>
-                  {c.isFavorite && (
-                    <span className="favorite-heart" title="Favoritado">
-                      <IconHeart size={13} />
-                    </span>
-                  )}
-                </div>
-                {(c.unreadCount > 0 || c.isManuallyUnread) && (
-                  <span className="unread-badge">{c.unreadCount > 0 ? c.unreadCount : ''}</span>
-                )}
-              </div>
+            comunidade
+          </button>
+          <button
+            type="button"
+            className={`community-sidebar-nav${communityTab === 'home' ? ' active' : ''}`}
+            onClick={() => onCommunityTabChange('home')}
+          >
+            início
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="top">
+            <div className="brand">Ferus <span className="app-version">v{APP_VERSION}</span></div>
+          </div>
+
+          <div className="search-wrap">
+            <div className="search">
+              <span><IconSearch size={18} /></span>
+              <input
+                placeholder="Pesquisar conversas"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
             </div>
           </div>
-        ))}
-      </div>
+
+          <div className="filters">
+            <button className={`filter${activeFilter === 'all' ? ' active' : ''}`} onClick={() => setActiveFilter('all')}>Todos</button>
+            <button className={`filter${activeFilter === 'favorites' ? ' active' : ''}`} onClick={() => setActiveFilter('favorites')}>Favoritos</button>
+            <button className={`filter${activeFilter === 'archived' ? ' active' : ''}`} onClick={() => setActiveFilter('archived')}>Arquivo</button>
+          </div>
+
+          <div className="chat-list">
+            {!me && <div className="empty">Entre para ver suas conversas</div>}
+            {me && filtered.length === 0 && <div className="empty">Nenhuma conversa ainda</div>}
+            {filtered.map((c) => (
+              <div
+                key={c.id}
+                className={`chat${selected?.id === c.id ? ' selected' : ''}`}
+                onClick={() => selectConversation(c)}
+                onContextMenu={(e) => handleContextMenu(e, c)}
+              >
+                <div className="photo">
+                  {c.avatarUrl ? <img src={c.avatarUrl} alt="" /> : c.label[0]?.toUpperCase()}
+                </div>
+                <div className="chat-info">
+                  <div className="row">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+                      <div className="name">{c.type === 'group' && !c.isOrganicGroup ? `# ${c.label}` : c.label}</div>
+                      {c.isFavorite && (
+                        <span className="favorite-heart" title="Favoritado">
+                          <IconHeart size={13} />
+                        </span>
+                      )}
+                    </div>
+                    {(c.unreadCount > 0 || c.isManuallyUnread) && (
+                      <span className="unread-badge">{c.unreadCount > 0 ? c.unreadCount : ''}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       {contextMenu && (
         <div className="context-menu-backdrop" onClick={() => setContextMenu(null)} onContextMenu={(e) => { e.preventDefault(); setContextMenu(null) }}>
@@ -1450,6 +1512,21 @@ export function ChatList({
               value={newCommunityImageUrl}
               onChange={(e) => setNewCommunityImageUrl(e.target.value)}
             />
+            <label style={{ marginTop: 10 }}>Idioma</label>
+            <input
+              placeholder="idioma"
+              value={newCommunityLanguage}
+              onChange={(e) => setNewCommunityLanguage(e.target.value)}
+            />
+            <label style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input
+                type="checkbox"
+                checked={newCommunityIsPrivate}
+                onChange={(e) => setNewCommunityIsPrivate(e.target.checked)}
+                style={{ width: 'auto' }}
+              />
+              Comunidade particular (só membros veem tópicos e comentários)
+            </label>
             <button type="button" disabled={groupsBusy} onClick={createCommunity}>Criar</button>
             {groupsError && <span className="auth-error">{groupsError}</span>}
           </div>

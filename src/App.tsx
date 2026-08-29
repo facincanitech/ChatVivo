@@ -36,6 +36,7 @@ function App() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [selected, setSelected] = useState<Conversation | null>(null)
   const [selectedCommunity, setSelectedCommunity] = useState<Community | null>(null)
+  const [communityTab, setCommunityTab] = useState<'home' | 'info'>('home')
   const [authOpen, setAuthOpen] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
   const [panelView, setPanelView] = useState<PanelView>('root')
@@ -264,7 +265,11 @@ function App() {
         me={profile}
         selected={selected}
         onSelect={(c) => { setSelectedCommunity(null); setSelected(c) }}
-        onSelectCommunity={(c) => { setSelected(null); setSelectedCommunity(c) }}
+        onSelectCommunity={(c) => { setSelected(null); setCommunityTab('home'); setSelectedCommunity(c) }}
+        selectedCommunity={selectedCommunity}
+        communityTab={communityTab}
+        onCommunityTabChange={setCommunityTab}
+        onCommunityBack={() => setSelectedCommunity(null)}
         panelOpen={panelOpen}
         panelView={panelView}
         onPanelOpenChange={setPanelOpen}
@@ -280,7 +285,7 @@ function App() {
         <CommunityView
           me={profile}
           community={selectedCommunity}
-          onBack={() => setSelectedCommunity(null)}
+          activeTab={communityTab}
           onCommunityUpdate={(patch) => setSelectedCommunity((c) => (c ? { ...c, ...patch } : c))}
         />
       ) : (

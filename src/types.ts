@@ -40,6 +40,8 @@ export type Community = {
   description: string | null
   category: string | null
   image_url: string | null
+  language: string | null
+  is_private: boolean
   created_by: string
   created_at: string
 }
