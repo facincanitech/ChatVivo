@@ -10,6 +10,7 @@ import { displayName } from '../lib/displayName'
 import { colorFromId } from '../lib/avatarColor'
 import { sanitizeImageUrl } from '../lib/imageUrl'
 import { uploadImage } from '../lib/uploadImage'
+import { readCache, writeCache } from '../lib/cache'
 import { IconArrowLeft, IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconCrown, IconHeart, IconMic, IconPlus, IconSend, IconSmile } from './icons'
 import { ReplayPlayer, type ReplayEvent } from './ReplayPlayer'
 import { ProfilePopup } from './ProfilePopup'
@@ -162,7 +163,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   }
 
   useEffect(() => {
-    setMessages([])
+    setMessages(conversation ? readCache<Message[]>(`flux-messages:${conversation.id}`) || [] : [])
     setLiveTyping({})
     setLiveMedia({})
     setDraft('')
@@ -225,6 +226,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
 
       if (!cancelled && msgs) {
         setMessages(msgs as Message[])
+        writeCache(`flux-messages:${conversation.id}`, msgs.slice(-100))
         const edited = new Set<string>()
         for (const m of msgs as (Message & { message_replays: { events: ReplayEvent[] }[] | { events: ReplayEvent[] } | null })[]) {
           const raw = m.message_replays
@@ -271,7 +273,12 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
         { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${conversation.id}` },
         (payload) => {
           const msg = payload.new as Message
-          setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]))
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === msg.id)) return prev
+            const next = [...prev, msg]
+            writeCache(`flux-messages:${conversation.id}`, next.slice(-100))
+            return next
+          })
           setLiveTyping((prev) => {
             const next = { ...prev }
             delete next[msg.author_id]

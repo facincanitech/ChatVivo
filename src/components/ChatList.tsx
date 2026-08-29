@@ -5,6 +5,7 @@ import { sanitizeImageUrl } from '../lib/imageUrl'
 import { uploadImage } from '../lib/uploadImage'
 import { displayName } from '../lib/displayName'
 import { AvatarBox } from './AvatarBox'
+import { readCache, writeCache } from '../lib/cache'
 import { APP_VERSION } from '../version'
 import {
   IconArchive,
@@ -238,6 +239,7 @@ export function ChatList({
 
     if (convs.length === 0) {
       setConversations([])
+      writeCache(`flux-conversations:${me.id}`, [])
       return
     }
 
@@ -301,6 +303,7 @@ export function ChatList({
       .sort((a, b) => ((a.lastMessageAt || a.created_at) < (b.lastMessageAt || b.created_at) ? 1 : -1))
 
     setConversations(labeled)
+    writeCache(`flux-conversations:${me.id}`, labeled)
   }
 
   async function loadIncomingRequests() {
@@ -358,6 +361,12 @@ export function ChatList({
       .or(`and(from_id.eq.${me.id},to_id.eq.${id}),and(from_id.eq.${id},to_id.eq.${me.id})`)
     setFriends((prev) => prev.filter((f) => f.id !== id))
   }
+
+  useEffect(() => {
+    if (!me) return
+    const cached = readCache<ConvWithLabel[]>(`flux-conversations:${me.id}`)
+    if (cached) setConversations(cached)
+  }, [me?.id])
 
   useEffect(() => {
     loadConversations()
