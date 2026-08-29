@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { displayName } from '../lib/displayName'
+import { colorFromId } from '../lib/avatarColor'
 import { formatPresence } from '../lib/presence'
 import { IconArrowLeft, IconMore, IconPlus, IconUser } from './icons'
 import type { Community, Profile } from '../types'
@@ -214,8 +215,8 @@ export function ProfilePopup({ me, userId, onClose, onOpenCommunity, blockedIds,
               {communities.length === 0 && <p style={{ color: '#8696a0', fontSize: '.85rem' }}>nenhuma comunidade</p>}
               {communities.map((c) => (
                 <div key={c.id} className="profile-popup-grid-item" onClick={() => { onOpenCommunity(c); onClose() }}>
-                  <div className="photo" style={{ width: 56, height: 56 }}>
-                    {c.image_url ? <img src={c.image_url} alt="" /> : c.name[0]?.toUpperCase()}
+                  <div className="photo" style={{ width: 56, height: 56, ...(c.image_url ? {} : { background: colorFromId(c.id), color: '#fff' }) }}>
+                    {c.image_url ? <img src={c.image_url} alt="" /> : 'C'}
                   </div>
                   <span>{c.name}</span>
                 </div>

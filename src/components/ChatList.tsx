@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { getErrorMessage } from '../lib/errors'
 import { displayName } from '../lib/displayName'
+import { colorFromId } from '../lib/avatarColor'
 import { APP_VERSION } from '../version'
 import {
   IconArchive,
@@ -918,11 +919,11 @@ export function ChatList({
           <button type="button" className="icon-btn" onClick={onCommunityBack} style={{ alignSelf: 'flex-start' }}>
             <IconArrowLeft size={20} />
           </button>
-          <div className="community-sidebar-photo">
+          <div className="community-sidebar-photo" style={selectedCommunity.image_url ? undefined : { background: colorFromId(selectedCommunity.id), color: '#fff' }}>
             {selectedCommunity.image_url ? (
               <img src={selectedCommunity.image_url} alt="" />
             ) : (
-              selectedCommunity.name[0]?.toUpperCase()
+              'C'
             )}
           </div>
           <div className="community-sidebar-name">{selectedCommunity.name}</div>
@@ -1000,8 +1001,8 @@ export function ChatList({
                     onSelect({ id: g.id, type: 'group', name: g.name, image_url: g.image_url, created_by: '', created_at: '' } as Conversation)
                   }}
                 >
-                  <div className="photo">
-                    {g.image_url ? <img src={g.image_url} alt="" /> : g.name[0]?.toUpperCase()}
+                  <div className="photo" style={g.image_url ? undefined : { background: colorFromId(g.id), color: '#fff' }}>
+                    {g.image_url ? <img src={g.image_url} alt="" /> : 'G'}
                   </div>
                   <div className="chat-info">
                     <div className="row">
@@ -1020,8 +1021,8 @@ export function ChatList({
                   className="chat"
                   onClick={() => onSelectCommunity(c)}
                 >
-                  <div className="photo">
-                    {c.image_url ? <img src={c.image_url} alt="" /> : c.name[0]?.toUpperCase()}
+                  <div className="photo" style={c.image_url ? undefined : { background: colorFromId(c.id), color: '#fff' }}>
+                    {c.image_url ? <img src={c.image_url} alt="" /> : 'C'}
                   </div>
                   <div className="chat-info">
                     <div className="row">
@@ -1477,8 +1478,8 @@ export function ChatList({
                     onSelectCommunity(c)
                   }}
                 >
-                  <div className="photo">
-                    {c.image_url ? <img src={c.image_url} alt="" /> : c.name[0]?.toUpperCase()}
+                  <div className="photo" style={c.image_url ? undefined : { background: colorFromId(c.id), color: '#fff' }}>
+                    {c.image_url ? <img src={c.image_url} alt="" /> : 'C'}
                   </div>
                   <div className="chat-info">
                     <div className="row">
@@ -1514,8 +1515,8 @@ export function ChatList({
                     onGroupsOpenChange(false)
                   }}
                 >
-                  <div className="photo">
-                    {g.image_url ? <img src={g.image_url} alt="" /> : g.name[0]?.toUpperCase()}
+                  <div className="photo" style={g.image_url ? undefined : { background: colorFromId(g.id), color: '#fff' }}>
+                    {g.image_url ? <img src={g.image_url} alt="" /> : 'G'}
                   </div>
                   <div className="chat-info">
                     <div className="row">
@@ -1554,8 +1555,8 @@ export function ChatList({
                     onSelectCommunity(c)
                   }}
                 >
-                  <div className="photo">
-                    {c.image_url ? <img src={c.image_url} alt="" /> : c.name[0]?.toUpperCase()}
+                  <div className="photo" style={c.image_url ? undefined : { background: colorFromId(c.id), color: '#fff' }}>
+                    {c.image_url ? <img src={c.image_url} alt="" /> : 'C'}
                   </div>
                   <div className="chat-info">
                     <div className="row">
@@ -1662,8 +1663,8 @@ export function ChatList({
                       onSelectCommunity(c)
                     }}
                   >
-                    <div className="photo">
-                      {c.image_url ? <img src={c.image_url} alt="" /> : c.name[0]?.toUpperCase()}
+                    <div className="photo" style={c.image_url ? undefined : { background: colorFromId(c.id), color: '#fff' }}>
+                      {c.image_url ? <img src={c.image_url} alt="" /> : 'C'}
                     </div>
                     <div className="chat-info">
                       <div className="row">

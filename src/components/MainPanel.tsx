@@ -5,6 +5,7 @@ import { playNudgeSound, triggerNudgeShake } from '../lib/nudge'
 import { formatPresence, getPresenceColor } from '../lib/presence'
 import { getErrorMessage } from '../lib/errors'
 import { displayName } from '../lib/displayName'
+import { colorFromId } from '../lib/avatarColor'
 import { IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconCrown, IconMic, IconPlus, IconSend, IconSmile } from './icons'
 import { ReplayPlayer, type ReplayEvent } from './ReplayPlayer'
 import { ProfilePopup } from './ProfilePopup'
@@ -728,11 +729,16 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
             else if (isRoleGroup) openGroupEdit()
           }}
         >
-          <div className="header-photo" style={{ overflow: 'hidden' }}>
+          <div
+            className="header-photo"
+            style={{ overflow: 'hidden', ...(!otherMember && !conversation.image_url ? { background: colorFromId(conversation.id), color: '#fff' } : {}) }}
+          >
             {otherMember?.avatar_url ? (
               <img src={otherMember.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : !otherMember && conversation.image_url ? (
               <img src={conversation.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : !otherMember ? (
+              'G'
             ) : (
               title[0]?.toUpperCase()
             )}
@@ -778,13 +784,16 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
           <div className="modal-card group-info-card" onClick={(e) => e.stopPropagation()}>
             <div
               className="group-info-avatar"
-              style={{ cursor: canEditGroupInfo ? 'pointer' : 'default' }}
+              style={{
+                cursor: canEditGroupInfo ? 'pointer' : 'default',
+                ...(conversation.image_url ? {} : { background: colorFromId(conversation.id), color: '#fff' }),
+              }}
               onClick={() => canEditGroupInfo && configView === 'root' && openGroupEdit()}
             >
               {conversation.image_url ? (
                 <img src={conversation.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               ) : (
-                title[0]?.toUpperCase()
+                'G'
               )}
             </div>
             <h2>{conversation.name || title}</h2>
