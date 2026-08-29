@@ -114,7 +114,7 @@ export function ChatList({
   const [newCommunityIsPrivate, setNewCommunityIsPrivate] = useState(false)
   const [communityQuery, setCommunityQuery] = useState('')
   const [query, setQuery] = useState('')
-  const [activeFilter, setActiveFilter] = useState<'all' | 'favorites' | 'archived'>('all')
+  const [activeFilter, setActiveFilter] = useState<'all' | 'favorites' | 'archived' | 'group' | 'communities'>('all')
   const [dmEmail, setDmEmail] = useState('')
   const [inviteSent, setInviteSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -284,6 +284,7 @@ export function ChatList({
     loadOutgoingRequests()
     loadFriends()
     loadCommunities()
+    loadMyCommunities()
     if (!me) return
     const channel = supabase
       .channel(`member-updates:${me.id}`)
@@ -892,6 +893,7 @@ export function ChatList({
     .filter((c) => {
       if (activeFilter === 'archived') return c.isArchived
       if (activeFilter === 'favorites') return c.isFavorite
+      if (activeFilter === 'group') return c.type === 'group'
       return !c.isArchived
     })
     .sort((a, b) => {
@@ -962,39 +964,64 @@ export function ChatList({
             <button className={`filter${activeFilter === 'all' ? ' active' : ''}`} onClick={() => setActiveFilter('all')}>Todos</button>
             <button className={`filter${activeFilter === 'favorites' ? ' active' : ''}`} onClick={() => setActiveFilter('favorites')}>Favoritos</button>
             <button className={`filter${activeFilter === 'archived' ? ' active' : ''}`} onClick={() => setActiveFilter('archived')}>Arquivo</button>
+            <button className={`filter${activeFilter === 'group' ? ' active' : ''}`} onClick={() => setActiveFilter('group')}>Grupo</button>
+            <button className={`filter${activeFilter === 'communities' ? ' active' : ''}`} onClick={() => setActiveFilter('communities')}>Comunidades</button>
           </div>
 
-          <div className="chat-list">
-            {!me && <div className="empty">Entre para ver suas conversas</div>}
-            {me && filtered.length === 0 && <div className="empty">Nenhuma conversa ainda</div>}
-            {filtered.map((c) => (
-              <div
-                key={c.id}
-                className={`chat${selected?.id === c.id ? ' selected' : ''}`}
-                onClick={() => selectConversation(c)}
-                onContextMenu={(e) => handleContextMenu(e, c)}
-              >
-                <div className="photo">
-                  {c.avatarUrl ? <img src={c.avatarUrl} alt="" /> : c.label[0]?.toUpperCase()}
-                </div>
-                <div className="chat-info">
-                  <div className="row">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
-                      <div className="name">{c.label}</div>
-                      {c.isFavorite && (
-                        <span className="favorite-heart" title="Favoritado">
-                          <IconHeart size={13} />
-                        </span>
-                      )}
+          {activeFilter === 'communities' ? (
+            <div className="chat-list">
+              {myCommunities.length === 0 && <div className="empty">Nenhuma comunidade ainda</div>}
+              {myCommunities.map((c) => (
+                <div
+                  key={c.id}
+                  className="chat"
+                  onClick={() => onSelectCommunity(c)}
+                >
+                  <div className="photo">
+                    {c.image_url ? <img src={c.image_url} alt="" /> : c.name[0]?.toUpperCase()}
+                  </div>
+                  <div className="chat-info">
+                    <div className="row">
+                      <div className="name">{c.name}</div>
                     </div>
-                    {(c.unreadCount > 0 || c.isManuallyUnread) && (
-                      <span className="unread-badge">{c.unreadCount > 0 ? c.unreadCount : ''}</span>
-                    )}
+                    {c.category && <div className="preview">{c.category}</div>}
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="chat-list">
+              {!me && <div className="empty">Entre para ver suas conversas</div>}
+              {me && filtered.length === 0 && <div className="empty">Nenhuma conversa ainda</div>}
+              {filtered.map((c) => (
+                <div
+                  key={c.id}
+                  className={`chat${selected?.id === c.id ? ' selected' : ''}`}
+                  onClick={() => selectConversation(c)}
+                  onContextMenu={(e) => handleContextMenu(e, c)}
+                >
+                  <div className="photo">
+                    {c.avatarUrl ? <img src={c.avatarUrl} alt="" /> : c.label[0]?.toUpperCase()}
+                  </div>
+                  <div className="chat-info">
+                    <div className="row">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+                        <div className="name">{c.label}</div>
+                        {c.isFavorite && (
+                          <span className="favorite-heart" title="Favoritado">
+                            <IconHeart size={13} />
+                          </span>
+                        )}
+                      </div>
+                      {(c.unreadCount > 0 || c.isManuallyUnread) && (
+                        <span className="unread-badge">{c.unreadCount > 0 ? c.unreadCount : ''}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </>
       )}
 

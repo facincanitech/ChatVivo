@@ -207,7 +207,7 @@ body{
 }
 .in .bubble{background:var(--bg-surface);border-top-left-radius:3px}
 .out .bubble{background:var(--bubble);border-top-right-radius:3px}
-.message-footer{display:flex;justify-content:space-between;align-items:center;margin-top:4px;gap:10px}
+.message-footer{display:flex;justify-content:flex-end;align-items:center;margin-top:4px;gap:8px}
 .meta{color:#8da39f;font-size:10px;white-space:nowrap}
 .author-label{font-size:11px;color:var(--muted);margin-bottom:2px;display:block}
 .message.live .bubble{opacity:.65;font-style:italic}
