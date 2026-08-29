@@ -504,6 +504,28 @@ body{
 }
 .wink-picker button{font-size:1.5rem}
 
+.wink-character{position:fixed;top:50%;left:50%;z-index:210;pointer-events:none;font-size:min(26vh,220px);line-height:1;transform:translate(-50%,-50%);animation:winkFly .75s cubic-bezier(.34,1.56,.64,1) forwards;filter:drop-shadow(0 6px 14px rgba(0,0,0,.35))}
+@keyframes winkFly{
+  0%{transform:translate(calc(-50% + var(--from-x)),calc(-50% + var(--from-y))) scale(.4) rotate(var(--from-r));opacity:0}
+  40%{opacity:1}
+  100%{transform:translate(-50%,-50%) scale(1.5) rotate(0deg);opacity:1}
+}
+.wink-character.wink-bounce{animation:winkBounce 2s ease-in-out forwards;font-size:min(22vh,190px)}
+@keyframes winkBounce{
+  0%{left:-10%;top:30%;transform:translate(0,0) rotate(-12deg) scale(1);opacity:0}
+  8%{opacity:1}
+  25%{left:82%;top:12%;transform:rotate(12deg) scale(1)}
+  50%{left:12%;top:62%;transform:rotate(-12deg) scale(1)}
+  75%{left:78%;top:72%;transform:rotate(12deg) scale(1)}
+  100%{left:50%;top:45%;transform:translate(-50%,-50%) rotate(0deg) scale(1.4);opacity:0}
+}
+.wink-mark{position:fixed;top:50%;left:50%;width:60vh;height:60vh;transform:translate(-50%,-50%) scale(.4);border-radius:50%;z-index:205;pointer-events:none;opacity:0;filter:blur(4px);animation:winkMarkFade 2s ease-out forwards}
+@keyframes winkMarkFade{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.4)}
+  15%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(1.15)}
+}
+
 .add-member-popover{
   position:absolute;top:54px;right:0;background:var(--bg-surface);border:1px solid var(--line-2);
   border-radius:10px;padding:10px;width:260px;z-index:45;box-shadow:0 8px 24px #0006;
