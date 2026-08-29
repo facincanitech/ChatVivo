@@ -89,7 +89,7 @@ body{
   width:52px;height:52px;border:0;background:none;color:#9aa7ad;
   border-radius:12px;cursor:pointer;font-size:23px;margin:3px 0;
 }
-.rail button:hover,.rail button.active{background:var(--bg-selected);color:#fff}
+.rail button.active{background:var(--bg-selected);color:#fff}
 .rail .spacer{flex:1}
 .avatar-sm{width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--bg-selected);cursor:pointer;background:var(--avatar-bg);display:grid;place-items:center;font-size:14px;font-weight:700}
 
@@ -109,7 +109,6 @@ body{
   width:42px;height:42px;border:0;background:transparent;color:var(--text-secondary);
   border-radius:50%;font-size:22px;cursor:pointer;
 }
-.icon-btn:hover{background:var(--bg-surface);color:#fff}
 .search-wrap{padding:0 18px 13px}
 .search{
   height:48px;border-radius:9px;background:var(--bg-surface);display:flex;align-items:center;
@@ -140,7 +139,6 @@ body{
   height:76px;display:flex;align-items:center;padding:0 18px;gap:13px;
   cursor:pointer;border-bottom:1px solid #18242a;
 }
-.chat:hover{background:var(--bg-surface-2)}
 .chat.selected{background:var(--bg-selected)}
 .photo{
   width:52px;height:52px;border-radius:50%;object-fit:cover;flex:none;
@@ -201,7 +199,7 @@ body{
 .back-mobile{display:none}
 
 .messages{
-  flex:1;overflow:auto;padding:28px 7%;position:relative;
+  flex:1;overflow-y:auto;overflow-x:hidden;padding:28px 7%;position:relative;
   background:
     radial-gradient(circle at 20% 20%,rgba(229,72,77,.035),transparent 25%),
     radial-gradient(circle at 80% 70%,rgba(255,255,255,.025),transparent 28%),
@@ -212,12 +210,13 @@ body{
   background:var(--bg-surface-2);color:var(--text-secondary);padding:7px 13px;border-radius:8px;
   font-size:12px;box-shadow:0 1px 2px #0005;
 }
-.message{position:relative;display:flex;margin:8px 0}
+.message{position:relative;display:flex;margin:8px 0;min-width:0}
 .message.in{justify-content:flex-start}
 .message.out{justify-content:flex-end}
 .bubble{
   max-width:min(690px,78%);padding:10px 13px 7px;border-radius:9px;
   line-height:1.42;font-size:14px;box-shadow:0 1px 1px #0004;
+  overflow-wrap:break-word;word-break:break-word;min-width:0;
 }
 .in .bubble{background:var(--bg-surface);border-top-left-radius:3px}
 .out .bubble{background:var(--bubble);border-top-right-radius:3px}
@@ -245,7 +244,7 @@ body{
 .live-media-preview{max-width:160px;max-height:160px;border-radius:8px;display:block;cursor:zoom-in}
 
 .image-lightbox{
-  position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:70;
+  position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:160;
   display:flex;align-items:center;justify-content:center;padding:24px;cursor:zoom-out;
 }
 .image-lightbox img{max-width:90vw;max-height:90vh;border-radius:8px;object-fit:contain}
@@ -260,7 +259,6 @@ body{
   width:44px;height:44px;border:0;border-radius:50%;background:transparent;
   color:var(--text-secondary);font-size:22px;cursor:pointer;flex-shrink:0;
 }
-.compose-btn:hover{background:#2b3a42}
 .compose-btn.recording{background:var(--green);color:#fff;animation:pulse 1.2s ease-in-out infinite}
 @keyframes pulse{
   0%,100%{box-shadow:0 0 0 0 rgba(229,72,77,.5)}
@@ -278,7 +276,6 @@ body{
   width:46px;height:46px;border:0;border-radius:50%;background:var(--green);color:#fff;
   cursor:pointer;font-size:20px;display:grid;place-items:center;flex-shrink:0;
 }
-.send:hover{filter:brightness(1.1)}
 .send:disabled{opacity:.5;cursor:default}
 
 .media-note{font-size:11px;color:var(--muted-2);text-align:center;padding:4px 0;margin:0;background:var(--bg-panel)}
@@ -289,7 +286,6 @@ body{
   max-width:220px;box-shadow:0 8px 24px #0006;
 }
 .emoji-picker button{font-size:1.3rem;background:none;border:0;cursor:pointer;padding:4px;border-radius:6px}
-.emoji-picker button:hover{background:#2b3a42}
 
 /* empty states */
 .empty{
@@ -332,7 +328,6 @@ body{
   padding:8px 14px;border-radius:18px;border:1px solid var(--line-2);background:transparent;
   color:var(--text-secondary);cursor:pointer;font-size:13px;
 }
-.group-info-actions button:hover{background:var(--bg-surface-2)}
 .group-info-section-label{
   font-size:.7rem;color:var(--muted);text-transform:uppercase;display:block;
   margin:14px 0 6px;text-align:left;
@@ -342,7 +337,6 @@ body{
   width:100%;padding:12px;border-radius:8px;border:1px solid var(--line-2);
   background:var(--bg-panel);color:var(--text);cursor:pointer;font-size:.95rem;
 }
-.google-btn:hover{background:var(--bg-surface-2)}
 .modal-close{
   margin-top:12px;background:none;border:0;color:var(--muted);cursor:pointer;font-size:.8rem;
 }
@@ -364,7 +358,6 @@ body{
   display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;
   text-align:center;padding:8px;border-radius:8px;
 }
-.profile-popup-grid-item:hover{background:var(--bg-surface-2)}
 .profile-popup-grid-item span{font-size:.78rem;color:var(--text);word-break:break-word}
 
 @media(max-width:760px){
@@ -383,7 +376,6 @@ body{
   width:100%;text-align:left;background:none;border:0;color:var(--text);
   padding:8px 10px;border-radius:6px;cursor:pointer;font-size:.85rem;
 }
-.profile-menu button:hover{background:#2b3a42}
 
 /* new conversation sliding panel */
 .new-conv-panel{
@@ -400,7 +392,6 @@ body{
 .new-conv-option{
   display:flex;align-items:center;gap:16px;padding:14px 22px;cursor:pointer;
 }
-.new-conv-option:hover{background:var(--bg-surface-2)}
 .new-conv-option span{font-size:16px}
 .option-icon{
   width:46px;height:46px;border-radius:50%;background:var(--green);color:#fff;
@@ -417,7 +408,6 @@ body{
   font-weight:600;cursor:pointer;
 }
 .new-conv-form button.danger{background:transparent;border:1px solid var(--danger-bg);color:var(--accent-text)}
-.new-conv-form button.danger:hover{background:var(--danger-bg)}
 .new-conv-form .invite-code{font-size:.8rem;color:var(--accent-text)}
 .new-conv-form label{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
 .new-conv-form input:disabled{opacity:.6}
@@ -446,7 +436,6 @@ body{
   margin:auto 22px 20px;padding:10px;border-radius:6px;border:1px solid var(--danger-bg);
   background:none;color:var(--accent-text);cursor:pointer;font-size:.85rem;flex-shrink:0;
 }
-.account-signout:hover{background:var(--danger-bg)}
 
 .friend-request-list{
   display:flex;flex-direction:column;gap:8px;max-height:260px;overflow-y:auto;
@@ -467,7 +456,6 @@ body{
   width:100%;text-align:left;background:none;border:0;color:var(--accent-text);
   padding:6px 8px;border-radius:6px;cursor:pointer;font-size:.75rem;
 }
-.request-menu button:hover{background:#2b3a42}
 
 .context-menu-backdrop{position:fixed;inset:0;z-index:60}
 .context-menu{
@@ -479,7 +467,6 @@ body{
   padding:9px 12px;border-radius:6px;cursor:pointer;font-size:.85rem;
   display:flex;align-items:center;gap:10px;
 }
-.context-menu button:hover{background:#2b3a42}
 .context-menu button.danger{color:var(--accent-text)}
 
 /* nudge */
@@ -494,7 +481,6 @@ body{
   width:44px;height:44px;border:0;border-radius:50%;background:transparent;
   color:var(--text-secondary);font-size:20px;cursor:pointer;flex-shrink:0;
 }
-.nudge-btn:hover{background:#2b3a42}
 
 /* winks */
 .wink-overlay{position:fixed;inset:0;z-index:200;pointer-events:none;overflow:hidden}
@@ -508,10 +494,8 @@ body{
 .wink-picker-custom{padding:0;width:32px;height:32px;overflow:hidden;border-radius:6px}
 .wink-picker-custom img{width:100%;height:100%;object-fit:cover;display:block}
 .wink-picker-add{opacity:.7}
-.wink-picker-add:hover{opacity:1}
 .wink-manager-list{display:flex;flex-direction:column;gap:4px;max-height:40vh;overflow-y:auto;margin:12px 0}
 .wink-manager-item{display:flex;align-items:center;gap:10px;padding:8px;border-radius:8px;text-align:left;background:none}
-.wink-manager-item:hover{background:rgba(255,255,255,.06)}
 .wink-manager-item img{width:36px;height:36px;object-fit:cover;border-radius:6px;flex-shrink:0}
 
 .wink-character{position:fixed;top:50%;left:50%;z-index:210;pointer-events:none;font-size:min(26vh,220px);line-height:1;transform:translate(-50%,-50%);animation:winkFly .75s cubic-bezier(.34,1.56,.64,1) forwards;filter:drop-shadow(0 6px 14px rgba(0,0,0,.35))}
@@ -564,7 +548,27 @@ body{
   background:var(--green);color:#fff;display:grid;place-items:center;
   pointer-events:none;box-shadow:0 0 0 2px #111820;
 }
+.rail-badge:empty{width:10px;height:10px}
 .blocked-menu{width:220px}
+
+.notif-backdrop{position:fixed;inset:0;z-index:145;background:transparent}
+.notif-panel{
+  position:absolute;left:60px;bottom:0;width:260px;max-height:60vh;overflow-y:auto;
+  background:var(--bg-surface);border:1px solid var(--line);border-radius:10px;
+  box-shadow:0 8px 24px #0007;z-index:146;padding:6px;
+}
+.notif-item{
+  display:flex;align-items:center;gap:8px;padding:9px 8px;border-radius:8px;
+  font-size:.8rem;color:var(--text);text-decoration:none;
+}
+.notif-item span:not(.notif-time):not(.notif-update-bang){flex:1;line-height:1.3}
+.notif-time{font-size:.68rem;color:var(--muted);flex-shrink:0}
+.notif-update{background:rgba(229,72,77,.12);margin-bottom:4px}
+.notif-update-bang{
+  width:18px;height:18px;border-radius:50%;background:#e5484d;color:#fff;
+  display:grid;place-items:center;font-weight:700;font-size:.75rem;flex-shrink:0;
+}
+.notif-empty{padding:14px 8px;font-size:.8rem;color:var(--muted);text-align:center}
 
 .community-sidebar{
   display:flex;flex-direction:column;align-items:center;gap:6px;
@@ -582,7 +586,6 @@ body{
   width:100%;text-align:left;background:none;border:0;color:var(--text-secondary);
   padding:9px 14px;border-radius:6px;cursor:pointer;font-size:14px;
 }
-.community-sidebar-nav:hover{background:var(--bg-surface-2)}
 .community-sidebar-nav.active{background:var(--bubble);color:#fff;font-weight:600}
 
 .community-feed{display:flex;flex-direction:column;gap:14px}
@@ -600,7 +603,6 @@ body{
   background:var(--green);color:#fff;font-weight:600;cursor:pointer;
 }
 .community-composer button.danger{background:transparent;border:1px solid var(--danger-bg);color:var(--accent-text)}
-.community-composer button.danger:hover{background:var(--danger-bg)}
 .community-post{
   background:var(--bg-panel);border:1px solid var(--line);border-radius:10px;padding:14px;
 }
@@ -653,4 +655,28 @@ body{
   .input{min-height:40px}
   .emoji-picker{max-width:190px}
   .emoji-picker button{font-size:1.1rem;padding:3px}
+}
+
+/* hover states only for real mice - em touch (celular) o :hover gruda ligado depois do toque e parece selecionado */
+@media (hover:hover){
+  .rail button:hover{background:var(--bg-selected);color:#fff}
+  .icon-btn:hover{background:var(--bg-surface);color:#fff}
+  .chat:hover{background:var(--bg-surface-2)}
+  .compose-btn:hover{background:#2b3a42}
+  .send:hover{filter:brightness(1.1)}
+  .emoji-picker button:hover{background:#2b3a42}
+  .group-info-actions button:hover{background:var(--bg-surface-2)}
+  .google-btn:hover{background:var(--bg-surface-2)}
+  .profile-popup-grid-item:hover{background:var(--bg-surface-2)}
+  .profile-menu button:hover{background:#2b3a42}
+  .new-conv-option:hover{background:var(--bg-surface-2)}
+  .new-conv-form button.danger:hover{background:var(--danger-bg)}
+  .account-signout:hover{background:var(--danger-bg)}
+  .request-menu button:hover{background:#2b3a42}
+  .context-menu button:hover{background:#2b3a42}
+  .nudge-btn:hover{background:#2b3a42}
+  .wink-picker-add:hover{opacity:1}
+  .wink-manager-item:hover{background:rgba(255,255,255,.06)}
+  .community-sidebar-nav:hover{background:var(--bg-surface-2)}
+  .community-composer button.danger:hover{background:var(--danger-bg)}
 }

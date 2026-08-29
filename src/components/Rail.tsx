@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { displayName } from '../lib/displayName'
 import { IconBell, IconChat, IconGroup, IconPlus, IconStar, IconUser } from './icons'
+import { NotificationCenter } from './NotificationCenter'
 import type { Profile } from '../types'
 
 type Props = {
@@ -86,7 +87,7 @@ export function Rail({ me, onRequireAuth, onNewConversation, onOpenAccount, onOp
         )}
       </div>
       <button title="Grupos e comunidades" onClick={handleGroupsClick}><IconGroup /></button>
-      <button title="Status (em breve)"><IconStar /></button>
+      <NotificationCenter />
       <div className="spacer" />
       <div
         className="avatar-sm"

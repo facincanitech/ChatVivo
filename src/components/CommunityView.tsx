@@ -5,6 +5,7 @@ import { sanitizeImageUrl } from '../lib/imageUrl'
 import { uploadImage } from '../lib/uploadImage'
 import { getErrorMessage } from '../lib/errors'
 import { ReplayPlayer, type ReplayEvent } from './ReplayPlayer'
+import { AvatarBox } from './AvatarBox'
 import { IconEdit, IconSend, IconSmile, IconTrash, IconUser } from './icons'
 import type { Community, Profile } from '../types'
 
@@ -51,6 +52,7 @@ type Props = {
   me: Profile
   community: Community
   activeTab: 'home' | 'info'
+  onTabChange: (tab: 'home' | 'info') => void
   onCommunityUpdate: (patch: Partial<Community>) => void
   onDeleted: () => void
 }
@@ -61,7 +63,7 @@ function recordEvent(bufferRef: React.MutableRefObject<ReplayEvent[]>, text: str
   bufferRef.current = bufferRef.current.filter((e) => now - e.t <= REPLAY_WINDOW_MS)
 }
 
-export function CommunityView({ me, community, activeTab, onCommunityUpdate, onDeleted }: Props) {
+export function CommunityView({ me, community, activeTab, onTabChange, onCommunityUpdate, onDeleted }: Props) {
   const [posts, setPosts] = useState<Post[]>([])
   const [comments, setComments] = useState<Comment[]>([])
   const [reactions, setReactions] = useState<Reaction[]>([])
@@ -391,11 +393,19 @@ export function CommunityView({ me, community, activeTab, onCommunityUpdate, onD
   return (
     <main className="main">
       <header className="chat-header">
-        <div className="header-text">
-          <div className="header-name">{community.name}</div>
-          <div className="status">
-            {memberCount} {memberCount === 1 ? 'participante' : 'participantes'}
-            {community.category ? ` · ${community.category}` : ''}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 13, cursor: 'pointer', flex: 1, minWidth: 0 }} onClick={() => onTabChange(activeTab === 'info' ? 'home' : 'info')}>
+          <AvatarBox
+            src={community.image_url}
+            id={community.id}
+            fallbackLetter={community.name[0]?.toUpperCase() || 'C'}
+            className="header-photo"
+          />
+          <div className="header-text">
+            <div className="header-name">{community.name}</div>
+            <div className="status">
+              {memberCount} {memberCount === 1 ? 'participante' : 'participantes'}
+              {community.category ? ` · ${community.category}` : ''}
+            </div>
           </div>
         </div>
         <div className="header-actions">

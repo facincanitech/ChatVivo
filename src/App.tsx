@@ -12,6 +12,8 @@ import { APP_VERSION } from './version'
 import { playNudgeSound, triggerNudgeShake } from './lib/nudge'
 import { playWinkEffect, playCustomWinkEffect } from './lib/winks'
 import { saveCustomWink, type CustomWink } from './lib/customWinks'
+import { addNotification } from './lib/notifications'
+import { displayName } from './lib/displayName'
 import './App.css'
 
 type Theme = 'dark' | 'light' | 'contrast'
@@ -209,6 +211,12 @@ function App() {
     }
   }, [profile?.id])
 
+  async function notifyFrom(userId: string, verb: string) {
+    const { data } = await supabase.from('profiles').select('username, display_name').eq('id', userId).single()
+    const name = data ? displayName(data) : 'Alguém'
+    addNotification(verb === 'chamou sua atenção' ? 'nudge' : 'wink', `${name} ${verb}`)
+  }
+
   useEffect(() => {
     if (!profile) return
     const channel = supabase
@@ -218,6 +226,7 @@ function App() {
         if (conversationId && mutedIdsRef.current.has(conversationId)) return
         triggerNudgeShake()
         playNudgeSound()
+        notifyFrom(userId, 'chamou sua atenção')
         if (!conversationId) return
         setNudgers((prev) => {
           if (prev.some((n) => n.conversationId === conversationId)) return prev
@@ -228,9 +237,10 @@ function App() {
         }, 600000)
       })
       .on('broadcast', { event: 'wink' }, ({ payload }) => {
-        const { conversationId, winkId } = payload as { conversationId?: string; winkId?: string }
+        const { userId, conversationId, winkId } = payload as { userId: string; conversationId?: string; winkId?: string }
         if (conversationId && mutedIdsRef.current.has(conversationId)) return
         if (winkId) playWinkEffect(winkId)
+        notifyFrom(userId, 'mandou um wink')
       })
       .on('broadcast', { event: 'customWink' }, ({ payload }) => {
         const { userId, conversationId, label, imageData, soundData } = payload as {
@@ -244,6 +254,7 @@ function App() {
         playCustomWinkEffect(imageData, soundData)
         const wink: CustomWink = { id: crypto.randomUUID(), label, imageData, soundData, fromUser: userId }
         saveCustomWink(wink).catch(() => {})
+        notifyFrom(userId, `mandou um wink (${label})`)
       })
       .subscribe()
     return () => {
@@ -349,6 +360,7 @@ function App() {
           me={profile}
           community={selectedCommunity}
           activeTab={communityTab}
+          onTabChange={setCommunityTab}
           onCommunityUpdate={(patch) => setSelectedCommunity((c) => (c ? { ...c, ...patch } : c))}
           onDeleted={() => setSelectedCommunity(null)}
         />
