@@ -16,6 +16,19 @@ export const WINKS: WinkDef[] = [
   { id: 'splash', emoji: '🪣', label: 'Baldaço', effect: 'flash', color: 'rgba(56,139,253,.5)', particleEmoji: '💧' },
 ]
 
+function playWinkSound(winkId: string) {
+  let fallenBack = false
+  const fallback = () => {
+    if (fallenBack) return
+    fallenBack = true
+    playNudgeSound()
+  }
+  const audio = new Audio(`${import.meta.env.BASE_URL}sounds/wink-${winkId}.mp3`)
+  audio.volume = 0.8
+  audio.addEventListener('error', fallback)
+  audio.play().catch(fallback)
+}
+
 const CORNERS = [
   { x: '-60vw', y: '-60vh', r: -50 },
   { x: '60vw', y: '-60vh', r: 50 },
@@ -99,9 +112,10 @@ export function playWinkEffect(winkId: string) {
     }
     case 'burst':
     default:
-      spawnParticles(wink.emoji)
+      spawnFlyInCharacter(wink.emoji)
+      setTimeout(() => spawnParticles(wink.emoji, 10), 600)
       break
   }
 
-  playNudgeSound()
+  playWinkSound(winkId)
 }
