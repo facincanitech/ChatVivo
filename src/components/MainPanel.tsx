@@ -7,6 +7,7 @@ import { getErrorMessage } from '../lib/errors'
 import { displayName } from '../lib/displayName'
 import { colorFromId } from '../lib/avatarColor'
 import { sanitizeImageUrl } from '../lib/imageUrl'
+import { uploadImage } from '../lib/uploadImage'
 import { IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconCrown, IconMic, IconPlus, IconSend, IconSmile } from './icons'
 import { ReplayPlayer, type ReplayEvent } from './ReplayPlayer'
 import { ProfilePopup } from './ProfilePopup'
@@ -86,6 +87,9 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const [editDesc, setEditDesc] = useState('')
   const [editImageUrl, setEditImageUrl] = useState('')
   const [editInvitePermission, setEditInvitePermission] = useState<'all' | 'owner'>('all')
+  const [groupImageUploading, setGroupImageUploading] = useState(false)
+  const [groupImageFailed, setGroupImageFailed] = useState(false)
+  const groupImageInputRef = useRef<HTMLInputElement>(null)
   const [editBusy, setEditBusy] = useState(false)
   const [inviteFriends, setInviteFriends] = useState<{ id: string; username: string; display_name: string | null; avatar_url: string | null; email: string }[]>([])
   const [addError, setAddError] = useState<string | null>(null)
@@ -104,6 +108,10 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   useEffect(() => {
     messagesRef.current = messages
   }, [messages])
+
+  useEffect(() => {
+    setGroupImageFailed(false)
+  }, [conversation?.image_url])
 
   function hasHiddenEdit(events: ReplayEvent[], finalContent: string): boolean {
     let prevLen = 0
@@ -474,6 +482,21 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     setConfigView(canEditGroupInfo ? 'edit' : 'view')
   }
 
+  async function uploadGroupImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !me) return
+    setGroupImageUploading(true)
+    try {
+      const url = await uploadImage(file, me.id, 'group')
+      setEditImageUrl(url)
+    } catch (err) {
+      setAddError(getErrorMessage(err))
+    } finally {
+      setGroupImageUploading(false)
+      if (groupImageInputRef.current) groupImageInputRef.current.value = ''
+    }
+  }
+
   async function saveGroupInfo() {
     if (!conversation) return
     setEditBusy(true)
@@ -732,12 +755,17 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
         >
           <div
             className="header-photo"
-            style={{ overflow: 'hidden', ...(!otherMember && !conversation.image_url ? { background: colorFromId(conversation.id), color: '#fff' } : {}) }}
+            style={{ overflow: 'hidden', ...(!otherMember && !(conversation.image_url && !groupImageFailed) ? { background: colorFromId(conversation.id), color: '#fff' } : {}) }}
           >
             {otherMember?.avatar_url ? (
               <img src={otherMember.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : !otherMember && conversation.image_url ? (
-              <img src={conversation.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : !otherMember && conversation.image_url && !groupImageFailed ? (
+              <img
+                src={conversation.image_url}
+                alt=""
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                onError={() => setGroupImageFailed(true)}
+              />
             ) : !otherMember ? (
               'G'
             ) : (
@@ -787,12 +815,17 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
               className="group-info-avatar"
               style={{
                 cursor: canEditGroupInfo ? 'pointer' : 'default',
-                ...(conversation.image_url ? {} : { background: colorFromId(conversation.id), color: '#fff' }),
+                ...(conversation.image_url && !groupImageFailed ? {} : { background: colorFromId(conversation.id), color: '#fff' }),
               }}
               onClick={() => canEditGroupInfo && configView === 'root' && openGroupEdit()}
             >
-              {conversation.image_url ? (
-                <img src={conversation.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              {conversation.image_url && !groupImageFailed ? (
+                <img
+                  src={conversation.image_url}
+                  alt=""
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  onError={() => setGroupImageFailed(true)}
+                />
               ) : (
                 'G'
               )}
@@ -869,7 +902,10 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
               <div className="new-conv-form" style={{ padding: 0 }}>
                 <input placeholder="nome do grupo" value={editName} onChange={(e) => setEditName(e.target.value)} autoFocus />
                 <input placeholder="descrição" value={editDesc} onChange={(e) => setEditDesc(e.target.value)} />
-                <input placeholder="link da imagem" value={editImageUrl} onChange={(e) => setEditImageUrl(e.target.value)} />
+                <input ref={groupImageInputRef} type="file" accept="image/*" hidden onChange={uploadGroupImage} />
+                <button type="button" disabled={groupImageUploading} onClick={() => groupImageInputRef.current?.click()}>
+                  {groupImageUploading ? 'enviando...' : editImageUrl ? 'Trocar foto' : 'Escolher foto'}
+                </button>
                 {isRoleGroup && (
                   <>
                     <label className="group-info-section-label" style={{ marginTop: 6 }}>Quem pode convidar</label>

@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { getErrorMessage } from '../lib/errors'
 import { sanitizeImageUrl } from '../lib/imageUrl'
+import { uploadImage } from '../lib/uploadImage'
 import { displayName } from '../lib/displayName'
-import { colorFromId } from '../lib/avatarColor'
+import { AvatarBox } from './AvatarBox'
 import { APP_VERSION } from '../version'
 import {
   IconArchive,
@@ -102,6 +103,8 @@ export function ChatList({
   const [newGroupName, setNewGroupName] = useState('')
   const [newGroupDesc, setNewGroupDesc] = useState('')
   const [newGroupImageUrl, setNewGroupImageUrl] = useState('')
+  const [newGroupImageUploading, setNewGroupImageUploading] = useState(false)
+  const newGroupImageInputRef = useRef<HTMLInputElement>(null)
   const [groupsBusy, setGroupsBusy] = useState(false)
   const [groupsError, setGroupsError] = useState<string | null>(null)
   const [communities, setCommunities] = useState<Community[]>([])
@@ -112,6 +115,8 @@ export function ChatList({
   const [newCommunityDesc, setNewCommunityDesc] = useState('')
   const [newCommunityCategory, setNewCommunityCategory] = useState('')
   const [newCommunityImageUrl, setNewCommunityImageUrl] = useState('')
+  const [newCommunityImageUploading, setNewCommunityImageUploading] = useState(false)
+  const newCommunityImageInputRef = useRef<HTMLInputElement>(null)
   const [newCommunityLanguage, setNewCommunityLanguage] = useState('Português (Brasil)')
   const [newCommunityIsPrivate, setNewCommunityIsPrivate] = useState(false)
   const [communityQuery, setCommunityQuery] = useState('')
@@ -753,6 +758,36 @@ export function ChatList({
     }
   }
 
+  async function uploadNewGroupImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !me) return
+    setNewGroupImageUploading(true)
+    try {
+      const url = await uploadImage(file, me.id, 'group')
+      setNewGroupImageUrl(url)
+    } catch (err) {
+      setGroupsError(getErrorMessage(err))
+    } finally {
+      setNewGroupImageUploading(false)
+      if (newGroupImageInputRef.current) newGroupImageInputRef.current.value = ''
+    }
+  }
+
+  async function uploadNewCommunityImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !me) return
+    setNewCommunityImageUploading(true)
+    try {
+      const url = await uploadImage(file, me.id, 'community')
+      setNewCommunityImageUrl(url)
+    } catch (err) {
+      setGroupsError(getErrorMessage(err))
+    } finally {
+      setNewCommunityImageUploading(false)
+      if (newCommunityImageInputRef.current) newCommunityImageInputRef.current.value = ''
+    }
+  }
+
   async function createGroup2() {
     if (!me) return
     const name = newGroupName.trim()
@@ -920,13 +955,7 @@ export function ChatList({
           <button type="button" className="icon-btn" onClick={onCommunityBack} style={{ alignSelf: 'flex-start' }}>
             <IconArrowLeft size={20} />
           </button>
-          <div className="community-sidebar-photo" style={selectedCommunity.image_url ? undefined : { background: colorFromId(selectedCommunity.id), color: '#fff' }}>
-            {selectedCommunity.image_url ? (
-              <img src={selectedCommunity.image_url} alt="" />
-            ) : (
-              'C'
-            )}
-          </div>
+          <AvatarBox src={selectedCommunity.image_url} id={selectedCommunity.id} fallbackLetter="C" className="community-sidebar-photo" />
           <div className="community-sidebar-name">{selectedCommunity.name}</div>
           <div className="community-sidebar-count">
             {communityMemberCount} {communityMemberCount === 1 ? 'membro' : 'membros'}
@@ -1002,9 +1031,7 @@ export function ChatList({
                     onSelect({ id: g.id, type: 'group', name: g.name, image_url: g.image_url, created_by: '', created_at: '' } as Conversation)
                   }}
                 >
-                  <div className="photo" style={g.image_url ? undefined : { background: colorFromId(g.id), color: '#fff' }}>
-                    {g.image_url ? <img src={g.image_url} alt="" /> : 'G'}
-                  </div>
+                  <AvatarBox src={g.image_url} id={g.id} fallbackLetter="G" className="photo" />
                   <div className="chat-info">
                     <div className="row">
                       <div className="name">{g.name}{g.role === 'admin' ? ' (adm)' : g.role === 'moderator' ? ' (mod)' : ''}</div>
@@ -1022,9 +1049,7 @@ export function ChatList({
                   className="chat"
                   onClick={() => onSelectCommunity(c)}
                 >
-                  <div className="photo" style={c.image_url ? undefined : { background: colorFromId(c.id), color: '#fff' }}>
-                    {c.image_url ? <img src={c.image_url} alt="" /> : 'C'}
-                  </div>
+                  <AvatarBox src={c.image_url} id={c.id} fallbackLetter="C" className="photo" />
                   <div className="chat-info">
                     <div className="row">
                       <div className="name">{c.name}</div>
@@ -1479,9 +1504,7 @@ export function ChatList({
                     onSelectCommunity(c)
                   }}
                 >
-                  <div className="photo" style={c.image_url ? undefined : { background: colorFromId(c.id), color: '#fff' }}>
-                    {c.image_url ? <img src={c.image_url} alt="" /> : 'C'}
-                  </div>
+                  <AvatarBox src={c.image_url} id={c.id} fallbackLetter="C" className="photo" />
                   <div className="chat-info">
                     <div className="row">
                       <div className="name">{c.name}</div>
@@ -1516,9 +1539,7 @@ export function ChatList({
                     onGroupsOpenChange(false)
                   }}
                 >
-                  <div className="photo" style={g.image_url ? undefined : { background: colorFromId(g.id), color: '#fff' }}>
-                    {g.image_url ? <img src={g.image_url} alt="" /> : 'G'}
-                  </div>
+                  <AvatarBox src={g.image_url} id={g.id} fallbackLetter="G" className="photo" />
                   <div className="chat-info">
                     <div className="row">
                       <div className="name">{g.name}{g.role === 'admin' ? ' (adm)' : g.role === 'moderator' ? ' (mod)' : ''}</div>
@@ -1556,9 +1577,7 @@ export function ChatList({
                     onSelectCommunity(c)
                   }}
                 >
-                  <div className="photo" style={c.image_url ? undefined : { background: colorFromId(c.id), color: '#fff' }}>
-                    {c.image_url ? <img src={c.image_url} alt="" /> : 'C'}
-                  </div>
+                  <AvatarBox src={c.image_url} id={c.id} fallbackLetter="C" className="photo" />
                   <div className="chat-info">
                     <div className="row">
                       <div className="name">{c.name}</div>
@@ -1586,12 +1605,11 @@ export function ChatList({
               value={newGroupDesc}
               onChange={(e) => setNewGroupDesc(e.target.value)}
             />
-            <label style={{ marginTop: 10 }}>Foto (link)</label>
-            <input
-              placeholder="link da imagem (opcional, dá pra por depois)"
-              value={newGroupImageUrl}
-              onChange={(e) => setNewGroupImageUrl(e.target.value)}
-            />
+            <label style={{ marginTop: 10 }}>Foto</label>
+            <input ref={newGroupImageInputRef} type="file" accept="image/*" hidden onChange={uploadNewGroupImage} />
+            <button type="button" disabled={newGroupImageUploading} onClick={() => newGroupImageInputRef.current?.click()}>
+              {newGroupImageUploading ? 'enviando...' : newGroupImageUrl ? 'Trocar foto' : 'Escolher foto (opcional)'}
+            </button>
             <button type="button" disabled={groupsBusy} onClick={createGroup2}>Criar</button>
             {groupsError && <span className="auth-error">{groupsError}</span>}
           </div>
@@ -1618,12 +1636,11 @@ export function ChatList({
               value={newCommunityDesc}
               onChange={(e) => setNewCommunityDesc(e.target.value)}
             />
-            <label style={{ marginTop: 10 }}>Foto (link)</label>
-            <input
-              placeholder="link da imagem (opcional)"
-              value={newCommunityImageUrl}
-              onChange={(e) => setNewCommunityImageUrl(e.target.value)}
-            />
+            <label style={{ marginTop: 10 }}>Foto</label>
+            <input ref={newCommunityImageInputRef} type="file" accept="image/*" hidden onChange={uploadNewCommunityImage} />
+            <button type="button" disabled={newCommunityImageUploading} onClick={() => newCommunityImageInputRef.current?.click()}>
+              {newCommunityImageUploading ? 'enviando...' : newCommunityImageUrl ? 'Trocar foto' : 'Escolher foto (opcional)'}
+            </button>
             <label style={{ marginTop: 10 }}>Idioma</label>
             <input
               placeholder="idioma"
@@ -1664,9 +1681,7 @@ export function ChatList({
                       onSelectCommunity(c)
                     }}
                   >
-                    <div className="photo" style={c.image_url ? undefined : { background: colorFromId(c.id), color: '#fff' }}>
-                      {c.image_url ? <img src={c.image_url} alt="" /> : 'C'}
-                    </div>
+                    <AvatarBox src={c.image_url} id={c.id} fallbackLetter="C" className="photo" />
                     <div className="chat-info">
                       <div className="row">
                         <div className="name">{c.name}</div>

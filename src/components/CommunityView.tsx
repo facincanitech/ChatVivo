@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { displayName } from '../lib/displayName'
 import { sanitizeImageUrl } from '../lib/imageUrl'
+import { uploadImage } from '../lib/uploadImage'
 import { getErrorMessage } from '../lib/errors'
 import { ReplayPlayer, type ReplayEvent } from './ReplayPlayer'
 import { IconEdit, IconSend, IconSmile, IconTrash, IconUser } from './icons'
@@ -67,6 +68,8 @@ export function CommunityView({ me, community, activeTab, onCommunityUpdate }: P
   const [reactionPickerFor, setReactionPickerFor] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [editImageUrl, setEditImageUrl] = useState('')
+  const [imageUploading, setImageUploading] = useState(false)
+  const imageInputRef = useRef<HTMLInputElement>(null)
   const [editCategory, setEditCategory] = useState('')
   const [editLanguage, setEditLanguage] = useState('')
   const [editIsPrivate, setEditIsPrivate] = useState(false)
@@ -170,6 +173,21 @@ export function CommunityView({ me, community, activeTab, onCommunityUpdate }: P
   function authorLabel(id: string): string {
     const a = authors[id]
     return a ? displayName(a) : '...'
+  }
+
+  async function uploadCommunityImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImageUploading(true)
+    try {
+      const url = await uploadImage(file, me.id, 'community')
+      setEditImageUrl(url)
+    } catch (err) {
+      setInfoError(getErrorMessage(err))
+    } finally {
+      setImageUploading(false)
+      if (imageInputRef.current) imageInputRef.current.value = ''
+    }
   }
 
   async function saveCommunityInfo() {
@@ -540,8 +558,11 @@ export function CommunityView({ me, community, activeTab, onCommunityUpdate }: P
             <div className="community-composer">
               <label>Nome</label>
               <input value={editName} onChange={(e) => setEditName(e.target.value)} />
-              <label style={{ marginTop: 8 }}>Foto (link)</label>
-              <input value={editImageUrl} onChange={(e) => setEditImageUrl(e.target.value)} placeholder="link da imagem" />
+              <label style={{ marginTop: 8 }}>Foto</label>
+              <input ref={imageInputRef} type="file" accept="image/*" hidden onChange={uploadCommunityImage} />
+              <button type="button" disabled={imageUploading} onClick={() => imageInputRef.current?.click()}>
+                {imageUploading ? 'enviando...' : editImageUrl ? 'Trocar foto' : 'Escolher foto'}
+              </button>
               <label style={{ marginTop: 8 }}>Categoria</label>
               <input value={editCategory} onChange={(e) => setEditCategory(e.target.value)} placeholder="categoria" />
               <label style={{ marginTop: 8 }}>Idioma</label>
