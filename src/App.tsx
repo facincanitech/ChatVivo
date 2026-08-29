@@ -11,10 +11,32 @@ import { APP_VERSION } from './version'
 import { playNudgeSound, triggerNudgeShake } from './lib/nudge'
 import './App.css'
 
+type Theme = 'dark' | 'light' | 'contrast'
+
 function App() {
   useEffect(() => {
     document.title = `Ferus v${APP_VERSION}`
   }, [])
+
+  const [theme, setTheme] = useState<Theme>(() => {
+    try {
+      const saved = localStorage.getItem('ferus-theme')
+      if (saved === 'dark' || saved === 'light' || saved === 'contrast') return saved
+    } catch {
+      // ignore
+    }
+    return 'dark'
+  })
+
+  useEffect(() => {
+    if (theme === 'dark') delete document.documentElement.dataset.theme
+    else document.documentElement.dataset.theme = theme
+    try {
+      localStorage.setItem('ferus-theme', theme)
+    } catch {
+      // ignore
+    }
+  }, [theme])
 
   useEffect(() => {
     let hiddenAt: number | null = null
@@ -279,6 +301,8 @@ function App() {
         groupsOpen={groupsOpen}
         onGroupsOpenChange={setGroupsOpen}
         onProfileChange={(patch) => setProfile((p) => (p ? { ...p, ...patch } : p))}
+        theme={theme}
+        onThemeChange={setTheme}
         blockedIds={blockedIds}
       />
       {selectedCommunity && profile ? (

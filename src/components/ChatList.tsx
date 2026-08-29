@@ -40,6 +40,8 @@ type Props = {
   communityTab: 'home' | 'info'
   onCommunityTabChange: (tab: 'home' | 'info') => void
   onCommunityBack: () => void
+  theme: 'dark' | 'light' | 'contrast'
+  onThemeChange: (theme: 'dark' | 'light' | 'contrast') => void
 }
 
 type ConvWithLabel = Conversation & {
@@ -89,6 +91,8 @@ export function ChatList({
   communityTab,
   onCommunityTabChange,
   onCommunityBack,
+  theme,
+  onThemeChange,
 }: Props) {
   const [conversations, setConversations] = useState<ConvWithLabel[]>([])
   const [groupsView, setGroupsView] = useState<'root' | 'group-root' | 'group-create' | 'community-root' | 'community-create' | 'community-search'>('root')
@@ -1268,6 +1272,31 @@ export function ChatList({
               Baixar o app (Android) — v{APP_VERSION}
             </a>
             <span className="invite-code">apk de teste — instala liberando "fontes desconhecidas" no Android</span>
+
+            <label style={{ marginTop: 10 }}>Tema</label>
+            <div className="theme-picker">
+              <button
+                type="button"
+                className={`theme-option${theme === 'dark' ? ' active' : ''}`}
+                onClick={() => onThemeChange('dark')}
+              >
+                Escuro
+              </button>
+              <button
+                type="button"
+                className={`theme-option${theme === 'light' ? ' active' : ''}`}
+                onClick={() => onThemeChange('light')}
+              >
+                Claro
+              </button>
+              <button
+                type="button"
+                className={`theme-option${theme === 'contrast' ? ' active' : ''}`}
+                onClick={() => onThemeChange('contrast')}
+              >
+                Alto contraste
+              </button>
+            </div>
           </div>
         )}
 
