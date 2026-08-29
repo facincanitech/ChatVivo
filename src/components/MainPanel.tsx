@@ -81,7 +81,8 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const [showEmoji, setShowEmoji] = useState(false)
   const [showWinks, setShowWinks] = useState(false)
   const [customWinks, setCustomWinks] = useState<CustomWink[]>([])
-  const [showCreateWink, setShowCreateWink] = useState(false)
+  const [winkManagerView, setWinkManagerView] = useState<'closed' | 'list' | 'form'>('closed')
+  const [editingWinkId, setEditingWinkId] = useState<string | null>(null)
   const [newWinkLabel, setNewWinkLabel] = useState('')
   const [newWinkImage, setNewWinkImage] = useState<string | null>(null)
   const [newWinkSound, setNewWinkSound] = useState<string | null>(null)
@@ -89,10 +90,29 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const winkImageInputRef = useRef<HTMLInputElement>(null)
   const winkSoundInputRef = useRef<HTMLInputElement>(null)
 
+  function reloadCustomWinks() {
+    getCustomWinks().then(setCustomWinks).catch(() => setCustomWinks([]))
+  }
+
   useEffect(() => {
     if (!showWinks) return
-    getCustomWinks().then(setCustomWinks).catch(() => setCustomWinks([]))
+    reloadCustomWinks()
   }, [showWinks])
+
+  function openWinkManager() {
+    setShowWinks(false)
+    reloadCustomWinks()
+    setWinkManagerView('list')
+  }
+
+  function openWinkForm(existing?: CustomWink) {
+    setEditingWinkId(existing?.id || null)
+    setNewWinkLabel(existing?.label || '')
+    setNewWinkImage(existing?.imageData || null)
+    setNewWinkSound(existing?.soundData || null)
+    setNewWinkError(null)
+    setWinkManagerView('form')
+  }
   const [recording, setRecording] = useState(false)
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
   const [replayFor, setReplayFor] = useState<Message | null>(null)
@@ -421,30 +441,30 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     setNewWinkSound(await fileToDataUrl(file))
   }
 
-  async function createCustomWink() {
+  async function saveWinkForm() {
     if (!newWinkImage) {
       setNewWinkError('Escolhe uma imagem ou gif')
       return
     }
     const wink: CustomWink = {
-      id: crypto.randomUUID(),
+      id: editingWinkId || crypto.randomUUID(),
       label: newWinkLabel.trim() || 'Wink',
       imageData: newWinkImage,
       soundData: newWinkSound,
       fromUser: null,
     }
     await saveCustomWink(wink)
-    setCustomWinks((prev) => [...prev, wink])
-    setShowCreateWink(false)
-    setNewWinkLabel('')
-    setNewWinkImage(null)
-    setNewWinkSound(null)
-    setNewWinkError(null)
+    setCustomWinks((prev) => {
+      const exists = prev.some((w) => w.id === wink.id)
+      return exists ? prev.map((w) => (w.id === wink.id ? wink : w)) : [...prev, wink]
+    })
+    setWinkManagerView('list')
   }
 
   async function removeCustomWink(id: string) {
     await deleteCustomWink(id)
     setCustomWinks((prev) => prev.filter((w) => w.id !== id))
+    if (editingWinkId === id) setWinkManagerView('list')
   }
 
   function sendCustomWink(wink: CustomWink) {
@@ -1255,16 +1275,35 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                 <img src={w.imageData} alt="" />
               </button>
             ))}
-            <button type="button" title="Criar wink" className="wink-picker-add" onClick={() => { setShowWinks(false); setShowCreateWink(true) }}>
+            <button type="button" title="Meus winks" className="wink-picker-add" onClick={openWinkManager}>
               <IconPlus size={16} />
             </button>
           </div>
         )}
 
-        {showCreateWink && (
-          <div className="modal-backdrop" onClick={() => setShowCreateWink(false)}>
+        {winkManagerView === 'list' && (
+          <div className="modal-backdrop" onClick={() => setWinkManagerView('closed')}>
             <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-              <h2>Criar wink</h2>
+              <h2>Meus winks</h2>
+              <button type="button" className="primary" onClick={() => openWinkForm()}>+ Criar wink</button>
+              <div className="wink-manager-list">
+                {customWinks.length === 0 && <p style={{ color: '#8696a0', fontSize: '.85rem' }}>nenhum wink criado ainda</p>}
+                {customWinks.map((w) => (
+                  <button key={w.id} type="button" className="wink-manager-item" onClick={() => openWinkForm(w)}>
+                    <img src={w.imageData} alt="" />
+                    <span>{w.label}</span>
+                  </button>
+                ))}
+              </div>
+              <button type="button" onClick={() => setWinkManagerView('closed')}>fechar</button>
+            </div>
+          </div>
+        )}
+
+        {winkManagerView === 'form' && (
+          <div className="modal-backdrop" onClick={() => setWinkManagerView('list')}>
+            <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+              <h2>{editingWinkId ? 'Editar wink' : 'Criar wink'}</h2>
               <div className="new-conv-form">
                 <input
                   type="text"
@@ -1282,8 +1321,11 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                   {newWinkSound ? 'Trocar som' : 'Escolher som (opcional)'}
                 </button>
                 {newWinkError && <p className="error">{newWinkError}</p>}
-                <button type="button" className="primary" onClick={createCustomWink}>Salvar wink</button>
-                <button type="button" onClick={() => setShowCreateWink(false)}>cancelar</button>
+                <button type="button" className="primary" onClick={saveWinkForm}>Salvar wink</button>
+                {editingWinkId && (
+                  <button type="button" className="danger" onClick={() => removeCustomWink(editingWinkId)}>Excluir wink</button>
+                )}
+                <button type="button" onClick={() => setWinkManagerView('list')}>voltar</button>
               </div>
             </div>
           </div>
