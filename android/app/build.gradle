@@ -1,13 +1,13 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace = "com.facincanitech.ferus"
+    namespace = "com.facincanitech.flux"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.facincanitech.ferus"
+        applicationId "com.facincanitech.flux"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 11
+        versionCode 12
         versionName "1.4"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "329594012664",
+    "project_id": "flux-1447f",
+    "storage_bucket": "flux-1447f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:329594012664:android:896145697be2dd2bdf0c0d",
+        "android_client_info": {
+          "package_name": "com.facincanitech.flux"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBqfFIDXZ-d8kzf9GAnnzyjebAPPaIe-hU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
