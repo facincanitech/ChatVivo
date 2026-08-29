@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { displayName } from '../lib/displayName'
 import { getErrorMessage } from '../lib/errors'
 import { ReplayPlayer, type ReplayEvent } from './ReplayPlayer'
-import { IconArrowLeft, IconEdit, IconSend, IconSmile, IconUser } from './icons'
+import { IconArrowLeft, IconEdit, IconSend, IconSmile, IconTrash, IconUser } from './icons'
 import type { Community, Profile } from '../types'
 
 const REACTION_EMOJIS = ['😀', '😂', '😍', '😭', '🔥', '👍', '🙏', '😡']
@@ -113,6 +113,7 @@ export function CommunityView({ me, community, onBack, onCommunityUpdate }: Prop
       .from('community_posts')
       .select('*')
       .eq('community_id', community.id)
+      .is('deleted_at', null)
       .order('created_at', { ascending: false })
     const loadedPosts = (postRows as Post[]) || []
     setPosts(loadedPosts)
@@ -125,7 +126,7 @@ export function CommunityView({ me, community, onBack, onCommunityUpdate }: Prop
     }
 
     const [{ data: commentRows }, { data: reactionRows }] = await Promise.all([
-      supabase.from('community_comments').select('*').in('post_id', postIds).order('created_at', { ascending: true }),
+      supabase.from('community_comments').select('*').in('post_id', postIds).is('deleted_at', null).order('created_at', { ascending: true }),
       supabase.from('community_reactions').select('*').in('post_id', postIds),
     ])
     setComments((commentRows as Comment[]) || [])
@@ -254,6 +255,16 @@ export function CommunityView({ me, community, onBack, onCommunityUpdate }: Prop
     setEditingPostId(null)
     setEditPostDraft('')
     editPostEvents.current = []
+  }
+
+  async function moderatePost(postId: string) {
+    await supabase.from('community_posts').update({ deleted_at: new Date().toISOString() }).eq('id', postId)
+    setPosts((prev) => prev.filter((p) => p.id !== postId))
+  }
+
+  async function moderateComment(commentId: string) {
+    await supabase.from('community_comments').update({ deleted_at: new Date().toISOString() }).eq('id', commentId)
+    setComments((prev) => prev.filter((c) => c.id !== commentId))
   }
 
   async function react(postId: string, emoji: string) {
@@ -397,6 +408,11 @@ export function CommunityView({ me, community, onBack, onCommunityUpdate }: Prop
                     <IconEdit size={16} />
                   </button>
                 )}
+                {post.author_id !== me.id && isManager && (
+                  <button type="button" className="icon-btn" style={{ marginLeft: 'auto' }} onClick={() => moderatePost(post.id)} title="Remover tópico (moderação)">
+                    <IconTrash size={16} />
+                  </button>
+                )}
               </div>
 
               {editingPostId === post.id ? (
@@ -475,6 +491,11 @@ export function CommunityView({ me, community, onBack, onCommunityUpdate }: Prop
                             {isMine && (
                               <button type="button" className="icon-btn" onClick={() => startEditComment(c)} title="Editar comentário">
                                 <IconEdit size={13} />
+                              </button>
+                            )}
+                            {!isMine && isManager && (
+                              <button type="button" className="icon-btn" onClick={() => moderateComment(c.id)} title="Remover comentário (moderação)">
+                                <IconTrash size={13} />
                               </button>
                             )}
                             {c.events && (
