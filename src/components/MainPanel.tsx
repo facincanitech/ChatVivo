@@ -91,7 +91,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [showChatConfig])
-  const [configView, setConfigView] = useState<'root' | 'invite' | 'edit'>('root')
+  const [configView, setConfigView] = useState<'root' | 'invite' | 'edit' | 'view'>('root')
   const [editName, setEditName] = useState('')
   const [editDesc, setEditDesc] = useState('')
   const [editImageUrl, setEditImageUrl] = useState('')
@@ -452,6 +452,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const myMembership = me ? members[me.id] : undefined
   const isRoleGroup = !!myMembership?.role
   const canManageMembers = !!myMembership && (myMembership.added_by === null || myMembership.is_leader)
+  const canEditGroupInfo = isRoleGroup && (myMembership?.role === 'admin' || myMembership?.role === 'moderator')
 
   function canKick(target: MemberMeta): boolean {
     if (!myMembership) return false
@@ -478,7 +479,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     setEditDesc(conversation?.description || '')
     setEditImageUrl(conversation?.image_url || '')
     setShowChatConfig(true)
-    setConfigView('edit')
+    setConfigView(canEditGroupInfo ? 'edit' : 'view')
   }
 
   async function saveGroupInfo() {
@@ -813,12 +814,9 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                     ))}
                   </div>
                   <button type="button" onClick={() => { loadInviteFriends(); setConfigView('invite') }}>Convidar amigo</button>
-                  {isRoleGroup && (myMembership?.role === 'admin' || myMembership?.role === 'moderator') && (
-                    <button
-                      type="button"
-                      onClick={() => { setEditName(conversation?.name || ''); setEditDesc(conversation?.description || ''); setConfigView('edit') }}
-                    >
-                      Editar nome/descrição
+                  {canEditGroupInfo && (
+                    <button type="button" onClick={openGroupEdit}>
+                      Editar nome/descrição/foto
                     </button>
                   )}
                 </>
@@ -829,6 +827,15 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                   <input placeholder="descrição" value={editDesc} onChange={(e) => setEditDesc(e.target.value)} />
                   <input placeholder="link da imagem" value={editImageUrl} onChange={(e) => setEditImageUrl(e.target.value)} />
                   <button type="button" disabled={editBusy} onClick={saveGroupInfo}>Salvar</button>
+                  <button type="button" onClick={() => setConfigView('root')}>voltar</button>
+                </>
+              )}
+              {configView === 'view' && (
+                <>
+                  <p style={{ fontWeight: 700, margin: '4px 0 0' }}>{conversation?.name}</p>
+                  <p style={{ fontSize: '.8rem', color: '#8696a0' }}>
+                    {conversation?.description || 'sem descrição'}
+                  </p>
                   <button type="button" onClick={() => setConfigView('root')}>voltar</button>
                 </>
               )}
