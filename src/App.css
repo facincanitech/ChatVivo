@@ -207,7 +207,8 @@ body{
 }
 .in .bubble{background:var(--bg-surface);border-top-left-radius:3px}
 .out .bubble{background:var(--bubble);border-top-right-radius:3px}
-.meta{float:right;margin:5px 0 0 14px;color:#8da39f;font-size:10px}
+.message-footer{display:flex;justify-content:space-between;align-items:center;margin-top:4px;gap:10px}
+.meta{color:#8da39f;font-size:10px;white-space:nowrap}
 .author-label{font-size:11px;color:var(--muted);margin-bottom:2px;display:block}
 .message.live .bubble{opacity:.65;font-style:italic}
 .read-receipt{
@@ -215,7 +216,7 @@ body{
 }
 .read-receipt.read{color:var(--accent-text)}
 .replay-btn{
-  align-self:center;margin:0 6px;font-size:10px;color:var(--muted);background:none;
+  font-size:10px;color:var(--muted);background:none;
   border:1px solid var(--line-2);border-radius:4px;cursor:pointer;padding:1px 6px;
 }
 .edit-message-input{

@@ -104,8 +104,6 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const [atBottom, setAtBottom] = useState(true)
   const [nudgeFrom, setNudgeFrom] = useState<string | null>(null)
   const [editedIds, setEditedIds] = useState<Set<string>>(new Set())
-  const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
-  const [editDraft, setEditDraft] = useState('')
 
   const channelRef = useRef<RealtimeChannel | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -135,8 +133,6 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     setAtBottom(true)
     setNudgeFrom(null)
     setEditedIds(new Set())
-    setEditingMessageId(null)
-    setEditDraft('')
     setShowChatConfig(false)
     setConfigView('root')
     if (!conversation || !me) return
@@ -652,51 +648,6 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     }
   }
 
-  function startEditMessage(m: Message) {
-    setEditingMessageId(m.id)
-    setEditDraft(m.content)
-    replayBuffer.current = []
-    recordReplayEvent(m.content)
-  }
-
-  function cancelEditMessage() {
-    setEditingMessageId(null)
-    setEditDraft('')
-    replayBuffer.current = []
-  }
-
-  function handleEditChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
-    const text = e.target.value
-    setEditDraft(text)
-    recordReplayEvent(text)
-  }
-
-  async function saveEditMessage(messageId: string) {
-    const content = editDraft.trim()
-    if (!content) return
-    const eventsToStore = [...replayBuffer.current]
-
-    await supabase.from('messages').update({ content }).eq('id', messageId)
-    setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, content } : m)))
-
-    if (eventsToStore.length > 1) {
-      await supabase.from('message_replays').upsert({ message_id: messageId, events: eventsToStore })
-      if (hasHiddenEdit(eventsToStore, content)) {
-        setEditedIds((prev) => new Set(prev).add(messageId))
-      } else {
-        setEditedIds((prev) => {
-          if (!prev.has(messageId)) return prev
-          const next = new Set(prev)
-          next.delete(messageId)
-          return next
-        })
-      }
-    }
-
-    setEditingMessageId(null)
-    setEditDraft('')
-    replayBuffer.current = []
-  }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -930,37 +881,20 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                       {members[m.author_id] ? displayName(members[m.author_id]) : '...'}
                     </span>
                   )}
-                  {editingMessageId === m.id ? (
-                    <>
-                      <textarea
-                        className="edit-message-input"
-                        value={editDraft}
-                        onChange={handleEditChange}
-                        autoFocus
-                        rows={2}
-                      />
-                      <button type="button" className="replay-btn" onClick={() => saveEditMessage(m.id)}>salvar</button>
-                      <button type="button" className="replay-btn" onClick={cancelEditMessage}>cancelar</button>
-                    </>
-                  ) : (
-                    <>
-                      {m.content}
-                      <span className="meta">
-                        {formatMessageTime(m.created_at)}
-                        {m.author_id === me.id && (
-                          <span className={`read-receipt${isReadByOthers(m) ? ' read' : ''}`}>
-                            {isReadByOthers(m) ? <IconCheckDouble size={15} /> : <IconCheck size={13} />}
-                          </span>
-                        )}
-                      </span>
+                  {m.content}
+                  <div className="message-footer">
+                    <button type="button" className="replay-btn" onClick={() => openReplay(m)}>
+                      replay{editedIds.has(m.id) && <span className="replay-edited" title="tem coisa diferente do texto final">!</span>}
+                    </button>
+                    <span className="meta">
+                      {formatMessageTime(m.created_at)}
                       {m.author_id === me.id && (
-                        <button type="button" className="replay-btn" onClick={() => startEditMessage(m)}>editar</button>
+                        <span className={`read-receipt${isReadByOthers(m) ? ' read' : ''}`}>
+                          {isReadByOthers(m) ? <IconCheckDouble size={15} /> : <IconCheck size={13} />}
+                        </span>
                       )}
-                      <button type="button" className="replay-btn" onClick={() => openReplay(m)}>
-                        replay{editedIds.has(m.id) && <span className="replay-edited" title="tem coisa diferente do texto final">!</span>}
-                      </button>
-                    </>
-                  )}
+                    </span>
+                  </div>
                 </div>
               </div>
             )}
