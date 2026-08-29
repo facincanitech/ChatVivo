@@ -43,6 +43,7 @@ type Props = {
   community: Community
   activeTab: 'home' | 'info'
   onCommunityUpdate: (patch: Partial<Community>) => void
+  onDeleted: () => void
 }
 
 function recordEvent(bufferRef: React.MutableRefObject<ReplayEvent[]>, text: string) {
@@ -51,7 +52,7 @@ function recordEvent(bufferRef: React.MutableRefObject<ReplayEvent[]>, text: str
   bufferRef.current = bufferRef.current.filter((e) => now - e.t <= REPLAY_WINDOW_MS)
 }
 
-export function CommunityView({ me, community, activeTab, onCommunityUpdate }: Props) {
+export function CommunityView({ me, community, activeTab, onCommunityUpdate, onDeleted }: Props) {
   const [posts, setPosts] = useState<Post[]>([])
   const [comments, setComments] = useState<Comment[]>([])
   const [reactions, setReactions] = useState<Reaction[]>([])
@@ -211,6 +212,17 @@ export function CommunityView({ me, community, activeTab, onCommunityUpdate }: P
       onCommunityUpdate(patch)
     } catch (err) {
       setInfoError(getErrorMessage(err))
+    } finally {
+      setInfoBusy(false)
+    }
+  }
+
+  async function deleteCommunity() {
+    if (!window.confirm('Excluir essa comunidade pra sempre? Isso apaga todos os tópicos, comentários e a lista de participantes. Não dá pra desfazer.')) return
+    setInfoBusy(true)
+    try {
+      await supabase.from('communities').delete().eq('id', community.id)
+      onDeleted()
     } finally {
       setInfoBusy(false)
     }
@@ -573,6 +585,11 @@ export function CommunityView({ me, community, activeTab, onCommunityUpdate }: P
               </label>
               <button type="button" disabled={infoBusy} onClick={saveCommunityInfo} style={{ marginTop: 8 }}>Salvar</button>
               {infoError && <span className="auth-error">{infoError}</span>}
+              {isOwner && (
+                <button type="button" className="danger" disabled={infoBusy} onClick={deleteCommunity} style={{ marginTop: 8 }}>
+                  Excluir comunidade
+                </button>
+              )}
             </div>
           ) : (
             <div className="community-post">

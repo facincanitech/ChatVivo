@@ -399,6 +399,8 @@ body{
   padding:10px;border-radius:6px;border:0;background:var(--green);color:#fff;
   font-weight:600;cursor:pointer;
 }
+.new-conv-form button.danger{background:transparent;border:1px solid var(--danger-bg);color:var(--accent-text)}
+.new-conv-form button.danger:hover{background:var(--danger-bg)}
 .new-conv-form .invite-code{font-size:.8rem;color:var(--accent-text)}
 .new-conv-form label{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
 .new-conv-form input:disabled{opacity:.6}
@@ -539,6 +541,8 @@ body{
   align-self:flex-end;padding:8px 16px;border-radius:6px;border:0;
   background:var(--green);color:#fff;font-weight:600;cursor:pointer;
 }
+.community-composer button.danger{background:transparent;border:1px solid var(--danger-bg);color:var(--accent-text)}
+.community-composer button.danger:hover{background:var(--danger-bg)}
 .community-post{
   background:var(--bg-panel);border:1px solid var(--line);border-radius:10px;padding:14px;
 }

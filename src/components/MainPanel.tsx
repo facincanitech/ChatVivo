@@ -514,6 +514,19 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     }
   }
 
+  async function deleteGroup() {
+    if (!conversation) return
+    if (!window.confirm('Excluir esse grupo pra sempre? Isso apaga o grupo, o histórico e remove todo mundo. Não dá pra desfazer.')) return
+    setEditBusy(true)
+    try {
+      await supabase.from('conversations').delete().eq('id', conversation.id)
+      setShowChatConfig(false)
+      onBack()
+    } finally {
+      setEditBusy(false)
+    }
+  }
+
   const canInvite = !isRoleGroup || conversation?.invite_permission !== 'owner' || myMembership?.role === 'admin'
 
   async function removeMember(targetId: string) {
@@ -940,6 +953,11 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                 )}
                 <button type="button" disabled={editBusy} onClick={saveGroupInfo}>Salvar</button>
                 <button type="button" onClick={() => setConfigView('root')}>voltar</button>
+                {conversation.created_by === me?.id && (
+                  <button type="button" className="danger" disabled={editBusy} onClick={deleteGroup} style={{ marginTop: 10 }}>
+                    Excluir grupo
+                  </button>
+                )}
               </div>
             )}
             {configView === 'view' && (

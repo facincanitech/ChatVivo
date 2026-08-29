@@ -330,6 +330,7 @@ function App() {
           community={selectedCommunity}
           activeTab={communityTab}
           onCommunityUpdate={(patch) => setSelectedCommunity((c) => (c ? { ...c, ...patch } : c))}
+          onDeleted={() => setSelectedCommunity(null)}
         />
       ) : (
         <MainPanel
