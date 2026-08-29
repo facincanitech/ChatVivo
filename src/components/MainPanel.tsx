@@ -79,18 +79,6 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const [replayFor, setReplayFor] = useState<Message | null>(null)
   const [replayEvents, setReplayEvents] = useState<ReplayEvent[] | null>(null)
   const [showChatConfig, setShowChatConfig] = useState(false)
-  const chatConfigRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!showChatConfig) return
-    function handleClickOutside(e: MouseEvent) {
-      if (chatConfigRef.current && !chatConfigRef.current.contains(e.target as Node)) {
-        setShowChatConfig(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [showChatConfig])
   const [configView, setConfigView] = useState<'root' | 'invite' | 'edit' | 'view'>('root')
   const [editName, setEditName] = useState('')
   const [editDesc, setEditDesc] = useState('')
@@ -768,104 +756,124 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
           </div>
           {subtitle && <div className="status">{subtitle}</div>}
         </div>
-        <div className="header-actions" style={{ position: 'relative' }} ref={chatConfigRef}>
+        <div className="header-actions">
           <button
             type="button"
             className="nudge-btn"
             title="Config do chat"
-            onClick={() => { setShowChatConfig((v) => !v); setConfigView('root'); setAddError(null) }}
+            onClick={() => { setShowChatConfig(true); setConfigView('root'); setAddError(null) }}
           >
             <IconPlus size={20} />
           </button>
-
-          {showChatConfig && (
-            <div className="add-member-popover">
-              {configView === 'root' && (
-                <>
-                  <div className="chat-config-members">
-                    {Object.entries(members).map(([id, meta]) => (
-                      <div key={id} className="chat-config-row">
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                          {displayName(meta)}
-                          {isRoleGroup
-                            ? meta.role === 'admin'
-                              ? ' (adm)'
-                              : meta.role === 'moderator'
-                                ? ' (mod)'
-                                : ''
-                            : (meta.added_by === null || meta.is_leader) && <IconCrown size={12} />}
-                        </span>
-                        {id !== me?.id && (
-                          <span className="chat-config-actions">
-                            {canPromote(meta) && (
-                              <button type="button" onClick={() => promoteLeader(id)}>
-                                {isRoleGroup ? 'mod' : 'dar coroa'}
-                              </button>
-                            )}
-                            {canDemote(meta) && (
-                              <button type="button" onClick={() => demoteLeader(id)}>tirar coroa</button>
-                            )}
-                            {canKick(meta) && (
-                              <button type="button" onClick={() => removeMember(id)}>remover</button>
-                            )}
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  <button type="button" onClick={() => { loadInviteFriends(); setConfigView('invite') }}>Convidar amigo</button>
-                  {canEditGroupInfo && (
-                    <button type="button" onClick={openGroupEdit}>
-                      Editar nome/descrição/foto
-                    </button>
-                  )}
-                </>
-              )}
-              {configView === 'edit' && (
-                <>
-                  <input placeholder="nome do grupo" value={editName} onChange={(e) => setEditName(e.target.value)} autoFocus />
-                  <input placeholder="descrição" value={editDesc} onChange={(e) => setEditDesc(e.target.value)} />
-                  <input placeholder="link da imagem" value={editImageUrl} onChange={(e) => setEditImageUrl(e.target.value)} />
-                  <button type="button" disabled={editBusy} onClick={saveGroupInfo}>Salvar</button>
-                  <button type="button" onClick={() => setConfigView('root')}>voltar</button>
-                </>
-              )}
-              {configView === 'view' && (
-                <>
-                  <p style={{ fontWeight: 700, margin: '4px 0 0' }}>{conversation?.name}</p>
-                  <p style={{ fontSize: '.8rem', color: '#8696a0' }}>
-                    {conversation?.description || 'sem descrição'}
-                  </p>
-                  <button type="button" onClick={() => setConfigView('root')}>voltar</button>
-                </>
-              )}
-              {configView === 'invite' && (
-                <>
-                  <div className="chat-config-members" style={{ maxHeight: 260 }}>
-                    {inviteFriends.filter((f) => !members[f.id]).length === 0 && (
-                      <span style={{ fontSize: '.8rem', color: '#8696a0' }}>
-                        {inviteFriends.length === 0 ? 'você ainda não tem amigos' : 'todos os seus amigos já estão aqui'}
-                      </span>
-                    )}
-                    {inviteFriends.filter((f) => !members[f.id]).map((f) => (
-                      <div key={f.id} className="chat-config-row" style={{ cursor: addBusy ? 'default' : 'pointer' }} onClick={() => !addBusy && addMember(f)}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span className="photo" style={{ width: 28, height: 28 }}>
-                            {f.avatar_url ? <img src={f.avatar_url} alt="" /> : (f.username[0] || '?').toUpperCase()}
-                          </span>
-                          {displayName(f)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  <button type="button" onClick={() => setConfigView('root')}>voltar</button>
-                </>
-              )}
-              {addError && <span className="auth-error">{addError}</span>}
-            </div>
-          )}
         </div>
       </header>
+
+      {showChatConfig && (
+        <div className="modal-backdrop" onClick={() => setShowChatConfig(false)}>
+          <div className="modal-card group-info-card" onClick={(e) => e.stopPropagation()}>
+            <div
+              className="group-info-avatar"
+              style={{ cursor: canEditGroupInfo ? 'pointer' : 'default' }}
+              onClick={() => canEditGroupInfo && configView === 'root' && openGroupEdit()}
+            >
+              {conversation.image_url ? (
+                <img src={conversation.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                title[0]?.toUpperCase()
+              )}
+            </div>
+            <h2>{conversation.name || title}</h2>
+            <p className="status">grupo · {Object.keys(members).length} membros</p>
+            {conversation.description && configView === 'root' && (
+              <p className="community-description">{conversation.description}</p>
+            )}
+
+            {configView === 'root' && (
+              <>
+                <div className="group-info-actions">
+                  <button type="button" onClick={() => { loadInviteFriends(); setConfigView('invite') }}>Convidar amigo</button>
+                  {canEditGroupInfo && (
+                    <button type="button" onClick={openGroupEdit}>Editar nome/descrição/foto</button>
+                  )}
+                </div>
+                <label style={{ fontSize: '.7rem', color: '#8696a0', textTransform: 'uppercase', display: 'block', margin: '14px 0 6px' }}>
+                  {Object.keys(members).length} membros
+                </label>
+                <div className="chat-config-members" style={{ maxHeight: 320 }}>
+                  {Object.entries(members).map(([id, meta]) => (
+                    <div key={id} className="chat-config-row">
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <span className="photo" style={{ width: 32, height: 32 }}>
+                          {meta.avatar_url ? <img src={meta.avatar_url} alt="" /> : (meta.username[0] || '?').toUpperCase()}
+                        </span>
+                        {displayName(meta)}
+                        {isRoleGroup
+                          ? meta.role === 'admin'
+                            ? ' (adm)'
+                            : meta.role === 'moderator'
+                              ? ' (mod)'
+                              : ''
+                          : (meta.added_by === null || meta.is_leader) && <IconCrown size={12} />}
+                      </span>
+                      {id !== me?.id && (
+                        <span className="chat-config-actions">
+                          {canPromote(meta) && (
+                            <button type="button" onClick={() => promoteLeader(id)}>
+                              {isRoleGroup ? 'mod' : 'dar coroa'}
+                            </button>
+                          )}
+                          {canDemote(meta) && (
+                            <button type="button" onClick={() => demoteLeader(id)}>tirar coroa</button>
+                          )}
+                          {canKick(meta) && (
+                            <button type="button" onClick={() => removeMember(id)}>remover</button>
+                          )}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+            {configView === 'edit' && (
+              <div className="new-conv-form" style={{ padding: 0 }}>
+                <input placeholder="nome do grupo" value={editName} onChange={(e) => setEditName(e.target.value)} autoFocus />
+                <input placeholder="descrição" value={editDesc} onChange={(e) => setEditDesc(e.target.value)} />
+                <input placeholder="link da imagem" value={editImageUrl} onChange={(e) => setEditImageUrl(e.target.value)} />
+                <button type="button" disabled={editBusy} onClick={saveGroupInfo}>Salvar</button>
+                <button type="button" onClick={() => setConfigView('root')}>voltar</button>
+              </div>
+            )}
+            {configView === 'view' && (
+              <button type="button" onClick={() => setConfigView('root')} style={{ marginTop: 10 }}>voltar</button>
+            )}
+            {configView === 'invite' && (
+              <>
+                <div className="chat-config-members" style={{ maxHeight: 320, marginTop: 10 }}>
+                  {inviteFriends.filter((f) => !members[f.id]).length === 0 && (
+                    <span style={{ fontSize: '.8rem', color: '#8696a0' }}>
+                      {inviteFriends.length === 0 ? 'você ainda não tem amigos' : 'todos os seus amigos já estão aqui'}
+                    </span>
+                  )}
+                  {inviteFriends.filter((f) => !members[f.id]).map((f) => (
+                    <div key={f.id} className="chat-config-row" style={{ cursor: addBusy ? 'default' : 'pointer' }} onClick={() => !addBusy && addMember(f)}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span className="photo" style={{ width: 32, height: 32 }}>
+                          {f.avatar_url ? <img src={f.avatar_url} alt="" /> : (f.username[0] || '?').toUpperCase()}
+                        </span>
+                        {displayName(f)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <button type="button" onClick={() => setConfigView('root')} style={{ marginTop: 10 }}>voltar</button>
+              </>
+            )}
+            {addError && <span className="auth-error">{addError}</span>}
+            <button type="button" className="modal-close" onClick={() => setShowChatConfig(false)}>fechar</button>
+          </div>
+        </div>
+      )}
 
       <section className="messages" onScroll={handleMessagesScroll}>
         {messages.filter((m) => !blockedIds.has(m.author_id)).map((m, idx, arr) => {

@@ -295,6 +295,18 @@ body{
   text-align:center;
 }
 .modal-card h2{margin:0 0 6px;font-size:1.2rem}
+.group-info-card{max-width:420px;max-height:85vh;overflow-y:auto}
+.group-info-avatar{
+  width:96px;height:96px;border-radius:50%;overflow:hidden;background:var(--avatar-bg);
+  display:grid;place-items:center;font-size:34px;font-weight:700;color:var(--text);
+  margin:0 auto 10px;
+}
+.group-info-actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+.group-info-actions button{
+  padding:8px 14px;border-radius:18px;border:1px solid var(--line-2);background:transparent;
+  color:var(--text-secondary);cursor:pointer;font-size:13px;
+}
+.group-info-actions button:hover{background:var(--bg-surface-2)}
 .modal-card p{color:var(--muted);font-size:.85rem;margin:0 0 18px}
 .google-btn{
   width:100%;padding:12px;border-radius:8px;border:1px solid var(--line-2);
