@@ -30,19 +30,23 @@ type Comment = {
 
 type Reaction = { post_id: string; user_id: string; emoji: string }
 
+type MemberProfile = { id: string; username: string; display_name: string | null; avatar_url: string | null }
+
 type Props = {
   me: Profile
   community: Community
   onBack: () => void
+  onCommunityUpdate: (patch: Partial<Community>) => void
 }
 
-export function CommunityView({ me, community, onBack }: Props) {
+export function CommunityView({ me, community, onBack, onCommunityUpdate }: Props) {
   const [posts, setPosts] = useState<Post[]>([])
   const [comments, setComments] = useState<Comment[]>([])
   const [reactions, setReactions] = useState<Reaction[]>([])
   const [authors, setAuthors] = useState<Record<string, PostAuthor>>({})
   const [memberCount, setMemberCount] = useState(0)
   const [isMember, setIsMember] = useState(false)
+  const [memberList, setMemberList] = useState<MemberProfile[]>([])
   const [draft, setDraft] = useState('')
   const [imageUrl, setImageUrl] = useState('')
   const [busy, setBusy] = useState(false)
@@ -51,6 +55,13 @@ export function CommunityView({ me, community, onBack }: Props) {
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({})
   const [reactionPickerFor, setReactionPickerFor] = useState<string | null>(null)
   const [revealed, setRevealed] = useState<Set<string>>(new Set())
+  const [showInfo, setShowInfo] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editImageUrl, setEditImageUrl] = useState('')
+  const [infoBusy, setInfoBusy] = useState(false)
+  const [infoError, setInfoError] = useState<string | null>(null)
+
+  const isOwner = community.created_by === me.id
 
   async function load() {
     const { data: memberRows } = await supabase
@@ -59,6 +70,17 @@ export function CommunityView({ me, community, onBack }: Props) {
       .eq('community_id', community.id)
     setMemberCount(memberRows?.length || 0)
     setIsMember(!!memberRows?.some((r) => r.user_id === me.id))
+
+    const memberIds = (memberRows || []).map((r) => r.user_id as string)
+    if (memberIds.length > 0) {
+      const { data: memberProfiles } = await supabase
+        .from('profiles')
+        .select('id, username, display_name, avatar_url')
+        .in('id', memberIds)
+      setMemberList((memberProfiles as MemberProfile[]) || [])
+    } else {
+      setMemberList([])
+    }
 
     const { data: postRows } = await supabase
       .from('community_posts')
@@ -109,6 +131,41 @@ export function CommunityView({ me, community, onBack }: Props) {
   function authorLabel(id: string): string {
     const a = authors[id]
     return a ? displayName(a) : '...'
+  }
+
+  function openInfo() {
+    setEditName(community.name)
+    setEditImageUrl(community.image_url || '')
+    setInfoError(null)
+    setShowInfo(true)
+  }
+
+  async function saveCommunityInfo() {
+    const name = editName.trim()
+    if (!name) return
+    setInfoBusy(true)
+    setInfoError(null)
+    try {
+      const image_url = editImageUrl.trim() || null
+      const { error: err } = await supabase
+        .from('communities')
+        .update({ name, image_url })
+        .eq('id', community.id)
+      if (err) throw err
+      onCommunityUpdate({ name, image_url })
+      setShowInfo(false)
+    } catch (err) {
+      setInfoError(getErrorMessage(err))
+    } finally {
+      setInfoBusy(false)
+    }
+  }
+
+  async function removeParticipant(userId: string) {
+    await supabase.from('community_members').delete().eq('community_id', community.id).eq('user_id', userId)
+    setMemberList((prev) => prev.filter((m) => m.id !== userId))
+    setMemberCount((n) => Math.max(0, n - 1))
+    if (userId === me.id) setIsMember(false)
   }
 
   async function joinCommunity() {
@@ -217,14 +274,14 @@ export function CommunityView({ me, community, onBack }: Props) {
     <main className="main">
       <header className="chat-header">
         <button type="button" className="icon-btn" onClick={onBack}><IconArrowLeft size={20} /></button>
-        <div className="header-photo" style={{ overflow: 'hidden' }}>
+        <div className="header-photo" style={{ overflow: 'hidden', cursor: 'pointer' }} onClick={openInfo}>
           {community.image_url ? (
             <img src={community.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           ) : (
             community.name[0]?.toUpperCase()
           )}
         </div>
-        <div className="header-text">
+        <div className="header-text" style={{ cursor: 'pointer' }} onClick={openInfo}>
           <div className="header-name">{community.name}</div>
           <div className="status">
             {memberCount} {memberCount === 1 ? 'participante' : 'participantes'}
@@ -352,6 +409,54 @@ export function CommunityView({ me, community, onBack }: Props) {
           )
         })}
       </section>
+
+      {showInfo && (
+        <div className="modal-backdrop" onClick={() => setShowInfo(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            {isOwner ? (
+              <>
+                <h2>Editar comunidade</h2>
+                <label>Nome</label>
+                <input value={editName} onChange={(e) => setEditName(e.target.value)} />
+                <label style={{ marginTop: 10 }}>Foto (link)</label>
+                <input value={editImageUrl} onChange={(e) => setEditImageUrl(e.target.value)} placeholder="link da imagem" />
+                <button type="button" disabled={infoBusy} onClick={saveCommunityInfo} style={{ marginTop: 10 }}>Salvar</button>
+                {infoError && <span className="auth-error">{infoError}</span>}
+
+                <label style={{ marginTop: 16 }}>Participantes</label>
+                <div className="chat-config-members">
+                  {memberList.map((m) => (
+                    <div key={m.id} className="chat-config-row">
+                      <span>{displayName(m)}{m.id === me.id ? ' (você)' : ''}</span>
+                      {m.id !== me.id && (
+                        <button type="button" onClick={() => removeParticipant(m.id)}>remover</button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="account-avatar-wrap">
+                  <div className="account-avatar" style={{ overflow: 'hidden' }}>
+                    {community.image_url ? (
+                      <img src={community.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <IconUser size={40} />
+                    )}
+                  </div>
+                </div>
+                <h2>{community.name}</h2>
+                {community.description && <p>{community.description}</p>}
+                <p style={{ fontSize: '.75rem', color: '#8696a0' }}>
+                  criada em {new Date(community.created_at).toLocaleDateString('pt-BR')}
+                </p>
+              </>
+            )}
+            <button type="button" className="modal-close" onClick={() => setShowInfo(false)}>fechar</button>
+          </div>
+        </div>
+      )}
     </main>
   )
 }

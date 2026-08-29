@@ -1,2 +1,2 @@
 export const APP_VERSION = "1.0"
-export const UPDATE_COUNT = 25
+export const UPDATE_COUNT = 26

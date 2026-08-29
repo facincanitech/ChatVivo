@@ -281,6 +281,7 @@ function App() {
           me={profile}
           community={selectedCommunity}
           onBack={() => setSelectedCommunity(null)}
+          onCommunityUpdate={(patch) => setSelectedCommunity((c) => (c ? { ...c, ...patch } : c))}
         />
       ) : (
         <MainPanel
