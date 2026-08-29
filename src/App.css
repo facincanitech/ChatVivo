@@ -1,29 +1,30 @@
 :root{
-  --bg:#111b21;
-  --panel:#202c33;
-  --panel2:#182229;
-  --line:#2a3942;
-  --text:#e9edef;
-  --muted:#8696a0;
-  --green:#e5484d;
-  --green2:#7a1f24;
-  --bubble:#5c1f24;
-  --hover:#202c33;
-  --input:#2a3942;
+  /* Orkut escuro: navy/lilas em vez de preto puro, acento azul-bebe/lilas */
+  --bg:#14182a;
+  --panel:#232848;
+  --panel2:#1c2140;
+  --line:#333c66;
+  --text:#e8eaf7;
+  --muted:#9aa3c9;
+  --green:#8b9dff;
+  --green2:#4a52a0;
+  --bubble:#35407a;
+  --hover:#2b3157;
+  --input:#242a4d;
 
-  --bg-deep:#0b141a;
-  --bg-panel:#111b21;
-  --bg-surface:#202c33;
-  --bg-surface-2:#182229;
-  --bg-selected:#26343b;
-  --line-2:#34434b;
-  --muted-2:#71818a;
-  --text-secondary:#aebac1;
-  --accent-text:#f5b8ba;
-  --avatar-bg:#46545c;
-  --accent-dim-bg:#4a1518;
-  --danger-bg:#3a2323;
-  --scrollbar:#37464e;
+  --bg-deep:#14182a;
+  --bg-panel:#191d33;
+  --bg-surface:#232848;
+  --bg-surface-2:#2b3157;
+  --bg-selected:#343c6b;
+  --line-2:#454f80;
+  --muted-2:#7680a8;
+  --text-secondary:#c2c8e8;
+  --accent-text:#aab8f7;
+  --avatar-bg:#3d4570;
+  --accent-dim-bg:#2d3566;
+  --danger-bg:#4a1f2a;
+  --scrollbar:#454f80;
 }
 
 :root:not([data-theme="light"]){
