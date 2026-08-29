@@ -912,7 +912,14 @@ export function ChatList({
             </div>
             <div className="chat-info">
               <div className="row">
-                <div className="name">{c.type === 'group' && !c.isOrganicGroup ? `# ${c.label}` : c.label}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+                  <div className="name">{c.type === 'group' && !c.isOrganicGroup ? `# ${c.label}` : c.label}</div>
+                  {c.isFavorite && (
+                    <span className="favorite-heart" title="Favoritado">
+                      <IconHeart size={13} />
+                    </span>
+                  )}
+                </div>
                 {(c.unreadCount > 0 || c.isManuallyUnread) && (
                   <span className="unread-badge">{c.unreadCount > 0 ? c.unreadCount : ''}</span>
                 )}

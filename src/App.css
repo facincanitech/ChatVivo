@@ -92,6 +92,8 @@ body{
 }
 .photo img{width:100%;height:100%;object-fit:cover}
 .chat-info{min-width:0;flex:1}
+.favorite-heart{color:#5b6b73;flex-shrink:0;display:inline-flex}
+.favorite-heart svg{fill:currentColor}
 .unread-badge{
   background:var(--green);color:#fff;font-size:11px;font-weight:700;
   min-width:18px;height:18px;border-radius:9px;flex-shrink:0;
