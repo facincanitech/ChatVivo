@@ -164,6 +164,19 @@ export function IconMore({ size = 18 }: IconProps) {
   )
 }
 
+export function IconGrip({ size = 18 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size} fill="currentColor" stroke="none">
+      <circle cx="9" cy="6" r="1.4" />
+      <circle cx="15" cy="6" r="1.4" />
+      <circle cx="9" cy="12" r="1.4" />
+      <circle cx="15" cy="12" r="1.4" />
+      <circle cx="9" cy="18" r="1.4" />
+      <circle cx="15" cy="18" r="1.4" />
+    </svg>
+  )
+}
+
 export function IconArchive({ size = 18 }: IconProps) {
   return (
     <svg {...base} width={size} height={size}>

@@ -10,6 +10,7 @@ import {
   IconArchive,
   IconArrowLeft,
   IconBellOff,
+  IconGrip,
   IconGroup,
   IconHeart,
   IconKey,
@@ -23,6 +24,16 @@ import {
 import type { Community, Conversation, PanelView, Profile } from '../types'
 
 type AccountView = 'root' | 'profile' | 'account' | 'privacy' | 'blocked' | 'terms'
+
+type FilterKey = 'all' | 'favorites' | 'archived' | 'group' | 'communities'
+const DEFAULT_FILTER_ORDER: FilterKey[] = ['all', 'favorites', 'archived', 'group', 'communities']
+const FILTER_LABELS: Record<FilterKey, string> = {
+  all: 'Todos',
+  favorites: 'Favoritos',
+  archived: 'Arquivo',
+  group: 'Grupo',
+  communities: 'Comunidades',
+}
 
 type Props = {
   me: Profile | null
@@ -121,7 +132,68 @@ export function ChatList({
   const [newCommunityIsPrivate, setNewCommunityIsPrivate] = useState(false)
   const [communityQuery, setCommunityQuery] = useState('')
   const [query, setQuery] = useState('')
-  const [activeFilter, setActiveFilter] = useState<'all' | 'favorites' | 'archived' | 'group' | 'communities'>('all')
+  const [activeFilter, setActiveFilter] = useState<FilterKey>('all')
+  const [filterOrder, setFilterOrder] = useState<FilterKey[]>(() => {
+    try {
+      const saved = localStorage.getItem('ferus-filter-order')
+      if (saved) {
+        const parsed = JSON.parse(saved) as FilterKey[]
+        if (Array.isArray(parsed) && DEFAULT_FILTER_ORDER.every((k) => parsed.includes(k))) return parsed
+      }
+    } catch {
+      // ignore
+    }
+    return DEFAULT_FILTER_ORDER
+  })
+  const [dragKey, setDragKey] = useState<FilterKey | null>(null)
+  const draggedKeyRef = useRef<FilterKey | null>(null)
+  const filtersRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('ferus-filter-order', JSON.stringify(filterOrder))
+    } catch {
+      // ignore
+    }
+  }, [filterOrder])
+
+  function startFilterDrag(key: FilterKey, container: HTMLDivElement) {
+    draggedKeyRef.current = key
+    setDragKey(key)
+
+    function onMove(e: PointerEvent) {
+      const dragged = draggedKeyRef.current
+      if (!dragged) return
+      const x = e.clientX
+      const buttons = Array.from(container.querySelectorAll<HTMLElement>('[data-filter-key]'))
+      let target: FilterKey | null = null
+      for (const el of buttons) {
+        const rect = el.getBoundingClientRect()
+        if (x >= rect.left && x <= rect.right) {
+          target = el.dataset.filterKey as FilterKey
+          break
+        }
+      }
+      if (target && target !== dragged) {
+        setFilterOrder((prev) => {
+          const next = [...prev]
+          const from = next.indexOf(dragged)
+          const to = next.indexOf(target!)
+          next.splice(from, 1)
+          next.splice(to, 0, dragged)
+          return next
+        })
+      }
+    }
+    function onUp() {
+      draggedKeyRef.current = null
+      setDragKey(null)
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+  }
   const [dmEmail, setDmEmail] = useState('')
   const [inviteSent, setInviteSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -992,12 +1064,27 @@ export function ChatList({
             </div>
           </div>
 
-          <div className="filters">
-            <button className={`filter${activeFilter === 'all' ? ' active' : ''}`} onClick={() => setActiveFilter('all')}>Todos</button>
-            <button className={`filter${activeFilter === 'favorites' ? ' active' : ''}`} onClick={() => setActiveFilter('favorites')}>Favoritos</button>
-            <button className={`filter${activeFilter === 'archived' ? ' active' : ''}`} onClick={() => setActiveFilter('archived')}>Arquivo</button>
-            <button className={`filter${activeFilter === 'group' ? ' active' : ''}`} onClick={() => setActiveFilter('group')}>Grupo</button>
-            <button className={`filter${activeFilter === 'communities' ? ' active' : ''}`} onClick={() => setActiveFilter('communities')}>Comunidades</button>
+          <div className="filters" ref={filtersRef}>
+            {filterOrder.map((key) => (
+              <div
+                key={key}
+                data-filter-key={key}
+                className={`filter-tab${dragKey === key ? ' dragging' : ''}${activeFilter === key ? ' active' : ''}`}
+              >
+                <span
+                  className="filter-grip"
+                  onPointerDown={(e) => {
+                    e.preventDefault()
+                    if (filtersRef.current) startFilterDrag(key, filtersRef.current)
+                  }}
+                >
+                  <IconGrip size={12} />
+                </span>
+                <button className="filter" onClick={() => setActiveFilter(key)}>
+                  {FILTER_LABELS[key]}
+                </button>
+              </div>
+            ))}
           </div>
 
           {activeFilter === 'group' ? (

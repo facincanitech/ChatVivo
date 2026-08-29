@@ -116,12 +116,21 @@ body{
   flex:1;background:transparent;border:0;outline:0;color:var(--text);font-size:15px;
 }
 .filters{display:flex;gap:8px;padding:0 18px 12px;overflow-x:auto;flex-wrap:nowrap}
-.filters .filter{flex-shrink:0}
-.filter{
-  border:1px solid var(--line-2);background:transparent;color:var(--text-secondary);
-  border-radius:18px;padding:8px 14px;font-size:13px;cursor:pointer;
+.filter-tab{
+  display:flex;align-items:center;flex-shrink:0;
+  border:1px solid var(--line-2);border-radius:18px;
 }
-.filter.active{background:var(--accent-dim-bg);border-color:var(--accent-dim-bg);color:var(--accent-text)}
+.filter-tab.active{background:var(--accent-dim-bg);border-color:var(--accent-dim-bg)}
+.filter-tab.dragging{opacity:.5}
+.filter-grip{
+  display:flex;align-items:center;padding:0 1px 0 7px;color:var(--muted);
+  cursor:grab;touch-action:none;
+}
+.filter{
+  border:0;background:transparent;color:var(--text-secondary);
+  border-radius:18px;padding:8px 12px 8px 3px;font-size:13px;cursor:pointer;
+}
+.filter-tab.active .filter{color:var(--accent-text)}
 .chat-list{overflow:auto;flex:1}
 .chat{
   height:76px;display:flex;align-items:center;padding:0 18px;gap:13px;
