@@ -115,7 +115,8 @@ body{
 .search input{
   flex:1;background:transparent;border:0;outline:0;color:var(--text);font-size:15px;
 }
-.filters{display:flex;gap:8px;padding:0 18px 12px}
+.filters{display:flex;gap:8px;padding:0 18px 12px;overflow-x:auto;flex-wrap:nowrap}
+.filters .filter{flex-shrink:0}
 .filter{
   border:1px solid var(--line-2);background:transparent;color:var(--text-secondary);
   border-radius:18px;padding:8px 14px;font-size:13px;cursor:pointer;
