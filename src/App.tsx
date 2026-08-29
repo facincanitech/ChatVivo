@@ -363,6 +363,7 @@ function App() {
           onTabChange={setCommunityTab}
           onCommunityUpdate={(patch) => setSelectedCommunity((c) => (c ? { ...c, ...patch } : c))}
           onDeleted={() => setSelectedCommunity(null)}
+          onBack={() => setSelectedCommunity(null)}
         />
       ) : (
         <MainPanel

@@ -639,6 +639,8 @@ body{
   .app.chat-open .main{display:flex}
   .app.chat-open.panel-open .chats{display:flex}
   .app.chat-open.panel-open .main{display:none}
+  .app.chat-open:not(.panel-open) .rail{display:none}
+  .back-mobile{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
 
   .rail{width:65px}
   .rail button{width:47px;height:47px;font-size:20px}

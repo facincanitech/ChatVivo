@@ -6,7 +6,7 @@ import { uploadImage } from '../lib/uploadImage'
 import { getErrorMessage } from '../lib/errors'
 import { ReplayPlayer, type ReplayEvent } from './ReplayPlayer'
 import { AvatarBox } from './AvatarBox'
-import { IconEdit, IconSend, IconSmile, IconTrash, IconUser } from './icons'
+import { IconArrowLeft, IconEdit, IconSend, IconSmile, IconTrash, IconUser } from './icons'
 import type { Community, Profile } from '../types'
 
 const REACTION_EMOJIS = ['😀', '😂', '😍', '😭', '🔥', '👍', '🙏', '😡']
@@ -55,6 +55,7 @@ type Props = {
   onTabChange: (tab: 'home' | 'info') => void
   onCommunityUpdate: (patch: Partial<Community>) => void
   onDeleted: () => void
+  onBack: () => void
 }
 
 function recordEvent(bufferRef: React.MutableRefObject<ReplayEvent[]>, text: string) {
@@ -63,7 +64,7 @@ function recordEvent(bufferRef: React.MutableRefObject<ReplayEvent[]>, text: str
   bufferRef.current = bufferRef.current.filter((e) => now - e.t <= REPLAY_WINDOW_MS)
 }
 
-export function CommunityView({ me, community, activeTab, onTabChange, onCommunityUpdate, onDeleted }: Props) {
+export function CommunityView({ me, community, activeTab, onTabChange, onCommunityUpdate, onDeleted, onBack }: Props) {
   const [posts, setPosts] = useState<Post[]>([])
   const [comments, setComments] = useState<Comment[]>([])
   const [reactions, setReactions] = useState<Reaction[]>([])
@@ -393,6 +394,7 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
   return (
     <main className="main">
       <header className="chat-header">
+        <button type="button" className="back-mobile icon-btn" onClick={onBack}><IconArrowLeft size={20} /></button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 13, cursor: 'pointer', flex: 1, minWidth: 0 }} onClick={() => onTabChange(activeTab === 'info' ? 'home' : 'info')}>
           <AvatarBox
             src={community.image_url}

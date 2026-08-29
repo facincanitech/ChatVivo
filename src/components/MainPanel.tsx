@@ -10,7 +10,7 @@ import { displayName } from '../lib/displayName'
 import { colorFromId } from '../lib/avatarColor'
 import { sanitizeImageUrl } from '../lib/imageUrl'
 import { uploadImage } from '../lib/uploadImage'
-import { IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconCrown, IconHeart, IconMic, IconPlus, IconSend, IconSmile } from './icons'
+import { IconArrowLeft, IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconCrown, IconHeart, IconMic, IconPlus, IconSend, IconSmile } from './icons'
 import { ReplayPlayer, type ReplayEvent } from './ReplayPlayer'
 import { ProfilePopup } from './ProfilePopup'
 import type { Community, Conversation, Message, Profile } from '../types'
@@ -899,6 +899,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   return (
     <main className="main">
       <header className="chat-header">
+        <button type="button" className="back-mobile icon-btn" onClick={onBack}><IconArrowLeft size={20} /></button>
         <div
           style={{ position: 'relative', cursor: otherMember || isRoleGroup ? 'pointer' : 'default' }}
           onClick={() => {
@@ -1059,7 +1060,6 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                     </div>
                   ))}
                 </div>
-                <button type="button" onClick={() => setConfigView('root')} style={{ marginTop: 10 }}>voltar</button>
               </>
             )}
             {configView === 'edit' && (
@@ -1092,7 +1092,6 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                   </>
                 )}
                 <button type="button" disabled={editBusy} onClick={saveGroupInfo}>Salvar</button>
-                <button type="button" onClick={() => setConfigView('root')}>voltar</button>
                 {conversation.created_by === me?.id && !confirmDeleteGroup && (
                   <button type="button" className="danger" disabled={editBusy} onClick={() => setConfirmDeleteGroup(true)} style={{ marginTop: 10 }}>
                     Excluir grupo
@@ -1109,9 +1108,6 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                   </div>
                 )}
               </div>
-            )}
-            {configView === 'view' && (
-              <button type="button" onClick={() => setConfigView('root')} style={{ marginTop: 10 }}>voltar</button>
             )}
             {configView === 'invite' && (
               <>
