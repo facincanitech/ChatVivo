@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { displayName } from '../lib/displayName'
-import { IconBell, IconGroup, IconPlus, IconStar, IconUser } from './icons'
+import { IconBell, IconChat, IconGroup, IconPlus, IconStar, IconUser } from './icons'
 import { NotificationCenter } from './NotificationCenter'
 import type { Profile } from '../types'
 
@@ -69,8 +69,8 @@ export function Rail({ me, onRequireAuth, onNewConversation, onOpenAccount, onOp
   return (
     <aside className="rail">
       <div style={{ position: 'relative' }}>
-        <div className="logo" onClick={onGoHome} style={{ cursor: 'pointer', overflow: 'hidden' }} title={nudgeCount > 0 ? 'Alguém chamou sua atenção' : 'Início'}>
-          <img src={`${import.meta.env.BASE_URL}flux_messenger.png`} alt="Flux" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        <div className="logo" onClick={onGoHome} style={{ cursor: 'pointer' }} title={nudgeCount > 0 ? 'Alguém chamou sua atenção' : 'Início'}>
+          <IconChat size={22} />
         </div>
         {nudgeCount > 0 && (
           <span className="rail-badge" style={{ background: 'var(--green)' }}>
