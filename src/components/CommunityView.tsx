@@ -9,6 +9,7 @@ import { IconEdit, IconSend, IconSmile, IconTrash, IconUser } from './icons'
 import type { Community, Profile } from '../types'
 
 const REACTION_EMOJIS = ['😀', '😂', '😍', '😭', '🔥', '👍', '🙏', '😡']
+const CATEGORY_OPTIONS = ['Religioso', 'Filmes', 'Música', 'Entretenimento', 'Esportes', 'Tecnologia', 'Outros']
 const REPLAY_WINDOW_MS = 20000
 
 type PostAuthor = { username: string; display_name: string | null; avatar_url: string | null }
@@ -36,7 +37,15 @@ type Comment = {
 
 type Reaction = { post_id: string; user_id: string; emoji: string }
 
-type MemberProfile = { id: string; username: string; display_name: string | null; avatar_url: string | null; is_editor: boolean }
+type MemberProfile = {
+  id: string
+  username: string
+  display_name: string | null
+  avatar_url: string | null
+  email: string
+  is_editor: boolean
+  joined_at: string
+}
 
 type Props = {
   me: Profile
@@ -70,6 +79,7 @@ export function CommunityView({ me, community, activeTab, onCommunityUpdate, onD
   const [editName, setEditName] = useState('')
   const [editImageUrl, setEditImageUrl] = useState('')
   const [imageUploading, setImageUploading] = useState(false)
+  const [showMembers, setShowMembers] = useState(false)
   const imageInputRef = useRef<HTMLInputElement>(null)
   const [editCategory, setEditCategory] = useState('')
   const [editLanguage, setEditLanguage] = useState('')
@@ -94,7 +104,7 @@ export function CommunityView({ me, community, activeTab, onCommunityUpdate, onD
   async function load() {
     const { data: memberRows } = await supabase
       .from('community_members')
-      .select('user_id, is_editor')
+      .select('user_id, is_editor, joined_at')
       .eq('community_id', community.id)
     setMemberCount(memberRows?.length || 0)
     setIsMember(!!memberRows?.some((r) => r.user_id === me.id))
@@ -103,13 +113,14 @@ export function CommunityView({ me, community, activeTab, onCommunityUpdate, onD
     if (memberIds.length > 0) {
       const { data: memberProfiles } = await supabase
         .from('profiles')
-        .select('id, username, display_name, avatar_url')
+        .select('id, username, display_name, avatar_url, email')
         .in('id', memberIds)
-      const editorMap = new Map((memberRows || []).map((r) => [r.user_id as string, !!r.is_editor]))
+      const rowMap = new Map((memberRows || []).map((r) => [r.user_id as string, r]))
       setMemberList(
-        ((memberProfiles as Omit<MemberProfile, 'is_editor'>[]) || []).map((p) => ({
+        ((memberProfiles as Omit<MemberProfile, 'is_editor' | 'joined_at'>[]) || []).map((p) => ({
           ...p,
-          is_editor: editorMap.get(p.id) || false,
+          is_editor: !!rowMap.get(p.id)?.is_editor,
+          joined_at: (rowMap.get(p.id)?.joined_at as string) || '',
         })),
       )
     } else {
@@ -576,13 +587,21 @@ export function CommunityView({ me, community, activeTab, onCommunityUpdate, onD
                 {imageUploading ? 'enviando...' : editImageUrl ? 'Trocar foto' : 'Escolher foto'}
               </button>
               <label style={{ marginTop: 8 }}>Categoria</label>
-              <input value={editCategory} onChange={(e) => setEditCategory(e.target.value)} placeholder="categoria" />
+              <select value={editCategory} onChange={(e) => setEditCategory(e.target.value)}>
+                <option value="">categoria</option>
+                {CATEGORY_OPTIONS.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
               <label style={{ marginTop: 8 }}>Idioma</label>
               <input value={editLanguage} onChange={(e) => setEditLanguage(e.target.value)} placeholder="idioma" />
               <label style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <input type="checkbox" checked={editIsPrivate} onChange={(e) => setEditIsPrivate(e.target.checked)} style={{ width: 'auto' }} />
                 Comunidade particular (só membros veem tópicos e comentários)
               </label>
+              <p className="status" style={{ margin: '4px 0 0' }}>
+                criada em {new Date(community.created_at).toLocaleDateString('pt-BR')}
+              </p>
               <button type="button" disabled={infoBusy} onClick={saveCommunityInfo} style={{ marginTop: 8 }}>Salvar</button>
               {infoError && <span className="auth-error">{infoError}</span>}
               {isOwner && (
@@ -602,29 +621,42 @@ export function CommunityView({ me, community, activeTab, onCommunityUpdate, onD
             </div>
           )}
 
-          <label style={{ padding: '0 4px', fontSize: '.7rem', color: '#8696a0', textTransform: 'uppercase' }}>
-            Participantes
-          </label>
-          <div className="chat-config-members">
-            {memberList.map((m) => (
-              <div key={m.id} className="chat-config-row">
-                <span>
-                  {displayName(m)}
-                  {m.id === community.created_by ? ' (dono)' : m.is_editor ? ' (editor)' : ''}
-                  {m.id === me.id ? ' (você)' : ''}
-                </span>
-                {isOwner && m.id !== community.created_by && (
-                  <span className="chat-config-actions">
-                    <button type="button" onClick={() => toggleEditor(m.id, !m.is_editor)}>
-                      {m.is_editor ? 'tirar editor' : 'tornar editor'}
-                    </button>
-                    <button type="button" onClick={() => removeParticipant(m.id)}>remover</button>
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
+          <button type="button" onClick={() => setShowMembers(true)} style={{ alignSelf: 'flex-start' }}>
+            Membros ({memberCount})
+          </button>
         </section>
+      )}
+
+      {showMembers && (
+        <div className="modal-backdrop" onClick={() => setShowMembers(false)}>
+          <div className="modal-card group-info-card" onClick={(e) => e.stopPropagation()}>
+            <h2>Membros</h2>
+            <div className="member-table">
+              {memberList.map((m) => (
+                <div key={m.id} className="member-table-row">
+                  <div className="member-table-name">
+                    {displayName(m)}
+                    {m.id === community.created_by ? ' (dono)' : m.is_editor ? ' (editor)' : ''}
+                    {m.id === me.id ? ' (você)' : ''}
+                  </div>
+                  <div className="member-table-email">{m.email}</div>
+                  <div className="member-table-date">
+                    {m.joined_at ? new Date(m.joined_at).toLocaleDateString('pt-BR') : '—'}
+                  </div>
+                  {isOwner && m.id !== community.created_by && (
+                    <div className="member-table-actions">
+                      <button type="button" onClick={() => toggleEditor(m.id, !m.is_editor)}>
+                        {m.is_editor ? 'tirar mod' : 'mod'}
+                      </button>
+                      <button type="button" onClick={() => removeParticipant(m.id)}>remover</button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            <button type="button" className="modal-close" onClick={() => setShowMembers(false)}>fechar</button>
+          </div>
+        </div>
       )}
 
       {replayFor && (

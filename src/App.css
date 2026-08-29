@@ -307,6 +307,19 @@ body{
 }
 .modal-card h2{margin:0 0 6px;font-size:1.2rem}
 .group-info-card{max-width:420px;max-height:85vh;overflow-y:auto}
+.member-table{display:flex;flex-direction:column;gap:2px;text-align:left;max-height:400px;overflow-y:auto}
+.member-table-row{
+  display:grid;grid-template-columns:1fr 1fr auto;grid-template-areas:"name email date" "actions actions actions";
+  gap:2px 10px;padding:8px 4px;border-bottom:1px solid var(--line);font-size:.78rem;
+}
+.member-table-name{grid-area:name;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.member-table-email{grid-area:email;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.member-table-date{grid-area:date;color:var(--muted);white-space:nowrap}
+.member-table-actions{grid-area:actions;display:flex;gap:6px;margin-top:4px}
+.member-table-actions button{
+  padding:3px 8px;font-size:.68rem;border-radius:6px;border:1px solid var(--line-2);
+  background:var(--bg-surface-2);color:var(--text-secondary);cursor:pointer;
+}
 .group-info-avatar{
   width:96px;height:96px;border-radius:50%;overflow:hidden;background:var(--avatar-bg);
   display:grid;place-items:center;font-size:34px;font-weight:700;color:var(--text);
@@ -535,7 +548,7 @@ body{
   background:var(--bg-panel);border:1px solid var(--line);border-radius:10px;
   padding:12px;display:flex;flex-direction:column;gap:8px;
 }
-.community-composer textarea,.community-composer input{
+.community-composer textarea,.community-composer input,.community-composer select{
   background:var(--bg-deep);border:1px solid var(--line);border-radius:8px;color:var(--text);
   padding:8px 10px;font-family:inherit;font-size:14px;resize:vertical;
 }
