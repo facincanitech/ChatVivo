@@ -79,7 +79,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const [replayFor, setReplayFor] = useState<Message | null>(null)
   const [replayEvents, setReplayEvents] = useState<ReplayEvent[] | null>(null)
   const [showChatConfig, setShowChatConfig] = useState(false)
-  const [configView, setConfigView] = useState<'root' | 'invite' | 'edit' | 'view'>('root')
+  const [configView, setConfigView] = useState<'root' | 'invite' | 'edit' | 'view' | 'members'>('root')
   const [editName, setEditName] = useState('')
   const [editDesc, setEditDesc] = useState('')
   const [editImageUrl, setEditImageUrl] = useState('')
@@ -788,26 +788,36 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
               )}
             </div>
             <h2>{conversation.name || title}</h2>
-            <p className="status">grupo · {Object.keys(members).length} membros</p>
+            <p className="status">
+              grupo ·{' '}
+              <span style={{ textDecoration: 'underline', cursor: 'pointer' }} onClick={() => setConfigView('members')}>
+                {Object.keys(members).length} membros
+              </span>
+            </p>
             {conversation.description && configView === 'root' && (
               <p className="community-description">{conversation.description}</p>
             )}
 
             {configView === 'root' && (
+              <div className="group-info-actions">
+                {canInvite && (
+                  <button type="button" onClick={() => { loadInviteFriends(); setConfigView('invite') }}>Convidar amigo</button>
+                )}
+                {canEditGroupInfo && (
+                  <button type="button" onClick={openGroupEdit}>Editar nome/descrição/foto</button>
+                )}
+                <button type="button" onClick={() => setConfigView('members')}>Ver membros</button>
+              </div>
+            )}
+            {configView === 'members' && (
               <>
-                <div className="group-info-actions">
-                  {canInvite && (
-                    <button type="button" onClick={() => { loadInviteFriends(); setConfigView('invite') }}>Convidar amigo</button>
-                  )}
-                  {canEditGroupInfo && (
-                    <button type="button" onClick={openGroupEdit}>Editar nome/descrição/foto</button>
-                  )}
-                </div>
                 <label className="group-info-section-label">
                   {Object.keys(members).length} membros
                 </label>
                 <div className="chat-config-members">
-                  {Object.entries(members).map(([id, meta]) => (
+                  {Object.entries(members)
+                    .sort(([, a], [, b]) => displayName(a).localeCompare(displayName(b), 'pt-BR'))
+                    .map(([id, meta]) => (
                     <div key={id} className="chat-config-row">
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                         <div className="photo" style={{ width: 32, height: 32, flexShrink: 0 }}>
@@ -842,6 +852,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                     </div>
                   ))}
                 </div>
+                <button type="button" onClick={() => setConfigView('root')} style={{ marginTop: 10 }}>voltar</button>
               </>
             )}
             {configView === 'edit' && (
