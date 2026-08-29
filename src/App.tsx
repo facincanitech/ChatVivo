@@ -13,6 +13,7 @@ import { playNudgeSound, triggerNudgeShake } from './lib/nudge'
 import { playWinkEffect, playCustomWinkEffect } from './lib/winks'
 import { saveCustomWink, type CustomWink } from './lib/customWinks'
 import { addNotification } from './lib/notifications'
+import { registerPushNotifications } from './lib/pushNotifications'
 import { displayName } from './lib/displayName'
 import './App.css'
 
@@ -114,6 +115,11 @@ function App() {
       .single()
       .then(({ data }) => setProfile(data as Profile))
   }, [session])
+
+  useEffect(() => {
+    if (!profile) return
+    registerPushNotifications(profile.id).catch(() => {})
+  }, [profile?.id])
 
   const lastActivityRef = useRef(Date.now())
 
