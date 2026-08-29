@@ -217,6 +217,13 @@ export function CommunityView({ me, community, onBack }: Props) {
     <main className="main">
       <header className="chat-header">
         <button type="button" className="icon-btn" onClick={onBack}><IconArrowLeft size={20} /></button>
+        <div className="header-photo" style={{ overflow: 'hidden' }}>
+          {community.image_url ? (
+            <img src={community.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : (
+            community.name[0]?.toUpperCase()
+          )}
+        </div>
         <div className="header-text">
           <div className="header-name">{community.name}</div>
           <div className="status">

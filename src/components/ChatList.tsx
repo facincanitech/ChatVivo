@@ -83,7 +83,7 @@ export function ChatList({
   onSelectCommunity,
 }: Props) {
   const [conversations, setConversations] = useState<ConvWithLabel[]>([])
-  const [groupsView, setGroupsView] = useState<'root' | 'create' | 'community-create'>('root')
+  const [groupsView, setGroupsView] = useState<'root' | 'create' | 'community-create' | 'community-search'>('root')
   const [myGroups, setMyGroups] = useState<{ id: string; name: string; role: string | null }[]>([])
   const [newGroupName, setNewGroupName] = useState('')
   const [newGroupDesc, setNewGroupDesc] = useState('')
@@ -93,6 +93,8 @@ export function ChatList({
   const [newCommunityName, setNewCommunityName] = useState('')
   const [newCommunityDesc, setNewCommunityDesc] = useState('')
   const [newCommunityCategory, setNewCommunityCategory] = useState('')
+  const [newCommunityImageUrl, setNewCommunityImageUrl] = useState('')
+  const [communityQuery, setCommunityQuery] = useState('')
   const [query, setQuery] = useState('')
   const [activeFilter, setActiveFilter] = useState<'all' | 'favorites' | 'archived'>('all')
   const [dmEmail, setDmEmail] = useState('')
@@ -648,6 +650,7 @@ export function ChatList({
       setNewCommunityName('')
       setNewCommunityDesc('')
       setNewCommunityCategory('')
+      setNewCommunityImageUrl('')
       loadMyGroups()
       loadCommunities()
     }
@@ -666,6 +669,7 @@ export function ChatList({
           name,
           description: newCommunityDesc.trim() || null,
           category: newCommunityCategory.trim() || null,
+          image_url: newCommunityImageUrl.trim() || null,
           created_by: me.id,
         })
         .select()
@@ -1254,6 +1258,10 @@ export function ChatList({
                 <div className="option-icon"><IconHeart size={20} /></div>
                 <span>Criar comunidade</span>
               </div>
+              <div className="new-conv-option" onClick={() => { setCommunityQuery(''); setGroupsView('community-search') }}>
+                <div className="option-icon"><IconSearch size={20} /></div>
+                <span>Buscar comunidades</span>
+              </div>
             </div>
             <label style={{ padding: '0 22px', fontSize: '.7rem', color: '#8696a0', textTransform: 'uppercase' }}>
               Meus grupos
@@ -1292,7 +1300,9 @@ export function ChatList({
                     onSelectCommunity(c)
                   }}
                 >
-                  <div className="photo">{c.name[0]?.toUpperCase()}</div>
+                  <div className="photo">
+                    {c.image_url ? <img src={c.image_url} alt="" /> : c.name[0]?.toUpperCase()}
+                  </div>
                   <div className="chat-info">
                     <div className="row">
                       <div className="name">{c.name}</div>
@@ -1346,8 +1356,49 @@ export function ChatList({
               value={newCommunityDesc}
               onChange={(e) => setNewCommunityDesc(e.target.value)}
             />
+            <label style={{ marginTop: 10 }}>Foto (link)</label>
+            <input
+              placeholder="link da imagem (opcional)"
+              value={newCommunityImageUrl}
+              onChange={(e) => setNewCommunityImageUrl(e.target.value)}
+            />
             <button type="button" disabled={groupsBusy} onClick={createCommunity}>Criar</button>
             {groupsError && <span className="auth-error">{groupsError}</span>}
+          </div>
+        )}
+
+        {groupsView === 'community-search' && (
+          <div className="new-conv-form">
+            <input
+              placeholder="Buscar comunidades..."
+              value={communityQuery}
+              onChange={(e) => setCommunityQuery(e.target.value)}
+              autoFocus
+            />
+            <div className="chat-list" style={{ margin: '0 -22px' }}>
+              {communities
+                .filter((c) => c.name.toLowerCase().includes(communityQuery.toLowerCase()) || (c.category || '').toLowerCase().includes(communityQuery.toLowerCase()))
+                .map((c) => (
+                  <div
+                    key={c.id}
+                    className="chat"
+                    onClick={() => {
+                      onGroupsOpenChange(false)
+                      onSelectCommunity(c)
+                    }}
+                  >
+                    <div className="photo">
+                      {c.image_url ? <img src={c.image_url} alt="" /> : c.name[0]?.toUpperCase()}
+                    </div>
+                    <div className="chat-info">
+                      <div className="row">
+                        <div className="name">{c.name}</div>
+                      </div>
+                      {c.category && <div className="preview">{c.category}</div>}
+                    </div>
+                  </div>
+                ))}
+            </div>
           </div>
         )}
       </div>

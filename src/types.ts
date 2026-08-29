@@ -39,6 +39,7 @@ export type Community = {
   name: string
   description: string | null
   category: string | null
+  image_url: string | null
   created_by: string
   created_at: string
 }
