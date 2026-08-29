@@ -285,6 +285,7 @@ export function ChatList({
     loadFriends()
     loadCommunities()
     loadMyCommunities()
+    loadMyGroups()
     if (!me) return
     const channel = supabase
       .channel(`member-updates:${me.id}`)
@@ -968,7 +969,49 @@ export function ChatList({
             <button className={`filter${activeFilter === 'communities' ? ' active' : ''}`} onClick={() => setActiveFilter('communities')}>Comunidades</button>
           </div>
 
-          {activeFilter === 'communities' ? (
+          {activeFilter === 'group' ? (
+            <div className="chat-list">
+              {filtered.length === 0 && myGroups.length === 0 && <div className="empty">Nenhum grupo ainda</div>}
+              {filtered.map((c) => (
+                <div
+                  key={c.id}
+                  className={`chat${selected?.id === c.id ? ' selected' : ''}`}
+                  onClick={() => selectConversation(c)}
+                  onContextMenu={(e) => handleContextMenu(e, c)}
+                >
+                  <div className="photo">
+                    {c.avatarUrl ? <img src={c.avatarUrl} alt="" /> : c.label[0]?.toUpperCase()}
+                  </div>
+                  <div className="chat-info">
+                    <div className="row">
+                      <div className="name">{c.label}</div>
+                      {(c.unreadCount > 0 || c.isManuallyUnread) && (
+                        <span className="unread-badge">{c.unreadCount > 0 ? c.unreadCount : ''}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {myGroups.map((g) => (
+                <div
+                  key={g.id}
+                  className="chat"
+                  onClick={() => {
+                    onSelect({ id: g.id, type: 'group', name: g.name, image_url: g.image_url, created_by: '', created_at: '' } as Conversation)
+                  }}
+                >
+                  <div className="photo">
+                    {g.image_url ? <img src={g.image_url} alt="" /> : g.name[0]?.toUpperCase()}
+                  </div>
+                  <div className="chat-info">
+                    <div className="row">
+                      <div className="name">{g.name}{g.role === 'admin' ? ' (adm)' : g.role === 'moderator' ? ' (mod)' : ''}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : activeFilter === 'communities' ? (
             <div className="chat-list">
               {myCommunities.length === 0 && <div className="empty">Nenhuma comunidade ainda</div>}
               {myCommunities.map((c) => (
