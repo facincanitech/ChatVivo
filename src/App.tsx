@@ -272,8 +272,10 @@ function App() {
     setGroupsOpen(false)
   }
 
+  const anyPanelOpen = panelOpen || accountOpen || groupsOpen
+
   return (
-    <div className={`app${selected || selectedCommunity ? ' chat-open' : ''}`}>
+    <div className={`app${selected || selectedCommunity ? ' chat-open' : ''}${anyPanelOpen ? ' panel-open' : ''}`}>
       <Rail
         me={profile}
         onRequireAuth={() => requireAuth(() => {})}
