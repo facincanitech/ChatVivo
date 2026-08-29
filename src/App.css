@@ -212,7 +212,7 @@ body{
 }
 .message{position:relative;display:flex;margin:8px 0;min-width:0}
 .message.in{justify-content:flex-start}
-.message.out{justify-content:flex-end}
+.message.out{justify-content:flex-end;margin-right:-7%}
 .bubble{
   max-width:min(690px,78%);padding:10px 13px 7px;border-radius:9px;
   line-height:1.42;font-size:14px;box-shadow:0 1px 1px #0004;
@@ -631,6 +631,7 @@ body{
 
 @media(max-width:1100px){
   .messages{padding-left:4%;padding-right:4%}
+  .message.out{margin-right:-4%}
 }
 @media(max-width:760px){
   .chats{width:auto;flex:1;min-width:0}
