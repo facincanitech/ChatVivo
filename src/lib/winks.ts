@@ -36,16 +36,33 @@ const CORNERS = [
   { x: '60vw', y: '60vh', r: 30 },
 ]
 
-function spawnFlyInCharacter(emoji: string) {
+function spawnFlyInCharacter(emoji: string, imageSrc?: string) {
   const char = document.createElement('div')
   char.className = 'wink-character'
-  char.textContent = emoji
+  if (imageSrc) {
+    const img = document.createElement('img')
+    img.src = imageSrc
+    char.appendChild(img)
+  } else {
+    char.textContent = emoji
+  }
   const from = CORNERS[Math.floor(Math.random() * CORNERS.length)]
   char.style.setProperty('--from-x', from.x)
   char.style.setProperty('--from-y', from.y)
   char.style.setProperty('--from-r', `${from.r}deg`)
   document.body.appendChild(char)
   setTimeout(() => char.remove(), 1400)
+}
+
+export function playCustomWinkEffect(imageSrc: string, soundSrc: string | null) {
+  spawnFlyInCharacter('', imageSrc)
+  if (soundSrc) {
+    const audio = new Audio(soundSrc)
+    audio.volume = 0.8
+    audio.play().catch(() => playNudgeSound())
+  } else {
+    playNudgeSound()
+  }
 }
 
 function spawnBounceCharacter(emoji: string) {

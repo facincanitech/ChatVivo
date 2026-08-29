@@ -2,7 +2,8 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { playNudgeSound, triggerNudgeShake } from '../lib/nudge'
-import { WINKS, playWinkEffect } from '../lib/winks'
+import { WINKS, playWinkEffect, playCustomWinkEffect } from '../lib/winks'
+import { getCustomWinks, saveCustomWink, deleteCustomWink, fileToDataUrl, type CustomWink } from '../lib/customWinks'
 import { formatPresence, getPresenceColor } from '../lib/presence'
 import { getErrorMessage } from '../lib/errors'
 import { displayName } from '../lib/displayName'
@@ -79,6 +80,19 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const [liveMedia, setLiveMedia] = useState<Record<string, string>>({})
   const [showEmoji, setShowEmoji] = useState(false)
   const [showWinks, setShowWinks] = useState(false)
+  const [customWinks, setCustomWinks] = useState<CustomWink[]>([])
+  const [showCreateWink, setShowCreateWink] = useState(false)
+  const [newWinkLabel, setNewWinkLabel] = useState('')
+  const [newWinkImage, setNewWinkImage] = useState<string | null>(null)
+  const [newWinkSound, setNewWinkSound] = useState<string | null>(null)
+  const [newWinkError, setNewWinkError] = useState<string | null>(null)
+  const winkImageInputRef = useRef<HTMLInputElement>(null)
+  const winkSoundInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!showWinks) return
+    getCustomWinks().then(setCustomWinks).catch(() => setCustomWinks([]))
+  }, [showWinks])
   const [recording, setRecording] = useState(false)
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
   const [replayFor, setReplayFor] = useState<Message | null>(null)
@@ -373,6 +387,87 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
               type: 'broadcast',
               event: 'wink',
               payload: { userId: me.id, conversationId: conversation.id, winkId },
+            })
+            setTimeout(() => supabase.removeChannel(personalChannel), 1000)
+          }
+        })
+      })
+  }
+
+  const MAX_WINK_IMAGE_BYTES = 300 * 1024
+  const MAX_WINK_SOUND_BYTES = 150 * 1024
+
+  async function pickWinkImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    if (file.size > MAX_WINK_IMAGE_BYTES) {
+      setNewWinkError('Imagem muito grande, escolhe uma menor (até 300KB, tipo figurinha)')
+      return
+    }
+    setNewWinkError(null)
+    setNewWinkImage(await fileToDataUrl(file))
+  }
+
+  async function pickWinkSound(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    if (file.size > MAX_WINK_SOUND_BYTES) {
+      setNewWinkError('Som muito grande, escolhe um menor (até 150KB, tipo curtinho)')
+      return
+    }
+    setNewWinkError(null)
+    setNewWinkSound(await fileToDataUrl(file))
+  }
+
+  async function createCustomWink() {
+    if (!newWinkImage) {
+      setNewWinkError('Escolhe uma imagem ou gif')
+      return
+    }
+    const wink: CustomWink = {
+      id: crypto.randomUUID(),
+      label: newWinkLabel.trim() || 'Wink',
+      imageData: newWinkImage,
+      soundData: newWinkSound,
+      fromUser: null,
+    }
+    await saveCustomWink(wink)
+    setCustomWinks((prev) => [...prev, wink])
+    setShowCreateWink(false)
+    setNewWinkLabel('')
+    setNewWinkImage(null)
+    setNewWinkSound(null)
+    setNewWinkError(null)
+  }
+
+  async function removeCustomWink(id: string) {
+    await deleteCustomWink(id)
+    setCustomWinks((prev) => prev.filter((w) => w.id !== id))
+  }
+
+  function sendCustomWink(wink: CustomWink) {
+    if (!me || !conversation) return
+    setShowWinks(false)
+    playCustomWinkEffect(wink.imageData, wink.soundData)
+
+    Object.keys(members)
+      .filter((id) => id !== me.id)
+      .forEach((id) => {
+        const personalChannel = supabase.channel(`nudge:${id}`)
+        personalChannel.subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            personalChannel.send({
+              type: 'broadcast',
+              event: 'customWink',
+              payload: {
+                userId: me.id,
+                conversationId: conversation.id,
+                label: wink.label,
+                imageData: wink.imageData,
+                soundData: wink.soundData,
+              },
             })
             setTimeout(() => supabase.removeChannel(personalChannel), 1000)
           }
@@ -1148,6 +1243,49 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                 {w.emoji}
               </button>
             ))}
+            {customWinks.map((w) => (
+              <button
+                key={w.id}
+                type="button"
+                title={w.label}
+                className="wink-picker-custom"
+                onClick={() => sendCustomWink(w)}
+                onContextMenu={(e) => { e.preventDefault(); removeCustomWink(w.id) }}
+              >
+                <img src={w.imageData} alt="" />
+              </button>
+            ))}
+            <button type="button" title="Criar wink" className="wink-picker-add" onClick={() => { setShowWinks(false); setShowCreateWink(true) }}>
+              <IconPlus size={16} />
+            </button>
+          </div>
+        )}
+
+        {showCreateWink && (
+          <div className="modal-backdrop" onClick={() => setShowCreateWink(false)}>
+            <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+              <h2>Criar wink</h2>
+              <div className="new-conv-form">
+                <input
+                  type="text"
+                  placeholder="Nome do wink"
+                  value={newWinkLabel}
+                  onChange={(e) => setNewWinkLabel(e.target.value)}
+                />
+                <input ref={winkImageInputRef} type="file" accept="image/*" hidden onChange={pickWinkImage} />
+                <button type="button" onClick={() => winkImageInputRef.current?.click()}>
+                  {newWinkImage ? 'Trocar imagem/gif' : 'Escolher imagem/gif'}
+                </button>
+                {newWinkImage && <img src={newWinkImage} alt="" style={{ maxWidth: 120, maxHeight: 120, alignSelf: 'center' }} />}
+                <input ref={winkSoundInputRef} type="file" accept="audio/*" hidden onChange={pickWinkSound} />
+                <button type="button" onClick={() => winkSoundInputRef.current?.click()}>
+                  {newWinkSound ? 'Trocar som' : 'Escolher som (opcional)'}
+                </button>
+                {newWinkError && <p className="error">{newWinkError}</p>}
+                <button type="button" className="primary" onClick={createCustomWink}>Salvar wink</button>
+                <button type="button" onClick={() => setShowCreateWink(false)}>cancelar</button>
+              </div>
+            </div>
           </div>
         )}
       </footer>

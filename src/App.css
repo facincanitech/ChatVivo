@@ -503,8 +503,13 @@ body{
   100%{transform:translateY(-100vh) scale(1.2) rotate(25deg);opacity:0}
 }
 .wink-picker button{font-size:1.5rem}
+.wink-picker-custom{padding:0;width:32px;height:32px;overflow:hidden;border-radius:6px}
+.wink-picker-custom img{width:100%;height:100%;object-fit:cover;display:block}
+.wink-picker-add{opacity:.7}
+.wink-picker-add:hover{opacity:1}
 
 .wink-character{position:fixed;top:50%;left:50%;z-index:210;pointer-events:none;font-size:min(26vh,220px);line-height:1;transform:translate(-50%,-50%);animation:winkFly .75s cubic-bezier(.34,1.56,.64,1) forwards;filter:drop-shadow(0 6px 14px rgba(0,0,0,.35))}
+.wink-character img{max-width:min(60vw,320px);max-height:min(60vh,320px);object-fit:contain;display:block}
 @keyframes winkFly{
   0%{transform:translate(calc(-50% + var(--from-x)),calc(-50% + var(--from-y))) scale(.4) rotate(var(--from-r));opacity:0}
   40%{opacity:1}
