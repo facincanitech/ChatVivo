@@ -219,7 +219,7 @@ body{
   overflow-wrap:break-word;word-break:break-word;min-width:0;
 }
 .in .bubble{background:var(--bg-surface);border-top-left-radius:3px}
-.out .bubble{background:var(--bubble);border-top-right-radius:3px}
+.out .bubble{background:var(--bubble);border-top-right-radius:3px;text-align:right}
 .message-footer{display:flex;justify-content:flex-end;align-items:center;margin-top:4px;gap:8px}
 .meta{color:#8da39f;font-size:10px;white-space:nowrap}
 .author-label{font-size:11px;color:var(--muted);margin-bottom:2px;display:block}
