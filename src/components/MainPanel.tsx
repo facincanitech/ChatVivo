@@ -11,6 +11,7 @@ import { colorFromId } from '../lib/avatarColor'
 import { sanitizeImageUrl } from '../lib/imageUrl'
 import { uploadImage } from '../lib/uploadImage'
 import { readCache, writeCache } from '../lib/cache'
+import { sendPush } from '../lib/pushSend'
 import { IconArrowLeft, IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconCrown, IconHeart, IconMic, IconPlus, IconSend, IconSmile } from './icons'
 import { ReplayPlayer, type ReplayEvent } from './ReplayPlayer'
 import { ProfilePopup } from './ProfilePopup'
@@ -397,6 +398,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
           }
         })
       })
+    sendPush(Object.keys(members).filter((id) => id !== me.id), displayName(me), 'chamou sua atenção')
   }
 
   function sendWink(winkId: string) {
@@ -419,6 +421,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
           }
         })
       })
+    sendPush(Object.keys(members).filter((id) => id !== me.id), displayName(me), 'mandou um wink')
   }
 
   const MAX_WINK_IMAGE_BYTES = 300 * 1024
@@ -500,6 +503,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
           }
         })
       })
+    sendPush(Object.keys(members).filter((id) => id !== me.id), displayName(me), `mandou um wink (${wink.label})`)
   }
 
   function broadcastMedia(dataUrl: string | null) {
@@ -825,6 +829,9 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       }
       await supabase.from('message_replays').insert({ message_id: msg.id, events: eventsToStore })
     }
+
+    const recipientIds = Object.keys(members).filter((id) => id !== me.id)
+    sendPush(recipientIds, displayName(me), content)
   }
 
 
