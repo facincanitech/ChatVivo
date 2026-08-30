@@ -76,6 +76,8 @@ function App() {
     return () => document.removeEventListener('visibilitychange', onVisibility)
   }, [])
 
+  const navStateRef = useRef({ panelOpen: false, accountOpen: false, groupsOpen: false, selectedCommunity: false, selected: false })
+
   const [session, setSession] = useState<Session | null | undefined>(undefined)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [selected, setSelected] = useState<Conversation | null>(null)
@@ -87,6 +89,25 @@ function App() {
   const [accountOpen, setAccountOpen] = useState(false)
   const [groupsOpen, setGroupsOpen] = useState(false)
   const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    navStateRef.current = { panelOpen, accountOpen, groupsOpen, selectedCommunity: !!selectedCommunity, selected: !!selected }
+  }, [panelOpen, accountOpen, groupsOpen, selectedCommunity, selected])
+
+  useEffect(() => {
+    const listenerPromise = CapacitorApp.addListener('backButton', () => {
+      const s = navStateRef.current
+      if (s.panelOpen) setPanelOpen(false)
+      else if (s.accountOpen) setAccountOpen(false)
+      else if (s.groupsOpen) setGroupsOpen(false)
+      else if (s.selectedCommunity) setSelectedCommunity(null)
+      else if (s.selected) setSelected(null)
+      else CapacitorApp.exitApp()
+    })
+    return () => {
+      listenerPromise.then((l) => l.remove())
+    }
+  }, [])
   const [nudgers, setNudgers] = useState<{ fromId: string; conversationId: string; at: number }[]>([])
 
   useEffect(() => {

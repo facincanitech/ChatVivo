@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { playNudgeSound, triggerNudgeShake } from '../lib/nudge'
 import { WINKS, playWinkEffect, playCustomWinkEffect } from '../lib/winks'
 import { getCustomWinks, saveCustomWink, deleteCustomWink, fileToDataUrl, type CustomWink } from '../lib/customWinks'
-import { formatPresence, getPresenceColor } from '../lib/presence'
+import { getPresenceColor } from '../lib/presence'
 import { getErrorMessage } from '../lib/errors'
 import { displayName } from '../lib/displayName'
 import { colorFromId } from '../lib/avatarColor'
@@ -874,12 +874,6 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
 
   const displayTitle = title
 
-  const subtitle = useMemo(() => {
-    if (!otherMember) return ''
-    if (otherMember.status) return otherMember.status
-    return formatPresence(otherMember.last_seen_at)
-  }, [otherMember])
-
   function isReadByOthers(msg: Message) {
     let others = Object.entries(members).filter(([id]) => id !== me?.id)
     if (isOrganicGroup) {
@@ -955,7 +949,6 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
               </span>
             )}
           </div>
-          {subtitle && <div className="status">{subtitle}</div>}
         </div>
         <div className="header-actions">
           <button
@@ -1071,7 +1064,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
             )}
             {configView === 'edit' && (
               <div className="new-conv-form" style={{ padding: 0 }}>
-                <input placeholder="nome do grupo" value={editName} onChange={(e) => setEditName(e.target.value)} autoFocus />
+                <input placeholder="nome do grupo" value={editName} onChange={(e) => setEditName(e.target.value)} />
                 <input placeholder="descrição" value={editDesc} onChange={(e) => setEditDesc(e.target.value)} />
                 <input ref={groupImageInputRef} type="file" accept="image/*" hidden onChange={uploadGroupImage} />
                 <button type="button" disabled={groupImageUploading} onClick={() => groupImageInputRef.current?.click()}>
@@ -1211,8 +1204,6 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
 
         <div ref={bottomRef} />
       </section>
-
-      <p className="media-note">imagens só aparecem ao vivo pra quem está na sala — não ficam salvas no histórico</p>
 
       <footer className="composer">
         <div className="composer-icons">
