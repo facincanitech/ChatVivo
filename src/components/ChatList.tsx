@@ -1501,7 +1501,7 @@ export function ChatList({
 
             <label style={{ marginTop: 10 }}>App</label>
             <a
-              href={`${import.meta.env.BASE_URL}downloads/flux.apk`}
+              href={`${import.meta.env.BASE_URL}downloads/flux.apk?t=${Date.now()}`}
               className="google-btn"
               style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}
             >

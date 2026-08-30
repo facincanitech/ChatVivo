@@ -64,7 +64,7 @@ export function NotificationCenter() {
             {updateVersion && (
               <a
                 className="notif-item notif-update"
-                href={`${import.meta.env.BASE_URL}downloads/flux.apk`}
+                href={`${import.meta.env.BASE_URL}downloads/flux.apk?t=${Date.now()}`}
               >
                 <span className="notif-update-bang">!</span>
                 <span>Nova versão disponível (v{updateVersion}) — baixar atualização</span>
