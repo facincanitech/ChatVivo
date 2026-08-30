@@ -8,7 +8,7 @@ import {
   type NotificationItem,
 } from '../lib/notifications'
 import { checkForUpdate } from '../lib/updateCheck'
-import { APP_VERSION } from '../version'
+import { APP_VERSION, APK_DOWNLOAD_URL } from '../version'
 
 function formatAgo(at: number): string {
   const diff = Date.now() - at
@@ -64,7 +64,7 @@ export function NotificationCenter() {
             {updateVersion && (
               <a
                 className="notif-item notif-update"
-                href={`${import.meta.env.BASE_URL}downloads/flux.apk?t=${Date.now()}`}
+                href={APK_DOWNLOAD_URL}
               >
                 <span className="notif-update-bang">!</span>
                 <span>Nova versão disponível (v{updateVersion}) — baixar atualização</span>

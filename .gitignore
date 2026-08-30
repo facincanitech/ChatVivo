@@ -23,6 +23,10 @@ serviceAccountKey.json
 supabase/
 scripts/
 
+# APK agora publicado via GitHub Release, nao commitado no repo (link fixo em src/version.ts)
+public/downloads/*.apk
+docs/downloads/*.apk
+
 # Private project notes (context for future sessions, not for public repo)
 CLAUDE.md
 

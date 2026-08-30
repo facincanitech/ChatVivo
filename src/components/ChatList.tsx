@@ -6,7 +6,7 @@ import { uploadImage } from '../lib/uploadImage'
 import { displayName } from '../lib/displayName'
 import { AvatarBox } from './AvatarBox'
 import { readCache, writeCache } from '../lib/cache'
-import { APP_VERSION } from '../version'
+import { APP_VERSION, APK_DOWNLOAD_URL } from '../version'
 import {
   IconArchive,
   IconArrowLeft,
@@ -1501,7 +1501,7 @@ export function ChatList({
 
             <label style={{ marginTop: 10 }}>App</label>
             <a
-              href={`${import.meta.env.BASE_URL}downloads/flux.apk?t=${Date.now()}`}
+              href={APK_DOWNLOAD_URL}
               className="google-btn"
               style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}
             >
