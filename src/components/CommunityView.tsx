@@ -411,8 +411,8 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
           </div>
         </div>
         <div className="header-actions">
-          <button type="button" className="google-btn" onClick={isMember ? leaveCommunity : joinCommunity}>
-            {isMember ? 'Sair da comunidade' : 'Participar'}
+          <button type="button" className="header-action-btn" onClick={isMember ? leaveCommunity : joinCommunity}>
+            {isMember ? 'Sair' : 'Participar'}
           </button>
         </div>
       </header>
@@ -670,7 +670,7 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
                       <button type="button" onClick={() => toggleEditor(m.id, !m.is_editor)}>
                         {m.is_editor ? 'tirar mod' : 'mod'}
                       </button>
-                      <button type="button" onClick={() => removeParticipant(m.id)}>remover</button>
+                      <button type="button" className="remove-btn" onClick={() => removeParticipant(m.id)}>remover</button>
                     </div>
                   )}
                 </div>

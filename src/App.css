@@ -112,7 +112,7 @@ body{
 .search-wrap{padding:0 18px 13px}
 .search{
   height:48px;border-radius:9px;background:var(--bg-surface);display:flex;align-items:center;
-  padding:0 15px;color:var(--muted);
+  padding:0 15px;color:var(--muted);border:1px solid var(--line-2);
 }
 .search span{font-size:21px;margin-right:13px}
 .search input{
@@ -171,7 +171,7 @@ body{
   height:78px;background:var(--bg-surface);border-bottom:1px solid var(--line);
   display:flex;align-items:center;padding:0 22px;gap:14px;flex-shrink:0;
 }
-.header-photo{width:48px;height:48px;border-radius:50%;object-fit:cover;background:var(--avatar-bg);display:grid;place-items:center;font-weight:700}
+.header-photo{width:48px;height:48px;flex-shrink:0;border-radius:50%;object-fit:cover;background:var(--avatar-bg);display:grid;place-items:center;font-weight:700}
 .presence-dot{
   position:absolute;bottom:0;right:0;width:12px;height:12px;border-radius:50%;
   border:2px solid var(--bg-surface);
@@ -195,8 +195,12 @@ body{
   background:var(--bg-surface-2);color:var(--muted);padding:6px 13px;border-radius:8px;
   font-size:12px;text-align:center;box-shadow:0 1px 2px #0005;
 }
-.header-actions{margin-left:auto;display:flex;gap:7px}
-.back-mobile{display:none}
+.header-actions{margin-left:auto;margin-right:-8px;display:flex;gap:7px;flex-shrink:0}
+.header-action-btn{
+  padding:8px 14px;border-radius:8px;border:1px solid var(--line-2);
+  background:var(--bg-panel);color:var(--text);cursor:pointer;font-size:.8rem;white-space:nowrap;
+}
+.back-mobile{display:none;margin-left:-8px}
 
 .messages{
   flex:1;overflow-y:auto;overflow-x:hidden;padding:28px 7%;position:relative;
@@ -317,6 +321,10 @@ body{
 .member-table-actions button{
   padding:3px 8px;font-size:.68rem;border-radius:6px;border:1px solid var(--line-2);
   background:var(--bg-surface-2);color:var(--text-secondary);cursor:pointer;
+}
+.member-table-actions button.remove-btn,
+.chat-config-actions button.remove-btn{
+  background:#e5484d;border-color:#e5484d;color:#fff;
 }
 .group-info-avatar{
   width:96px;height:96px;border-radius:50%;overflow:hidden;background:var(--avatar-bg);

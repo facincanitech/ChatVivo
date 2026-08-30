@@ -143,13 +143,16 @@ export function ProfilePopup({ me, userId, onClose, onOpenCommunity, blockedIds,
           </button>
         )}
         {menuOpen && (
-          <div className="request-menu" style={{ top: 40, right: 8 }}>
-            {blockedIds.has(currentId) ? (
-              <span style={{ padding: '6px 8px', fontSize: '.75rem', color: '#8696a0' }}>bloqueado</span>
-            ) : (
-              <button type="button" onClick={() => { onBlock(currentId); setMenuOpen(false) }}>Bloquear</button>
-            )}
-          </div>
+          <>
+            <div style={{ position: 'absolute', inset: 0, zIndex: 5 }} onClick={() => setMenuOpen(false)} />
+            <div className="request-menu" style={{ top: 40, right: 8, zIndex: 6 }}>
+              {blockedIds.has(currentId) ? (
+                <span style={{ padding: '6px 8px', fontSize: '.75rem', color: '#8696a0' }}>bloqueado</span>
+              ) : (
+                <button type="button" onClick={() => { onBlock(currentId); setMenuOpen(false) }}>Bloquear</button>
+              )}
+            </div>
+          </>
         )}
 
         {loading && <p style={{ padding: '30px 0' }}>carregando...</p>}

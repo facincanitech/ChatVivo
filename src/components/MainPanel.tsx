@@ -1060,7 +1060,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                             <button type="button" onClick={() => demoteLeader(id)}>tirar coroa</button>
                           )}
                           {canKick(meta) && (
-                            <button type="button" onClick={() => removeMember(id)}>remover</button>
+                            <button type="button" className="remove-btn" onClick={() => removeMember(id)}>remover</button>
                           )}
                         </span>
                       )}
