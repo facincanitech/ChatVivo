@@ -16,6 +16,8 @@ dist-ssr
 .env
 .env.*
 !.env.example
+*firebase-adminsdk*.json
+serviceAccountKey.json
 
 # Supabase setup internals (schema/role/policy details kept private)
 supabase/
