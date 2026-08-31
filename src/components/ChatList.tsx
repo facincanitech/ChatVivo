@@ -132,6 +132,9 @@ type ConvWithLabel = Conversation & {
   label: string
   avatarUrl: string | null
   otherId: string | null
+  nameStyleFont: string | null
+  nameStyleEffect: 'solid' | 'gradient' | 'neon' | 'prism' | null
+  nameStyleColor: string | null
   isFavorite: boolean
   favoritedAt: string | null
   isOrganicGroup: boolean
@@ -369,7 +372,7 @@ export function ChatList({
       if (attempt > 0) await new Promise((r) => setTimeout(r, 400 * attempt))
       const { data, error } = await supabase
         .from('conversation_members')
-        .select('conversation_id, added_by, role, profile:profiles!conversation_members_user_id_fkey(id, username, display_name, avatar_url)')
+        .select('conversation_id, added_by, role, profile:profiles!conversation_members_user_id_fkey(id, username, display_name, avatar_url, name_style_font, name_style_effect, name_style_color)')
         .in('conversation_id', ids)
       if (error) {
         console.error('loadConversations: allMembers query failed', error)
@@ -401,12 +404,42 @@ export function ChatList({
             )
             let p = original?.profile as unknown as Profile | undefined
             if (!p || p.id === me.id) p = anyOther?.profile as unknown as Profile | undefined
-            return { ...c, label: p ? displayName(p) : 'conversa', avatarUrl: p?.avatar_url || null, otherId: p?.id || null, ...extra, isOrganicGroup: true }
+            return {
+              ...c,
+              label: p ? displayName(p) : 'conversa',
+              avatarUrl: p?.avatar_url || null,
+              otherId: p?.id || null,
+              nameStyleFont: p?.name_style_font || null,
+              nameStyleEffect: p?.name_style_effect || null,
+              nameStyleColor: p?.name_style_color || null,
+              ...extra,
+              isOrganicGroup: true,
+            }
           }
-          return { ...c, label: c.name || 'grupo', avatarUrl: null, otherId: null, ...extra, isOrganicGroup: false }
+          return {
+            ...c,
+            label: c.name || 'grupo',
+            avatarUrl: null,
+            otherId: null,
+            nameStyleFont: null,
+            nameStyleEffect: null,
+            nameStyleColor: null,
+            ...extra,
+            isOrganicGroup: false,
+          }
         }
         const p = anyOther?.profile as unknown as Profile | undefined
-        return { ...c, label: p ? displayName(p) : 'conversa', avatarUrl: p?.avatar_url || null, otherId: p?.id || null, ...extra, isOrganicGroup: false }
+        return {
+          ...c,
+          label: p ? displayName(p) : 'conversa',
+          avatarUrl: p?.avatar_url || null,
+          otherId: p?.id || null,
+          nameStyleFont: p?.name_style_font || null,
+          nameStyleEffect: p?.name_style_effect || null,
+          nameStyleColor: p?.name_style_color || null,
+          ...extra,
+          isOrganicGroup: false,
+        }
       })
       .sort((a, b) => ((a.lastMessageAt || a.created_at) < (b.lastMessageAt || b.created_at) ? 1 : -1))
 
@@ -1363,7 +1396,9 @@ export function ChatList({
                   </div>
                   <div className="chat-info">
                     <div className="row">
-                      <div className="name">{c.label}</div>
+                      <div className="name">
+                        <StyledName name={c.label} font={c.nameStyleFont} effect={c.nameStyleEffect} color={c.nameStyleColor} />
+                      </div>
                       {(c.unreadCount > 0 || c.isManuallyUnread) && (
                         <span className="unread-badge">{c.unreadCount > 0 ? c.unreadCount : ''}</span>
                       )}
@@ -1424,7 +1459,9 @@ export function ChatList({
                   <div className="chat-info">
                     <div className="row">
                       <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
-                        <div className="name">{c.label}</div>
+                        <div className="name">
+                          <StyledName name={c.label} font={c.nameStyleFont} effect={c.nameStyleEffect} color={c.nameStyleColor} />
+                        </div>
                         {c.isFavorite && (
                           <span className="favorite-heart" title="Favoritado">
                             <IconHeart size={13} />
@@ -1722,11 +1759,22 @@ export function ChatList({
             <div
               ref={bannerPreviewRef}
               className="profile-banner-preview"
-              style={
-                (bannerImageDraft ?? me.banner_image_url)
-                  ? { backgroundImage: `url(${bannerImageDraft ?? me.banner_image_url})`, backgroundPosition: bannerImagePosDraft, cursor: 'grab' }
-                  : { background: (bannerColorDraft ?? me.banner_color) || 'var(--green)' }
-              }
+              style={{
+                display: 'block',
+                width: '100%',
+                minWidth: '100%',
+                height: 188,
+                minHeight: 188,
+                boxSizing: 'border-box',
+                ...((bannerImageDraft ?? me.banner_image_url)
+                  ? {
+                      backgroundImage: `url(${bannerImageDraft ?? me.banner_image_url})`,
+                      backgroundPosition: bannerImagePosDraft,
+                      backgroundSize: 'cover',
+                      cursor: 'grab',
+                    }
+                  : { background: (bannerColorDraft ?? me.banner_color) || 'var(--green)' }),
+              }}
               onPointerDown={handleBannerPointerDown}
               onPointerMove={handleBannerPointerMove}
               onPointerUp={handleBannerPointerUp}
