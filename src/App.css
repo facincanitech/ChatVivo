@@ -76,7 +76,7 @@ body{
 
 /* left navigation rail */
 .rail{
-  width:72px;background:#111820;border-right:1px solid #202b31;
+  width:72px;background:var(--rail-bg,#111820);border-right:1px solid #202b31;
   display:flex;flex-direction:column;align-items:center;padding:12px 0;
   flex-shrink:0;position:relative;z-index:100;
 }
@@ -86,7 +86,7 @@ body{
   box-shadow:0 8px 24px #0005;
 }
 .rail button{
-  width:52px;height:52px;border:0;background:none;color:#9aa7ad;
+  width:52px;height:52px;border:0;background:none;color:var(--rail-icon,#9aa7ad);
   border-radius:12px;cursor:pointer;font-size:23px;margin:3px 0;
 }
 .rail button.active{background:var(--bg-selected);color:#fff}
@@ -454,7 +454,18 @@ body{
 }
 .new-conv-form{
   padding:18px 22px;display:flex;flex-direction:column;gap:10px;
+  flex:1;min-height:0;overflow-y:auto;
+  scrollbar-width:thin;scrollbar-color:var(--line-2) transparent;
 }
+.new-conv-form::-webkit-scrollbar{width:6px}
+.new-conv-form::-webkit-scrollbar-track{background:transparent}
+.new-conv-form::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:3px}
+.new-conv-list{
+  scrollbar-width:thin;scrollbar-color:var(--line-2) transparent;
+}
+.new-conv-list::-webkit-scrollbar{width:6px}
+.new-conv-list::-webkit-scrollbar-track{background:transparent}
+.new-conv-list::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:3px}
 .new-conv-form input{
   padding:10px;border-radius:6px;border:1px solid var(--line-2);background:var(--bg-surface);color:var(--text);
 }
@@ -503,9 +514,9 @@ body{
   display:grid;place-items:center;pointer-events:none;color:var(--muted);
 }
 .profile-banner-preview-avatar img{width:100%;height:100%;object-fit:cover}
-.banner-color-picker{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:6px}
+.banner-color-picker{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-top:6px}
 .banner-color-swatch{
-  width:100%;aspect-ratio:1;border-radius:14px;border:2px solid transparent;cursor:pointer;padding:0;
+  width:100%;aspect-ratio:1;border-radius:10px;border:2px solid transparent;cursor:pointer;padding:0;
 }
 .banner-color-swatch.active{border-color:var(--text)}
 .banner-color-custom{width:32px;height:32px;padding:0;border-radius:10px;border:2px solid var(--line-2);background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red);cursor:pointer}

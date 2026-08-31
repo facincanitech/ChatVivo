@@ -20,6 +20,7 @@ import { registerPushNotifications, setCurrentConversationId } from './lib/pushN
 import { promptDisableBatteryOptimization } from './lib/batteryOpt'
 import { displayName } from './lib/displayName'
 import { readCache, writeCache } from './lib/cache'
+import { pickTextColor } from './lib/appTheme'
 import './App.css'
 
 type Theme = 'dark' | 'light' | 'contrast'
@@ -93,6 +94,26 @@ function App() {
       return null
     }
   })
+  useEffect(() => {
+    const root = document.documentElement.style
+    function applyVar(cssVar: string, value: string | null | undefined, textVar?: string) {
+      if (value) {
+        root.setProperty(cssVar, value)
+        if (textVar) {
+          const t = pickTextColor(value)
+          if (t) root.setProperty(textVar, t)
+          else root.removeProperty(textVar)
+        }
+      } else {
+        root.removeProperty(cssVar)
+        if (textVar) root.removeProperty(textVar)
+      }
+    }
+    applyVar('--bg-deep', profile?.app_bg_color)
+    applyVar('--rail-bg', profile?.app_sidebar_color, '--rail-icon')
+    applyVar('--green', profile?.app_button_color)
+  }, [profile?.app_bg_color, profile?.app_sidebar_color, profile?.app_button_color])
+
   const [selected, setSelected] = useState<Conversation | null>(null)
   const [selectedCommunity, setSelectedCommunity] = useState<Community | null>(null)
   const [communityTab, setCommunityTab] = useState<'home' | 'info'>('home')
@@ -161,7 +182,7 @@ function App() {
     }
     supabase
       .from('profiles')
-      .select('id, username, email, status, last_seen_at, display_name, avatar_url, is_idle, age, city, banner_color, banner_image_url, banner_image_position')
+      .select('id, username, email, status, last_seen_at, display_name, avatar_url, is_idle, age, city, banner_color, banner_image_url, banner_image_position, app_bg_color, app_sidebar_color, app_button_color')
       .eq('id', session.user.id)
       .single()
       .then(({ data }) => {

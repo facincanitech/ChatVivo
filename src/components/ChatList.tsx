@@ -49,7 +49,46 @@ const BANNER_COLORS = [
   'linear-gradient(135deg,#ee0979,#ff6a00)',
   'linear-gradient(135deg,#0f2027,#2c5364)',
   'linear-gradient(135deg,#f83600,#f9d423)',
+  'linear-gradient(135deg,#ff6a88,#ff99ac)',
+  'linear-gradient(135deg,#00c6ff,#0072ff)',
+  'linear-gradient(135deg,#8e2de2,#4a00e0)',
+  'linear-gradient(135deg,#f2994a,#f2c94c)',
+  'linear-gradient(135deg,#11998e,#38ef7d)',
+  'linear-gradient(135deg,#232526,#414345)',
+  'linear-gradient(135deg,#ff512f,#dd2476)',
+  'linear-gradient(135deg,#42275a,#734b6d)',
+  'linear-gradient(135deg,#56ccf2,#2f80ed)',
 ]
+
+function ColorGrid({ value, onPick }: { value: string | null | undefined; onPick: (v: string | null) => void }) {
+  return (
+    <div className="banner-color-picker">
+      <button
+        type="button"
+        className={`banner-color-swatch banner-color-reset${!value ? ' active' : ''}`}
+        onClick={() => onPick(null)}
+        title="Padrão"
+      >
+        <IconMinusCircle size={14} />
+      </button>
+      {BANNER_COLORS.map((color) => (
+        <button
+          key={color}
+          type="button"
+          className={`banner-color-swatch${value === color ? ' active' : ''}`}
+          style={{ background: color }}
+          onClick={() => onPick(color)}
+        />
+      ))}
+      <input
+        type="color"
+        className="banner-color-swatch banner-color-custom"
+        value={value && value.startsWith('#') ? value : '#5865f2'}
+        onChange={(e) => onPick(e.target.value)}
+      />
+    </div>
+  )
+}
 
 type FilterKey = 'all' | 'favorites' | 'archived' | 'group' | 'communities'
 const DEFAULT_FILTER_ORDER: FilterKey[] = ['all', 'favorites', 'archived', 'group', 'communities']
@@ -1048,6 +1087,12 @@ export function ChatList({
     setBannerSaving(false)
   }
 
+  async function setAppColor(field: 'app_bg_color' | 'app_sidebar_color' | 'app_button_color', value: string | null) {
+    if (!me) return
+    const { error: err } = await supabase.from('profiles').update({ [field]: value }).eq('id', me.id)
+    if (!err) onProfileChange({ [field]: value })
+  }
+
   async function setBannerColor(color: string) {
     if (!me) return
     setBannerSaving(true)
@@ -1714,6 +1759,18 @@ export function ChatList({
             {accountError && <span className="auth-error">{accountError}</span>}
 
             <div className="appearance-separator" />
+
+            <label style={{ marginTop: 14 }}>Aparência do app</label>
+            <span className="invite-code">isso é só pra você — muda a cara do app no seu aparelho</span>
+
+            <label style={{ marginTop: 10 }}>Fundo</label>
+            <ColorGrid value={me.app_bg_color} onPick={(v) => setAppColor('app_bg_color', v)} />
+
+            <label style={{ marginTop: 12 }}>Barra lateral</label>
+            <ColorGrid value={me.app_sidebar_color} onPick={(v) => setAppColor('app_sidebar_color', v)} />
+
+            <label style={{ marginTop: 12 }}>Botões</label>
+            <ColorGrid value={me.app_button_color} onPick={(v) => setAppColor('app_button_color', v)} />
           </div>
         )}
 

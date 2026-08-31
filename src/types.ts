@@ -12,6 +12,9 @@ export type Profile = {
   banner_color?: string | null
   banner_image_url?: string | null
   banner_image_position?: string | null
+  app_bg_color?: string | null
+  app_sidebar_color?: string | null
+  app_button_color?: string | null
 }
 
 export type Conversation = {
