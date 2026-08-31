@@ -1723,9 +1723,9 @@ export function ChatList({
               ref={bannerPreviewRef}
               className="profile-banner-preview"
               style={
-                bannerImageDraft
-                  ? { backgroundImage: `url(${bannerImageDraft})`, backgroundPosition: bannerImagePosDraft, cursor: 'grab' }
-                  : { background: bannerColorDraft || 'var(--green)' }
+                (bannerImageDraft ?? me.banner_image_url)
+                  ? { backgroundImage: `url(${bannerImageDraft ?? me.banner_image_url})`, backgroundPosition: bannerImagePosDraft, cursor: 'grab' }
+                  : { background: (bannerColorDraft ?? me.banner_color) || 'var(--green)' }
               }
               onPointerDown={handleBannerPointerDown}
               onPointerMove={handleBannerPointerMove}

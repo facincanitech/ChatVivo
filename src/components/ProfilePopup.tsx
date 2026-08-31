@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { displayName } from '../lib/displayName'
+import { StyledName } from './StyledName'
 import { AvatarBox } from './AvatarBox'
 import { formatPresence } from '../lib/presence'
 import { IconArrowLeft, IconMore, IconPlus, IconUser } from './icons'
@@ -19,6 +20,9 @@ type ProfileData = {
   banner_color: string | null
   banner_image_url: string | null
   banner_image_position: string | null
+  name_style_font: string | null
+  name_style_effect: 'solid' | 'gradient' | 'neon' | 'prism' | null
+  name_style_color: string | null
 }
 
 type ListPerson = { id: string; username: string; display_name: string | null; avatar_url: string | null }
@@ -57,7 +61,7 @@ export function ProfilePopup({ me, userId, onClose, onOpenCommunity, blockedIds,
     async function load() {
       const { data: p } = await supabase
         .from('profiles')
-        .select('id, username, display_name, avatar_url, status, last_seen_at, email, age, city, banner_color, banner_image_url, banner_image_position')
+        .select('id, username, display_name, avatar_url, status, last_seen_at, email, age, city, banner_color, banner_image_url, banner_image_position, name_style_font, name_style_effect, name_style_color')
         .eq('id', currentId)
         .single()
       setProfile((p as ProfileData) || null)
@@ -179,7 +183,14 @@ export function ProfilePopup({ me, userId, onClose, onOpenCommunity, blockedIds,
                 )}
               </div>
             </div>
-            <h2>{displayName(profile)}</h2>
+            <h2>
+              <StyledName
+                name={displayName(profile)}
+                font={profile.name_style_font}
+                effect={profile.name_style_effect}
+                color={profile.name_style_color}
+              />
+            </h2>
             {isRoot && <p style={{ fontSize: '.75rem', color: '#8696a0' }}>{profile.email}</p>}
             <p>{profile.status || 'sem status'}</p>
             {(profile.age || profile.city) && (

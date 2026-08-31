@@ -595,10 +595,10 @@ body{
 .call-btn-decline{background:#e5484d}
 
 .profile-banner{
-  position:absolute;left:8px;right:8px;top:8px;height:188px;border-radius:16px;
+  position:absolute;left:8px;right:8px;top:56px;height:160px;border-radius:16px;
   background-size:cover;background-position:center;z-index:0;
 }
-.profile-popup-avatar-wrap{position:relative;z-index:1;margin-top:85px}
+.profile-popup-avatar-wrap{position:relative;z-index:1;margin-top:105px}
 .profile-popup-avatar-wrap .account-avatar{border:4px solid var(--bg-surface)}
 .account-signout{
   width:100%;padding:10px;border-radius:6px;border:1px solid #e5484d;
