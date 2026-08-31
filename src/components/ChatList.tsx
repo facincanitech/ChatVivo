@@ -1552,10 +1552,6 @@ export function ChatList({
               <div className="option-icon"><IconLock size={20} /></div>
               <span>Contatos bloqueados</span>
             </div>
-            <div className="new-conv-option">
-              <div className="option-icon"><IconLock size={20} /></div>
-              <span>Mensagens temporárias — use o ícone de cadeado no campo de digitar do chat</span>
-            </div>
             <div className="new-conv-option" onClick={() => setAccountView('terms')}>
               <div className="option-icon"><IconKey size={20} /></div>
               <span>Termo de uso</span>
@@ -1581,6 +1577,10 @@ export function ChatList({
               Mídias enviadas como "temporária" ou "visualização única" são apagadas
               automaticamente do armazenamento após serem abertas (ou após 1 minuto, no caso
               da temporária) e não ficam salvas no histórico.
+            </p>
+            <p>
+              O app bloqueia print e gravação de tela em toda a área do Flux — não é possível
+              tirar captura nem gravar o que aparece na tela enquanto o app está aberto.
             </p>
             <p>
               Quebra de sigilo dessas informações só ocorre mediante requisição jurídica
