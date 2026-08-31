@@ -163,7 +163,8 @@ export function CallOverlay({ me, outgoingRequest, onConsumeOutgoing }: Props) {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: req.kind === 'video' })
     } catch (err) {
       console.error('getUserMedia failed', err)
-      alert('Não consegui acessar o microfone/câmera.')
+      const reason = err instanceof Error ? `${err.name}: ${err.message}` : String(err)
+      alert(`Não consegui acessar o microfone/câmera.\n(${reason})`)
       setSession(null)
       return
     }
@@ -208,7 +209,8 @@ export function CallOverlay({ me, outgoingRequest, onConsumeOutgoing }: Props) {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: s.kind === 'video' })
     } catch (err) {
       console.error('getUserMedia failed', err)
-      alert('Não consegui acessar o microfone/câmera.')
+      const reason = err instanceof Error ? `${err.name}: ${err.message}` : String(err)
+      alert(`Não consegui acessar o microfone/câmera.\n(${reason})`)
       sendOneOff(s.peer.id, { type: 'call-decline', callId: s.callId, from: me.id })
       cleanupCall()
       return
