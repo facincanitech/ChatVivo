@@ -8,11 +8,11 @@ export const NAME_FONTS = [
   { id: 'caveat', label: 'Caveat', family: "'Caveat', cursive" },
 ]
 
-export const NAME_EFFECTS: { id: 'solid' | 'gradient' | 'neon' | 'prism'; label: string }[] = [
+export const NAME_EFFECTS: { id: 'solid' | 'gradient' | 'neon' | 'prism'; label: string; locked?: boolean }[] = [
   { id: 'solid', label: 'Sólido' },
   { id: 'gradient', label: 'Gradiente' },
   { id: 'neon', label: 'Neon' },
-  { id: 'prism', label: 'Prism' },
+  { id: 'prism', label: 'Prism', locked: true },
 ]
 
 type Props = {

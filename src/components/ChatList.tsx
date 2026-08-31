@@ -39,26 +39,9 @@ const BANNER_COLORS = [
   'linear-gradient(135deg,#43e97b,#38f9d7)',
   'linear-gradient(135deg,#f857a6,#ff5858)',
   'linear-gradient(135deg,#7f00ff,#e100ff)',
-  'linear-gradient(135deg,#1e3c72,#2a5298)',
   'linear-gradient(135deg,#f7971e,#ffd200)',
-  'linear-gradient(135deg,#43cea2,#185a9d)',
-  'linear-gradient(135deg,#ff9966,#ff5e62)',
-  'linear-gradient(135deg,#a8ff78,#78ffd6)',
-  'linear-gradient(135deg,#e0c3fc,#8ec5fc)',
-  'linear-gradient(135deg,#f6d365,#fda085)',
-  'linear-gradient(135deg,#5f2c82,#49a09d)',
-  'linear-gradient(135deg,#ee0979,#ff6a00)',
   'linear-gradient(135deg,#0f2027,#2c5364)',
-  'linear-gradient(135deg,#f83600,#f9d423)',
-  'linear-gradient(135deg,#ff6a88,#ff99ac)',
-  'linear-gradient(135deg,#00c6ff,#0072ff)',
-  'linear-gradient(135deg,#8e2de2,#4a00e0)',
-  'linear-gradient(135deg,#f2994a,#f2c94c)',
-  'linear-gradient(135deg,#11998e,#38ef7d)',
-  'linear-gradient(135deg,#232526,#414345)',
   'linear-gradient(135deg,#ff512f,#dd2476)',
-  'linear-gradient(135deg,#42275a,#734b6d)',
-  'linear-gradient(135deg,#56ccf2,#2f80ed)',
 ]
 
 function ColorGrid({ value, onPick }: { value: string | null | undefined; onPick: (v: string | null) => void }) {
@@ -1879,10 +1862,12 @@ export function ChatList({
                 <button
                   key={e.id}
                   type="button"
-                  className={`name-effect-option${(me.name_style_effect || 'solid') === e.id ? ' active' : ''}`}
-                  onClick={() => setNameStyle('name_style_effect', e.id)}
+                  className={`name-effect-option${(me.name_style_effect || 'solid') === e.id ? ' active' : ''}${e.locked ? ' locked' : ''}`}
+                  disabled={e.locked}
+                  title={e.locked ? 'Em breve' : undefined}
+                  onClick={() => !e.locked && setNameStyle('name_style_effect', e.id)}
                 >
-                  {e.label}
+                  {e.label} {e.locked && <IconLock size={11} />}
                 </button>
               ))}
             </div>
