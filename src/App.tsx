@@ -110,8 +110,6 @@ function App() {
       }
     }
     applyVar('--bg-deep', profile?.app_bg_color)
-    applyVar('--bg-panel', profile?.app_bg_color)
-    applyVar('--bg-surface', profile?.app_bg_color, '--text')
     applyVar('--rail-bg', profile?.app_sidebar_color, '--rail-icon')
     applyVar('--green', profile?.app_button_color)
   }, [profile?.app_bg_color, profile?.app_sidebar_color, profile?.app_button_color])

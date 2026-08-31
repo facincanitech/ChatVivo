@@ -1719,7 +1719,6 @@ export function ChatList({
 
         {accountView === 'appearance' && me && (
           <div className="new-conv-form">
-            <span className="invite-code">aparece atrás da sua foto quando alguém abre seu perfil</span>
             <div
               ref={bannerPreviewRef}
               className="profile-banner-preview"
@@ -1737,8 +1736,6 @@ export function ChatList({
                 {me.avatar_url ? <img src={me.avatar_url} alt="" /> : <IconUser size={26} />}
               </div>
             </div>
-            {bannerImageDraft && <span className="invite-code">arraste a imagem pra ajustar o enquadramento</span>}
-
             <label style={{ marginTop: 12 }}>Imagem ou GIF</label>
             <input ref={bannerInputRef} type="file" accept="image/*" hidden onChange={uploadBannerImage} />
             <button type="button" disabled={bannerUploading} onClick={() => bannerInputRef.current?.click()}>
@@ -1785,6 +1782,12 @@ export function ChatList({
 
             <label style={{ marginTop: 14 }}>Aparência do app</label>
             <span className="invite-code">isso é só pra você — muda a cara do app no seu aparelho</span>
+            <div className="app-appearance-preview">
+              <div className="app-appearance-preview-rail" style={{ background: me.app_sidebar_color || '#111820' }} />
+              <div className="app-appearance-preview-main" style={{ background: me.app_bg_color || 'var(--bg-deep)' }}>
+                <span className="app-appearance-preview-btn" style={{ background: me.app_button_color || 'var(--green)' }} />
+              </div>
+            </div>
 
             <label style={{ marginTop: 10 }}>Fundo</label>
             <ColorGrid value={me.app_bg_color} onPick={(v) => setAppColor('app_bg_color', v)} />

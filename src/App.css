@@ -528,6 +528,14 @@ body{
 }
 .appearance-separator{border-top:1px solid var(--line-2);margin-top:20px}
 
+.app-appearance-preview{
+  display:flex;height:70px;border-radius:12px;overflow:hidden;margin-top:8px;
+  border:1px solid var(--line-2);
+}
+.app-appearance-preview-rail{width:36px;flex-shrink:0}
+.app-appearance-preview-main{flex:1;display:flex;align-items:center;justify-content:center}
+.app-appearance-preview-btn{width:44px;height:20px;border-radius:10px;display:block}
+
 .styled-name{font-weight:inherit}
 .name-effect-gradient{
   -webkit-background-clip:text;background-clip:text;color:transparent;
@@ -535,11 +543,11 @@ body{
 .name-effect-prism{
   background-image:linear-gradient(90deg,#ff0000,#ff9900,#33ff00,#00fffb,#0066ff,#cc00ff,#ff0000);
   background-size:400% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;
-  animation:namePrismShift 4s linear infinite;
+  animation:namePrismShift 8s linear infinite;
 }
 @keyframes namePrismShift{
-  0%{background-position:0% 50%}
-  100%{background-position:400% 50%}
+  0%{background-position:400% 50%}
+  100%{background-position:0% 50%}
 }
 .name-style-picker{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
 .name-font-option{
@@ -554,7 +562,8 @@ body{
 .name-effect-option.active{border-color:var(--green);background:var(--bg-selected)}
 .name-style-preview{
   padding:16px;border-radius:10px;background:var(--bg-panel);border:1px solid var(--line-2);
-  display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:700;margin-top:10px;
+  display:flex;align-items:center;justify-content:center;font-size:1.05rem;font-weight:700;margin-top:10px;
+  overflow:hidden;text-align:center;line-height:1.5;
 }
 
 .call-overlay{
