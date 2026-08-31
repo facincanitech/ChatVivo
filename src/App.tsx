@@ -16,6 +16,7 @@ import { addNotification } from './lib/notifications'
 import { registerPushNotifications, setCurrentConversationId } from './lib/pushNotifications'
 import { promptDisableBatteryOptimization } from './lib/batteryOpt'
 import { displayName } from './lib/displayName'
+import { readCache, writeCache } from './lib/cache'
 import './App.css'
 
 type Theme = 'dark' | 'light' | 'contrast'
@@ -80,7 +81,15 @@ function App() {
   const navStateRef = useRef({ panelOpen: false, accountOpen: false, groupsOpen: false, selectedCommunity: false, selected: false })
 
   const [session, setSession] = useState<Session | null | undefined>(undefined)
-  const [profile, setProfile] = useState<Profile | null>(null)
+  const [profile, setProfile] = useState<Profile | null>(() => {
+    try {
+      const lastUserId = localStorage.getItem('flux-last-user-id')
+      if (!lastUserId) return null
+      return readCache<Profile>(`flux-profile:${lastUserId}`)
+    } catch {
+      return null
+    }
+  })
   const [selected, setSelected] = useState<Conversation | null>(null)
   const [selectedCommunity, setSelectedCommunity] = useState<Community | null>(null)
   const [communityTab, setCommunityTab] = useState<'home' | 'info'>('home')
@@ -144,7 +153,10 @@ function App() {
       .select('id, username, email, status, last_seen_at, display_name, avatar_url, is_idle, age, city')
       .eq('id', session.user.id)
       .single()
-      .then(({ data }) => setProfile(data as Profile))
+      .then(({ data }) => {
+        if (data) writeCache(`flux-profile:${session.user.id}`, data)
+        setProfile(data as Profile)
+      })
   }, [session])
 
   useEffect(() => {
