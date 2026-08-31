@@ -11,6 +11,7 @@ import {
   IconArchive,
   IconArrowLeft,
   IconBellOff,
+  IconEdit,
   IconGrip,
   IconGroup,
   IconHeart,
@@ -229,6 +230,25 @@ export function ChatList({
   const [blocked, setBlocked] = useState<BlockedUser[]>([])
   const [avatarUploading, setAvatarUploading] = useState(false)
   const avatarInputRef = useRef<HTMLInputElement>(null)
+  const [autoTranscribe, setAutoTranscribe] = useState(() => {
+    try {
+      return localStorage.getItem('flux-auto-transcribe') !== '0'
+    } catch {
+      return true
+    }
+  })
+
+  function toggleAutoTranscribe() {
+    setAutoTranscribe((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem('flux-auto-transcribe', next ? '1' : '0')
+      } catch {
+        // ignore
+      }
+      return next
+    })
+  }
 
   async function loadConversations() {
     if (!me) return
@@ -909,24 +929,25 @@ export function ChatList({
     }
   }
 
-  async function saveUsername() {
+  async function saveProfile() {
     if (!me) return
-    const username = usernameDraft.trim()
-    if (!username || username === me.username) return
     setAccountSaving(true)
     setAccountError(null)
-    const { error: err } = await supabase.from('profiles').update({ username }).eq('id', me.id)
-    if (err) setAccountError(err.message.includes('duplicate') ? 'Esse nome já está em uso' : getErrorMessage(err))
-    else onProfileChange({ username })
-    setAccountSaving(false)
-  }
-
-  async function saveDisplayName() {
-    if (!me) return
-    setAccountSaving(true)
     const display_name = displayNameDraft.trim()
-    await supabase.from('profiles').update({ display_name }).eq('id', me.id)
-    onProfileChange({ display_name })
+    const username = usernameDraft.trim()
+    const status = statusDraft.trim()
+    const trimmedAge = ageDraft.trim()
+    const age = trimmedAge ? parseInt(trimmedAge, 10) : null
+    const city = cityDraft.trim() || null
+    const { error: err } = await supabase
+      .from('profiles')
+      .update({ display_name, username, status, age, city })
+      .eq('id', me.id)
+    if (err) {
+      setAccountError(err.message.includes('duplicate') ? 'Esse nome de usuário já está em uso' : getErrorMessage(err))
+    } else {
+      onProfileChange({ display_name, username, status, age, city })
+    }
     setAccountSaving(false)
   }
 
@@ -955,34 +976,6 @@ export function ChatList({
       setAvatarUploading(false)
       if (avatarInputRef.current) avatarInputRef.current.value = ''
     }
-  }
-
-  async function saveStatus() {
-    if (!me) return
-    setAccountSaving(true)
-    const status = statusDraft.trim()
-    await supabase.from('profiles').update({ status }).eq('id', me.id)
-    onProfileChange({ status })
-    setAccountSaving(false)
-  }
-
-  async function saveAge() {
-    if (!me) return
-    setAccountSaving(true)
-    const trimmed = ageDraft.trim()
-    const age = trimmed ? parseInt(trimmed, 10) : null
-    await supabase.from('profiles').update({ age }).eq('id', me.id)
-    onProfileChange({ age })
-    setAccountSaving(false)
-  }
-
-  async function saveCity() {
-    if (!me) return
-    setAccountSaving(true)
-    const city = cityDraft.trim() || null
-    await supabase.from('profiles').update({ city }).eq('id', me.id)
-    onProfileChange({ city })
-    setAccountSaving(false)
   }
 
   async function openBlocked() {
@@ -1448,14 +1441,12 @@ export function ChatList({
         {accountView === 'profile' && me && (
           <div className="new-conv-form">
             <div className="account-avatar-wrap">
-              <div className="account-avatar" onClick={() => avatarInputRef.current?.click()} style={{ cursor: 'pointer', overflow: 'hidden' }}>
+              <div className="account-avatar" onClick={() => avatarInputRef.current?.click()} style={{ cursor: 'pointer', overflow: 'hidden', position: 'relative' }}>
                 {me.avatar_url ? <img src={me.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <IconUser size={40} />}
+                <span className="account-avatar-edit">{avatarUploading ? '…' : <IconEdit size={14} />}</span>
               </div>
             </div>
             <input ref={avatarInputRef} type="file" accept="image/*" hidden onChange={uploadAvatar} />
-            <button type="button" disabled={avatarUploading} onClick={() => avatarInputRef.current?.click()}>
-              {avatarUploading ? 'enviando...' : 'Trocar foto'}
-            </button>
 
             <label style={{ marginTop: 10 }}>Nome</label>
             <input
@@ -1463,14 +1454,12 @@ export function ChatList({
               value={displayNameDraft}
               onChange={(e) => setDisplayNameDraft(e.target.value)}
             />
-            <button type="button" disabled={accountSaving} onClick={saveDisplayName}>Salvar nome</button>
 
             <label style={{ marginTop: 10 }}>Nome de usuário</label>
             <input
               value={usernameDraft}
               onChange={(e) => setUsernameDraft(e.target.value)}
             />
-            <button type="button" disabled={accountSaving} onClick={saveUsername}>Salvar usuário</button>
 
             <label style={{ marginTop: 10 }}>Status</label>
             <input
@@ -1478,7 +1467,6 @@ export function ChatList({
               value={statusDraft}
               onChange={(e) => setStatusDraft(e.target.value)}
             />
-            <button type="button" disabled={accountSaving} onClick={saveStatus}>Salvar status</button>
 
             <label style={{ marginTop: 10 }}>Idade</label>
             <input
@@ -1487,7 +1475,6 @@ export function ChatList({
               value={ageDraft}
               onChange={(e) => setAgeDraft(e.target.value)}
             />
-            <button type="button" disabled={accountSaving} onClick={saveAge}>Salvar idade</button>
 
             <label style={{ marginTop: 10 }}>Cidade</label>
             <input
@@ -1495,8 +1482,10 @@ export function ChatList({
               value={cityDraft}
               onChange={(e) => setCityDraft(e.target.value)}
             />
-            <button type="button" disabled={accountSaving} onClick={saveCity}>Salvar cidade</button>
             {accountError && <span className="auth-error">{accountError}</span>}
+            <button type="button" disabled={accountSaving} onClick={saveProfile} style={{ marginTop: 10 }}>
+              {accountSaving ? 'salvando...' : 'Salvar'}
+            </button>
           </div>
         )}
 
@@ -1540,6 +1529,17 @@ export function ChatList({
                 Alto contraste
               </button>
             </div>
+
+            <label style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input
+                type="checkbox"
+                checked={autoTranscribe}
+                onChange={toggleAutoTranscribe}
+                style={{ width: 'auto' }}
+              />
+              Transcrição automática dos áudios que eu gravar
+            </label>
+            <span className="invite-code">com isso ligado, ao gravar um áudio o texto falado fica disponível pra quem recebe, tocando em "Transcrever"</span>
           </div>
         )}
 

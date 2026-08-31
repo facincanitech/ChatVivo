@@ -21,7 +21,7 @@ import {
   type EphemeralMediaView,
   type EphemeralOpenResult,
 } from '../lib/ephemeralMedia'
-import { IconArrowLeft, IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconCrown, IconHeart, IconLock, IconMic, IconPlus, IconSend, IconSmile } from './icons'
+import { IconArrowLeft, IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconChevronDown, IconCrown, IconDownload, IconHeart, IconLock, IconMic, IconPlus, IconSend, IconSmile } from './icons'
 import { ReplayPlayer, type ReplayEvent } from './ReplayPlayer'
 import { ProfilePopup } from './ProfilePopup'
 import type { Community, Conversation, Message, Profile } from '../types'
@@ -124,7 +124,6 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     setWinkManagerView('form')
   }
   const [recording, setRecording] = useState(false)
-  const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
   const [replayFor, setReplayFor] = useState<Message | null>(null)
   const [replayEvents, setReplayEvents] = useState<ReplayEvent[] | null>(null)
   const [showChatConfig, setShowChatConfig] = useState(false)
@@ -151,8 +150,12 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const [pendingViewOnce, setPendingViewOnce] = useState(false)
   const [ephemeralSending, setEphemeralSending] = useState(false)
   const [ephemeralViewer, setEphemeralViewer] = useState<(EphemeralOpenResult & { id: string }) | null>(null)
+  const [inlineMedia, setInlineMedia] = useState<Record<string, EphemeralOpenResult & { id: string }>>({})
+  const [openTranscripts, setOpenTranscripts] = useState<Set<string>>(new Set())
   const [showAttachMenu, setShowAttachMenu] = useState(false)
   const [pendingFilePreviewUrl, setPendingFilePreviewUrl] = useState<string | null>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const requestedInlineRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
     if (!pendingEphemeralFile) {
@@ -181,14 +184,16 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   }, [conversation?.image_url])
 
   function hasHiddenEdit(events: ReplayEvent[], finalContent: string): boolean {
-    let prevLen = 0
+    // so conta como "edição escondida" quando o texto chegou a ficar
+    // bem maior do que o final e depois encolheu — pequenas correções de
+    // digitação (typo de 1-2 letras, ou o interim do reconhecimento de voz
+    // se revisando) não contam, senão a bolinha vermelha aparece direto
+    let maxLen = 0
     for (const e of events) {
-      const t = e.text ?? ''
-      if (t.length < prevLen) return true
-      if (!finalContent.startsWith(t)) return true
-      prevLen = t.length
+      const len = (e.text ?? '').length
+      if (len > maxLen) maxLen = len
     }
-    return false
+    return maxLen - finalContent.length >= 6
   }
 
   useEffect(() => {
@@ -201,6 +206,9 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     setEphemeralByMessage({})
     setPendingEphemeralFile(null)
     setEphemeralViewer(null)
+    setInlineMedia({})
+    setOpenTranscripts(new Set())
+    requestedInlineRef.current = new Set()
     setShowChatConfig(false)
     setConfigView('root')
     setConfirmDeleteGroup(false)
@@ -844,7 +852,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     })
   }
 
-  async function handleOpenEphemeral(row: EphemeralMediaRow) {
+  async function handleOpenEphemeral(row: EphemeralMediaRow, opts?: { inline?: boolean }) {
     if (row.storage_deleted || myEphemeralView(row)?.expired) return
     try {
       const result = await openEphemeralMedia(row.id)
@@ -852,14 +860,30 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
         upsertMyEphemeralView(row.message_id, { expired: true })
         return
       }
-      setEphemeralViewer({ ...result, id: row.id })
+      if (opts?.inline) {
+        setInlineMedia((prev) => ({ ...prev, [row.message_id]: { ...result, id: row.id } }))
+      } else {
+        setEphemeralViewer({ ...result, id: row.id })
+      }
       if (result.kind === 'view_once') {
         upsertMyEphemeralView(row.message_id, { expired: true, opened_at: new Date().toISOString() })
+        // da um tempo pro cliente carregar a imagem/video antes de mandar o servidor apagar o storage
+        setTimeout(() => {
+          checkExpireEphemeralMedia(row.id).catch(() => {})
+        }, 8000)
       } else {
         upsertMyEphemeralView(row.message_id, { opened_at: myEphemeralView(row)?.opened_at || new Date().toISOString() })
         setTimeout(async () => {
           const { expired } = await checkExpireEphemeralMedia(row.id).catch(() => ({ expired: false }))
-          if (expired) upsertMyEphemeralView(row.message_id, { expired: true })
+          if (expired) {
+            upsertMyEphemeralView(row.message_id, { expired: true })
+            setInlineMedia((prev) => {
+              if (!prev[row.message_id]) return prev
+              const next = { ...prev }
+              delete next[row.message_id]
+              return next
+            })
+          }
         }, 61_000)
       }
     } catch (err) {
@@ -867,42 +891,128 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     }
   }
 
+  // midia "temporaria" (nao visualizacao unica) aparece direto no chat, sem
+  // precisar tocar em botao - o toque-pra-ver so continua existindo pra
+  // visualizacao unica, que precisa de uma acao explicita antes de sumir
+  useEffect(() => {
+    for (const eph of Object.values(ephemeralByMessage)) {
+      if (eph.kind !== 'timed') continue
+      if (eph.storage_deleted) continue
+      if (myEphemeralView(eph)?.expired) continue
+      if (inlineMedia[eph.message_id]) continue
+      if (requestedInlineRef.current.has(eph.message_id)) continue
+      requestedInlineRef.current.add(eph.message_id)
+      handleOpenEphemeral(eph, { inline: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ephemeralByMessage])
+
+  function toggleTranscript(messageId: string) {
+    setOpenTranscripts((prev) => {
+      const next = new Set(prev)
+      if (next.has(messageId)) next.delete(messageId)
+      else next.add(messageId)
+      return next
+    })
+  }
+
+  async function sendAudioMessage(file: File, transcript: string) {
+    if (!conversation || !me) return
+    setEphemeralSending(true)
+    try {
+      const { data: msg, error: msgErr } = await supabase
+        .from('messages')
+        .insert({ conversation_id: conversation.id, author_id: me.id, content: transcript, kind: 'ephemeral' })
+        .select()
+        .single()
+      if (msgErr || !msg) throw msgErr
+
+      const { storagePath, fileName } = await uploadEphemeralMedia(file, conversation.id, msg.id)
+
+      const { data: ephemeralRow, error: ephErr } = await supabase
+        .from('ephemeral_media')
+        .insert({
+          message_id: msg.id,
+          conversation_id: conversation.id,
+          storage_path: storagePath,
+          media_type: 'audio',
+          file_name: fileName,
+          kind: 'timed',
+        })
+        .select()
+        .single()
+      if (ephErr) throw ephErr
+
+      setEphemeralByMessage((prev) => ({ ...prev, [msg.id]: ephemeralRow as EphemeralMediaRow }))
+      const recipientIds = Object.keys(members).filter((id) => id !== me.id)
+      sendPush(recipientIds, displayName(me), 'mandou um áudio', conversation.id)
+    } catch (err) {
+      console.error('sendAudioMessage failed', err)
+    } finally {
+      setEphemeralSending(false)
+    }
+  }
+
   function toggleRecording() {
     if (recording) {
-      recognitionRef.current?.stop()
+      mediaRecorderRef.current?.stop()
       return
     }
 
-    const SpeechRecognitionCtor =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    if (!SpeechRecognitionCtor) {
-      alert('Reconhecimento de voz não é suportado nesse navegador (funciona no Chrome/Edge).')
-      return
-    }
+    navigator.mediaDevices
+      ?.getUserMedia({ audio: true })
+      .then((stream) => {
+        const chunks: BlobPart[] = []
+        const recorder = new MediaRecorder(stream)
+        mediaRecorderRef.current = recorder
 
-    const recognition: SpeechRecognitionLike = new SpeechRecognitionCtor()
-    recognition.lang = 'pt-BR'
-    recognition.continuous = true
-    recognition.interimResults = true
+        const autoTranscribe = localStorage.getItem('flux-auto-transcribe') !== '0'
+        const SpeechRecognitionCtor = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+        let recognition: SpeechRecognitionLike | null = null
+        let transcript = ''
+        if (autoTranscribe && SpeechRecognitionCtor) {
+          const r: SpeechRecognitionLike = new SpeechRecognitionCtor()
+          r.lang = 'pt-BR'
+          r.continuous = true
+          r.interimResults = true
+          r.onresult = (e: any) => {
+            let t = ''
+            for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript
+            transcript = t
+          }
+          r.onend = () => {}
+          r.onerror = () => {}
+          try {
+            r.start()
+          } catch {
+            // ignore
+          }
+          recognition = r
+        }
 
-    const baseDraft = draft ? `${draft} ` : ''
-
-    recognition.onresult = (e: any) => {
-      let transcript = ''
-      for (let i = 0; i < e.results.length; i++) {
-        transcript += e.results[i][0].transcript
-      }
-      const next = baseDraft + transcript
-      setDraft(next)
-      recordReplayEvent(next)
-      broadcastTyping(next)
-    }
-    recognition.onend = () => setRecording(false)
-    recognition.onerror = () => setRecording(false)
-
-    recognitionRef.current = recognition
-    setRecording(true)
-    recognition.start()
+        recorder.ondataavailable = (e) => {
+          if (e.data.size > 0) chunks.push(e.data)
+        }
+        recorder.onstop = () => {
+          stream.getTracks().forEach((t) => t.stop())
+          try {
+            recognition?.stop()
+          } catch {
+            // ignore
+          }
+          setRecording(false)
+          if (chunks.length === 0) return
+          const blob = new Blob(chunks, { type: 'audio/webm' })
+          const file = new File([blob], `audio-${Date.now()}.webm`, { type: 'audio/webm' })
+          sendAudioMessage(file, transcript.trim())
+        }
+        recorder.start()
+        setRecording(true)
+      })
+      .catch((err) => {
+        console.error('mic access failed', err)
+        alert('Não consegui acessar o microfone.')
+      })
   }
 
   async function handleSend() {
@@ -1275,11 +1385,60 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                         </span>
                       )
                     }
+                    if (eph.kind === 'view_once') {
+                      return (
+                        <button type="button" className="ephemeral-btn" onClick={() => handleOpenEphemeral(eph)}>
+                          <IconLock size={16} />
+                          Visualização única — toque pra ver
+                        </button>
+                      )
+                    }
+                    const media = inlineMedia[m.id]
+                    if (!media || !('url' in media)) return <span className="ephemeral-btn">carregando mídia…</span>
                     return (
-                      <button type="button" className="ephemeral-btn" onClick={() => handleOpenEphemeral(eph)}>
-                        <IconLock size={16} />
-                        {eph.kind === 'view_once' ? 'Visualização única — toque pra ver' : 'Mídia temporária — toque pra ver'}
-                      </button>
+                      <div className="ephemeral-inline">
+                        {media.mediaType === 'image' && (
+                          <div className="ephemeral-media-wrap">
+                            <img src={media.url} alt="" onClick={() => setExpandedImage(media.url)} />
+                            <a className="ephemeral-download" href={media.url} download={media.fileName || undefined} title="Baixar">
+                              <IconDownload size={16} />
+                            </a>
+                          </div>
+                        )}
+                        {media.mediaType === 'video' && (
+                          <div className="ephemeral-media-wrap">
+                            {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                            <video src={media.url} controls />
+                            <a className="ephemeral-download" href={media.url} download={media.fileName || undefined} title="Baixar">
+                              <IconDownload size={16} />
+                            </a>
+                          </div>
+                        )}
+                        {media.mediaType === 'audio' && (
+                          <div className="audio-bubble">
+                            <div className="audio-bubble-row">
+                              {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                              <audio src={media.url} controls />
+                              <a className="ephemeral-download-inline" href={media.url} download={media.fileName || undefined} title="Baixar">
+                                <IconDownload size={14} />
+                              </a>
+                            </div>
+                            {m.content && (
+                              <div className="audio-transcribe">
+                                <button type="button" className="chevron-btn" onClick={() => toggleTranscript(m.id)}>
+                                  <IconChevronDown size={13} /> {openTranscripts.has(m.id) ? 'Ocultar transcrição' : 'Transcrever'}
+                                </button>
+                                {openTranscripts.has(m.id) && <p className="audio-transcript-text">{m.content}</p>}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {media.mediaType === 'file' && (
+                          <a className="ephemeral-file" href={media.url} download={media.fileName || undefined}>
+                            <IconDownload size={16} /> {media.fileName || 'arquivo'}
+                          </a>
+                        )}
+                      </div>
                     )
                   })()}
                   <div className="message-footer">
@@ -1347,7 +1506,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
             type="button"
             className={`compose-btn${recording ? ' recording' : ''}`}
             onClick={toggleRecording}
-            title="Falar (transcreve pra texto, áudio não é salvo)"
+            title={recording ? 'Parar e enviar áudio' : 'Gravar áudio'}
           >
             <IconMic size={20} />
           </button>
@@ -1373,10 +1532,10 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
 
         {showAttachMenu && (
           <div className="attach-menu">
-            <button type="button" onClick={() => docInputRef.current?.click()}>Documento</button>
-            <button type="button" onClick={() => mediaInputRef.current?.click()}>Fotos e vídeos</button>
             <button type="button" onClick={() => cameraInputRef.current?.click()}>Câmera</button>
+            <button type="button" onClick={() => mediaInputRef.current?.click()}>Fotos e vídeos</button>
             <button type="button" onClick={() => audioInputRef.current?.click()}>Áudio</button>
+            <button type="button" onClick={() => docInputRef.current?.click()}>Documento</button>
           </div>
         )}
 

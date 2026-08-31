@@ -28,6 +28,7 @@ export type EphemeralOpenResult =
 function guessMediaType(file: File): string {
   if (file.type.startsWith('image/')) return 'image'
   if (file.type.startsWith('video/')) return 'video'
+  if (file.type.startsWith('audio/')) return 'audio'
   return 'file'
 }
 

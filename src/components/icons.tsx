@@ -290,6 +290,24 @@ export function IconMic({ size = 20 }: IconProps) {
   )
 }
 
+export function IconDownload({ size = 20 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size}>
+      <path d="M12 3v12" />
+      <polyline points="7 10 12 15 17 10" />
+      <path d="M4 19h16" />
+    </svg>
+  )
+}
+
+export function IconChevronDown({ size = 16 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size}>
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  )
+}
+
 export function IconBell({ size = 20 }: IconProps) {
   return (
     <svg {...base} width={size} height={size}>
