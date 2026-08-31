@@ -10,6 +10,7 @@ import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import com.judemanutd.autostarter.AutoStartPermissionHelper;
 
 @CapacitorPlugin(name = "BatteryOpt")
 public class BatteryOptPlugin extends Plugin {
@@ -29,5 +30,21 @@ public class BatteryOptPlugin extends Plugin {
         intent.setData(Uri.parse("package:" + getContext().getPackageName()));
         getActivity().startActivity(intent);
         call.resolve();
+    }
+
+    @PluginMethod
+    public void openAutoStartSettings(PluginCall call) {
+        boolean opened = false;
+        try {
+            AutoStartPermissionHelper helper = AutoStartPermissionHelper.Companion.getInstance();
+            if (helper.isAutoStartPermissionAvailable(getContext(), false)) {
+                opened = helper.getAutoStartPermission(getContext(), true, true);
+            }
+        } catch (Exception e) {
+            opened = false;
+        }
+        JSObject ret = new JSObject();
+        ret.put("opened", opened);
+        call.resolve(ret);
     }
 }
