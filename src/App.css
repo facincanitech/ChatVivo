@@ -298,6 +298,16 @@ body{
 }
 .emoji-picker button{font-size:1.3rem;background:none;border:0;cursor:pointer;padding:4px;border-radius:6px}
 
+.attach-menu{
+  position:absolute;bottom:74px;left:18px;display:flex;flex-direction:column;gap:2px;
+  padding:6px;border:1px solid var(--line-2);background:var(--bg-surface);border-radius:10px;
+  min-width:180px;box-shadow:0 8px 24px #0006;
+}
+.attach-menu button{
+  text-align:left;background:none;border:0;cursor:pointer;padding:9px 10px;border-radius:6px;
+  font-size:.9rem;color:var(--text);
+}
+
 /* empty states */
 .empty{
   height:100%;display:grid;place-items:center;color:var(--muted-2);text-align:center;
@@ -681,6 +691,7 @@ body{
   .icon-btn:hover{background:var(--bg-surface);color:#fff}
   .chat:hover{background:var(--bg-surface-2)}
   .compose-btn:hover{background:#2b3a42}
+  .attach-menu button:hover{background:#2b3a42}
   .send:hover{filter:brightness(1.1)}
   .emoji-picker button:hover{background:#2b3a42}
   .group-info-actions button:hover{background:var(--bg-surface-2)}

@@ -87,7 +87,6 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const [members, setMembers] = useState<Record<string, MemberMeta>>({})
   const [draft, setDraft] = useState('')
   const [liveTyping, setLiveTyping] = useState<Record<string, string>>({})
-  const [liveMedia, setLiveMedia] = useState<Record<string, string>>({})
   const [showEmoji, setShowEmoji] = useState(false)
   const [showWinks, setShowWinks] = useState(false)
   const [customWinks, setCustomWinks] = useState<CustomWink[]>([])
@@ -148,13 +147,28 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const [editedIds, setEditedIds] = useState<Set<string>>(new Set())
   const [ephemeralByMessage, setEphemeralByMessage] = useState<Record<string, EphemeralMediaRow>>({})
   const [pendingEphemeralFile, setPendingEphemeralFile] = useState<File | null>(null)
+  const [pendingViewOnce, setPendingViewOnce] = useState(false)
   const [ephemeralSending, setEphemeralSending] = useState(false)
   const [ephemeralViewer, setEphemeralViewer] = useState<(EphemeralOpenResult & { id: string }) | null>(null)
+  const [showAttachMenu, setShowAttachMenu] = useState(false)
+  const [pendingFilePreviewUrl, setPendingFilePreviewUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!pendingEphemeralFile) {
+      setPendingFilePreviewUrl(null)
+      return
+    }
+    const url = URL.createObjectURL(pendingEphemeralFile)
+    setPendingFilePreviewUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [pendingEphemeralFile])
 
   const channelRef = useRef<RealtimeChannel | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const ephemeralFileInputRef = useRef<HTMLInputElement>(null)
+  const docInputRef = useRef<HTMLInputElement>(null)
+  const mediaInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
+  const audioInputRef = useRef<HTMLInputElement>(null)
   const replayBuffer = useRef<ReplayEvent[]>([])
   const messagesRef = useRef<Message[]>([])
   useEffect(() => {
@@ -179,7 +193,6 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   useEffect(() => {
     setMessages(conversation ? readCache<Message[]>(`flux-messages:${conversation.id}`) || [] : [])
     setLiveTyping({})
-    setLiveMedia({})
     setDraft('')
     setAtBottom(true)
     setNudgeFrom(null)
@@ -282,16 +295,6 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
         setNudgeFrom(userId)
         setTimeout(() => setNudgeFrom((prev) => (prev === userId ? null : prev)), 3000)
       })
-      .on('broadcast', { event: 'media' }, ({ payload }) => {
-        const { userId, dataUrl } = payload as { userId: string; dataUrl: string | null }
-        if (userId === me.id) return
-        setLiveMedia((prev) => {
-          const next = { ...prev }
-          if (dataUrl) next[userId] = dataUrl
-          else delete next[userId]
-          return next
-        })
-      })
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${conversation.id}` },
@@ -304,11 +307,6 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
             return next
           })
           setLiveTyping((prev) => {
-            const next = { ...prev }
-            delete next[msg.author_id]
-            return next
-          })
-          setLiveMedia((prev) => {
             const next = { ...prev }
             delete next[msg.author_id]
             return next
@@ -537,16 +535,6 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     sendPush(Object.keys(members).filter((id) => id !== me.id), displayName(me), `mandou um wink (${wink.label})`, conversation.id)
   }
 
-  function broadcastMedia(dataUrl: string | null) {
-    if (!me) return
-    channelRef.current?.send({ type: 'broadcast', event: 'media', payload: { userId: me.id, dataUrl } })
-    setLiveMedia((prev) => {
-      const next = { ...prev }
-      if (dataUrl) next[me.id] = dataUrl
-      else delete next[me.id]
-      return next
-    })
-  }
 
   async function postSystemMessage(content: string) {
     if (!me || !conversation) return
@@ -787,23 +775,18 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     setShowEmoji(false)
   }
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => broadcastMedia(reader.result as string)
-    reader.readAsDataURL(file)
-  }
-
-  function handleEphemeralFilePicked(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleAttachFilePicked(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
     setPendingEphemeralFile(file)
+    setPendingViewOnce(false)
+    setShowAttachMenu(false)
   }
 
-  async function sendEphemeralMedia(kind: EphemeralKind) {
+  async function sendEphemeralMedia() {
     if (!pendingEphemeralFile || !conversation || !me) return
+    const kind: EphemeralKind = pendingViewOnce ? 'view_once' : 'timed'
     setEphemeralSending(true)
     try {
       const label = kind === 'view_once' ? 'Mídia de visualização única' : 'Mídia temporária'
@@ -832,6 +815,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
 
       setEphemeralByMessage((prev) => ({ ...prev, [msg.id]: ephemeralRow as EphemeralMediaRow }))
       setPendingEphemeralFile(null)
+      setPendingViewOnce(false)
 
       const recipientIds = Object.keys(members).filter((id) => id !== me.id)
       sendPush(recipientIds, displayName(me), kind === 'view_once' ? 'mandou uma mídia de visualização única' : 'mandou uma mídia temporária', conversation.id)
@@ -863,11 +847,6 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     } catch (err) {
       console.error('handleOpenEphemeral failed', err)
     }
-  }
-
-  function clearMedia() {
-    broadcastMedia(null)
-    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   function toggleRecording() {
@@ -914,7 +893,6 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
 
     const eventsToStore = [...replayBuffer.current]
     broadcastTyping('')
-    clearMedia()
     setDraft('')
     setAtBottom(true)
     replayBuffer.current = []
@@ -1339,27 +1317,13 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
           </div>
         ))}
 
-        {Object.entries(liveMedia).filter(([userId]) => !blockedIds.has(userId)).map(([userId, dataUrl]) => (
-          <div key={`media-${userId}`} className={`message live ${userId === me.id ? 'out' : 'in'}`}>
-            <div className="bubble">
-              <span className="author-label">{members[userId] ? displayName(members[userId]) : '...'}</span>
-              <img
-                src={dataUrl}
-                alt="preview ao vivo"
-                className="live-media-preview"
-                onClick={() => setExpandedImage(dataUrl)}
-              />
-            </div>
-          </div>
-        ))}
-
         <div ref={bottomRef} />
       </section>
 
       <footer className="composer">
         <div className="composer-icons">
           <button type="button" className="compose-btn" onClick={() => setShowEmoji((v) => !v)} title="Emoji"><IconSmile size={20} /></button>
-          <button type="button" className="compose-btn" onClick={() => fileInputRef.current?.click()} title="Anexar"><IconAttach size={20} /></button>
+          <button type="button" className="compose-btn" onClick={() => setShowAttachMenu((v) => !v)} title="Anexar"><IconAttach size={20} /></button>
           <button
             type="button"
             className={`compose-btn${recording ? ' recording' : ''}`}
@@ -1370,9 +1334,10 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
           </button>
           <button type="button" className="compose-btn" title="Chamar atenção" onClick={sendNudge}><IconBell size={20} /></button>
           <button type="button" className="compose-btn" title="Mandar um wink" onClick={() => setShowWinks((v) => !v)}><IconHeart size={20} /></button>
-          <button type="button" className="compose-btn" title="Mídia temporária" onClick={() => ephemeralFileInputRef.current?.click()}><IconLock size={20} /></button>
-          <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handleFileChange} />
-          <input ref={ephemeralFileInputRef} type="file" hidden onChange={handleEphemeralFilePicked} />
+          <input ref={docInputRef} type="file" hidden onChange={handleAttachFilePicked} />
+          <input ref={mediaInputRef} type="file" accept="image/*,video/*" hidden onChange={handleAttachFilePicked} />
+          <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" hidden onChange={handleAttachFilePicked} />
+          <input ref={audioInputRef} type="file" accept="audio/*" hidden onChange={handleAttachFilePicked} />
         </div>
         <div className="composer-input-row">
           <div className="input">
@@ -1386,6 +1351,15 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
           </div>
           <button type="button" className="send" onClick={handleSend} disabled={!draft.trim()}><IconSend size={18} /></button>
         </div>
+
+        {showAttachMenu && (
+          <div className="attach-menu">
+            <button type="button" onClick={() => docInputRef.current?.click()}>Documento</button>
+            <button type="button" onClick={() => mediaInputRef.current?.click()}>Fotos e vídeos</button>
+            <button type="button" onClick={() => cameraInputRef.current?.click()}>Câmera</button>
+            <button type="button" onClick={() => audioInputRef.current?.click()}>Áudio</button>
+          </div>
+        )}
 
         {showEmoji && (
           <div className="emoji-picker">
@@ -1500,14 +1474,32 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       {pendingEphemeralFile && (
         <div className="modal-backdrop" onClick={() => !ephemeralSending && setPendingEphemeralFile(null)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <h2>Enviar como...</h2>
-            <p className="status">{pendingEphemeralFile.name}</p>
-            <div className="new-conv-form">
-              <button type="button" className="primary" disabled={ephemeralSending} onClick={() => sendEphemeralMedia('timed')}>
-                Temporária (some após 1 min de aberta, dá pra baixar)
-              </button>
-              <button type="button" disabled={ephemeralSending} onClick={() => sendEphemeralMedia('view_once')}>
-                Visualização única (some assim que for vista, sem baixar)
+            <h2>Enviar mídia temporária</h2>
+            {pendingEphemeralFile.type.startsWith('image/') && (
+              <img src={pendingFilePreviewUrl || ''} alt="" style={{ maxWidth: '100%', maxHeight: 260, borderRadius: 8 }} />
+            )}
+            {pendingEphemeralFile.type.startsWith('video/') && (
+              <video src={pendingFilePreviewUrl || ''} controls style={{ maxWidth: '100%', maxHeight: 260, borderRadius: 8 }} />
+            )}
+            {!pendingEphemeralFile.type.startsWith('image/') && !pendingEphemeralFile.type.startsWith('video/') && (
+              <p className="status">{pendingEphemeralFile.name}</p>
+            )}
+            <button
+              type="button"
+              className={`theme-option${pendingViewOnce ? ' active' : ''}`}
+              style={{ marginTop: 10 }}
+              onClick={() => setPendingViewOnce((v) => !v)}
+            >
+              <IconLock size={14} /> Visualização única
+            </button>
+            <p style={{ fontSize: '.75rem', color: 'var(--muted)', marginTop: 6 }}>
+              {pendingViewOnce
+                ? 'Some assim que for vista, sem opção de baixar.'
+                : 'Some 1 minuto depois de aberta — dá pra baixar antes disso.'}
+            </p>
+            <div className="new-conv-form" style={{ marginTop: 10 }}>
+              <button type="button" className="primary" disabled={ephemeralSending} onClick={sendEphemeralMedia}>
+                {ephemeralSending ? 'Enviando...' : 'Enviar'}
               </button>
               <button type="button" disabled={ephemeralSending} onClick={() => setPendingEphemeralFile(null)}>cancelar</button>
             </div>
