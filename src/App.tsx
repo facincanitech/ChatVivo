@@ -134,6 +134,11 @@ function App() {
 
   useEffect(() => {
     if (!session) return
+    try {
+      localStorage.setItem('flux-last-user-id', session.user.id)
+    } catch {
+      // ignore
+    }
     supabase
       .from('profiles')
       .select('id, username, email, status, last_seen_at, display_name, avatar_url, is_idle, age, city')

@@ -109,7 +109,17 @@ export function ChatList({
   theme,
   onThemeChange,
 }: Props) {
-  const [conversations, setConversations] = useState<ConvWithLabel[]>([])
+  const [conversations, setConversations] = useState<ConvWithLabel[]>(() => {
+    const lastUserId = (() => {
+      try {
+        return localStorage.getItem('flux-last-user-id')
+      } catch {
+        return null
+      }
+    })()
+    if (!lastUserId) return []
+    return readCache<ConvWithLabel[]>(`flux-conversations:${lastUserId}`) || []
+  })
   const [groupsView, setGroupsView] = useState<'root' | 'group-root' | 'group-create' | 'community-root' | 'community-create' | 'community-search'>('root')
   const [myGroups, setMyGroups] = useState<{ id: string; name: string; role: string | null; image_url: string | null }[]>([])
   const [newGroupName, setNewGroupName] = useState('')
@@ -221,10 +231,7 @@ export function ChatList({
   const avatarInputRef = useRef<HTMLInputElement>(null)
 
   async function loadConversations() {
-    if (!me) {
-      setConversations([])
-      return
-    }
+    if (!me) return
     const { data: memberRows } = await supabase
       .from('conversation_members')
       .select('role, conversation:conversations(*), is_favorite, favorited_at, archived_at, muted, manually_unread, deleted_at')

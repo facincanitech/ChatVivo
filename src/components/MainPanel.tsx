@@ -350,7 +350,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   }, [conversation?.id, me?.id])
 
   useEffect(() => {
-    if (atBottom) bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (atBottom) bottomRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' })
   }, [messages, liveTyping, atBottom])
 
   function handleMessagesScroll(e: React.UIEvent<HTMLElement>) {
@@ -815,6 +815,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     broadcastTyping('')
     clearMedia()
     setDraft('')
+    setAtBottom(true)
     replayBuffer.current = []
 
     const { data: msg } = await supabase
