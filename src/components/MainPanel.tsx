@@ -156,6 +156,24 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const [pendingFilePreviewUrl, setPendingFilePreviewUrl] = useState<string | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const requestedInlineRef = useRef<Set<string>>(new Set())
+  const attachMenuRef = useRef<HTMLDivElement>(null)
+  const attachBtnRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (!showAttachMenu) return
+    function onOutside(e: MouseEvent | TouchEvent) {
+      const target = e.target as Node
+      if (attachMenuRef.current?.contains(target)) return
+      if (attachBtnRef.current?.contains(target)) return
+      setShowAttachMenu(false)
+    }
+    document.addEventListener('mousedown', onOutside)
+    document.addEventListener('touchstart', onOutside)
+    return () => {
+      document.removeEventListener('mousedown', onOutside)
+      document.removeEventListener('touchstart', onOutside)
+    }
+  }, [showAttachMenu])
 
   useEffect(() => {
     if (!pendingEphemeralFile) {
@@ -1501,7 +1519,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       <footer className="composer">
         <div className="composer-icons">
           <button type="button" className="compose-btn" onClick={() => setShowEmoji((v) => !v)} title="Emoji"><IconSmile size={20} /></button>
-          <button type="button" className="compose-btn" onClick={() => setShowAttachMenu((v) => !v)} title="Anexar"><IconAttach size={20} /></button>
+          <button ref={attachBtnRef} type="button" className="compose-btn" onClick={() => setShowAttachMenu((v) => !v)} title="Anexar"><IconAttach size={20} /></button>
           <button
             type="button"
             className={`compose-btn${recording ? ' recording' : ''}`}
@@ -1531,7 +1549,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
         </div>
 
         {showAttachMenu && (
-          <div className="attach-menu">
+          <div className="attach-menu" ref={attachMenuRef}>
             <button type="button" onClick={() => cameraInputRef.current?.click()}>Câmera</button>
             <button type="button" onClick={() => mediaInputRef.current?.click()}>Fotos e vídeos</button>
             <button type="button" onClick={() => audioInputRef.current?.click()}>Áudio</button>

@@ -97,6 +97,7 @@ function App() {
   const [panelOpen, setPanelOpen] = useState(false)
   const [panelView, setPanelView] = useState<PanelView>('root')
   const [accountOpen, setAccountOpen] = useState(false)
+  const [accountResetKey, setAccountResetKey] = useState(0)
   const [groupsOpen, setGroupsOpen] = useState(false)
   const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set())
 
@@ -351,6 +352,7 @@ function App() {
       setPanelOpen(false)
       setGroupsOpen(false)
       setAccountOpen(true)
+      setAccountResetKey((k) => k + 1)
     })
   }
 
@@ -398,6 +400,7 @@ function App() {
         onPanelViewChange={setPanelView}
         accountOpen={accountOpen}
         onAccountOpenChange={setAccountOpen}
+        accountResetKey={accountResetKey}
         groupsOpen={groupsOpen}
         onGroupsOpenChange={setGroupsOpen}
         onProfileChange={(patch) => setProfile((p) => (p ? { ...p, ...patch } : p))}

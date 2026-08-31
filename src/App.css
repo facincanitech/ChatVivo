@@ -480,11 +480,11 @@ body{
 }
 .account-avatar-wrap{display:flex;justify-content:center;padding:12px 0 20px}
 .account-avatar{
-  width:110px;height:110px;border-radius:50%;background:var(--line);color:var(--muted);
+  width:110px;height:110px;border-radius:22px;background:var(--line);color:var(--muted);
   display:grid;place-items:center;
 }
 .account-avatar-edit{
-  position:absolute;right:2px;bottom:2px;width:28px;height:28px;border-radius:50%;
+  position:absolute;right:10px;bottom:10px;width:30px;height:30px;border-radius:50%;
   background:var(--green);color:#fff;display:grid;place-items:center;
   border:2px solid var(--bg-surface);
 }

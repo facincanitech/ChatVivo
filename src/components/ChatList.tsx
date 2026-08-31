@@ -47,6 +47,7 @@ type Props = {
   onPanelViewChange: (view: PanelView) => void
   accountOpen: boolean
   onAccountOpenChange: (open: boolean) => void
+  accountResetKey: number
   groupsOpen: boolean
   onGroupsOpenChange: (open: boolean) => void
   onProfileChange: (patch: Partial<Profile>) => void
@@ -98,6 +99,7 @@ export function ChatList({
   onPanelViewChange,
   accountOpen,
   onAccountOpenChange,
+  accountResetKey,
   groupsOpen,
   onGroupsOpenChange,
   onProfileChange,
@@ -765,7 +767,8 @@ export function ChatList({
       setAccountView('root')
       setAccountError(null)
     }
-  }, [accountOpen, me?.id])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accountOpen, me?.id, accountResetKey])
 
   async function loadMyGroups() {
     if (!me) return
