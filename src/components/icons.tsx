@@ -331,10 +331,12 @@ export function IconBell({ size = 20 }: IconProps) {
 export function IconNudge({ size = 20 }: IconProps) {
   return (
     <svg {...base} width={size} height={size}>
-      <path d="M5 10a5 5 0 1 1 10 0c0 4.2 1.6 5 1.6 5H3.4s1.6-.8 1.6-5z" />
-      <path d="M8.5 18a1.5 1.5 0 0 0 3 0" />
-      <path d="M18 6c1.2 1.1 1.8 2.5 1.8 4s-.6 2.9-1.8 4" />
-      <path d="M20.5 4c1.8 1.7 2.7 3.8 2.7 6s-.9 4.3-2.7 6" />
+      <path d="M7 10a5 5 0 1 1 10 0c0 4.2 1.6 5 1.6 5H5.4s1.6-.8 1.6-5z" />
+      <path d="M10.5 18a1.5 1.5 0 0 0 3 0" />
+      <path d="M18 7q3 3 0 6" />
+      <path d="M20 4q6 6 0 12" />
+      <path d="M6 7q-3 3 0 6" />
+      <path d="M4 4q-6 6 0 12" />
     </svg>
   )
 }

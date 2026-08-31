@@ -1205,7 +1205,7 @@ export function ChatList({
       ) : (
         <>
           <div className="top">
-            <div className="brand">Flux <span className="app-version">v{APP_VERSION}</span></div>
+            <div className="brand">Flux</div>
             <div style={{ marginLeft: 'auto' }}>
               <NotificationCenter />
             </div>
