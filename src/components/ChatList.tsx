@@ -995,8 +995,12 @@ export function ChatList({
   async function setBannerColor(color: string) {
     if (!me) return
     setBannerSaving(true)
+    setAccountError(null)
     const { error: err } = await supabase.from('profiles').update({ banner_color: color, banner_image_url: null }).eq('id', me.id)
-    if (!err) {
+    if (err) {
+      console.error('setBannerColor failed', err)
+      setAccountError(getErrorMessage(err))
+    } else {
       setBannerColorDraft(color)
       setBannerImageDraft(null)
       onProfileChange({ banner_color: color, banner_image_url: null })
