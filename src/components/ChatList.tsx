@@ -1106,7 +1106,7 @@ export function ChatList({
     }
   }
 
-  async function setAppColor(field: 'app_bg_color' | 'app_sidebar_color' | 'app_button_color' | 'app_text_size', value: string | null) {
+  async function setAppColor(field: 'app_bg_color' | 'app_sidebar_color' | 'app_button_color' | 'app_card_color' | 'app_text_size', value: string | null) {
     if (!me) return
     try {
       const { error: err } = await supabase.from('profiles').update({ [field]: value }).eq('id', me.id)
@@ -1826,6 +1826,9 @@ export function ChatList({
 
             <label style={{ marginTop: 12 }}>Botões</label>
             <ColorGrid value={me.app_button_color} onPick={(v) => setAppColor('app_button_color', v)} />
+
+            <label style={{ marginTop: 12 }}>Cards (comunidade)</label>
+            <ColorGrid value={me.app_card_color} onPick={(v) => setAppColor('app_card_color', v)} />
 
             <label style={{ marginTop: 12 }}>Tamanho do texto</label>
             <div className="name-style-picker">

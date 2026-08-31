@@ -114,9 +114,10 @@ function App() {
     applyVar('--rail-bg', profile?.app_sidebar_color, '--rail-icon')
     applyVar('--green', profile?.app_button_color, '--on-button')
     applyVar('--btn-custom', profile?.app_button_color)
+    applyVar('--card-custom', profile?.app_card_color, '--on-card')
     const zoom = profile?.app_text_size === 'small' ? '0.75' : profile?.app_text_size === 'large' ? '1.5' : null
     applyVar('--ui-zoom', zoom)
-  }, [profile?.app_bg_color, profile?.app_sidebar_color, profile?.app_button_color, profile?.app_text_size])
+  }, [profile?.app_bg_color, profile?.app_sidebar_color, profile?.app_button_color, profile?.app_card_color, profile?.app_text_size])
 
   const [selected, setSelected] = useState<Conversation | null>(null)
   const [selectedCommunity, setSelectedCommunity] = useState<Community | null>(null)
