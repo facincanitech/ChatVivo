@@ -44,32 +44,77 @@ const BANNER_COLORS = [
   'linear-gradient(135deg,#ff512f,#dd2476)',
 ]
 
-function ColorGrid({ value, onPick }: { value: string | null | undefined; onPick: (v: string | null) => void }) {
+function ColorField({ label, value, onPick }: { label: string; value: string | null | undefined; onPick: (v: string | null) => void }) {
+  const [open, setOpen] = useState<'gradient' | 'custom' | null>(null)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function onOutside(e: MouseEvent | TouchEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(null)
+    }
+    document.addEventListener('mousedown', onOutside)
+    document.addEventListener('touchstart', onOutside)
+    return () => {
+      document.removeEventListener('mousedown', onOutside)
+      document.removeEventListener('touchstart', onOutside)
+    }
+  }, [open])
+
+  const isGradient = !!value && value.startsWith('linear-gradient')
+  const isCustom = !!value && value.startsWith('#')
+
   return (
-    <div className="banner-color-picker">
-      <button
-        type="button"
-        className={`banner-color-swatch banner-color-reset${!value ? ' active' : ''}`}
-        onClick={() => onPick(null)}
-        title="Padrão"
-      >
-        <IconMinusCircle size={14} />
-      </button>
-      {BANNER_COLORS.map((color) => (
+    <div className="color-field" ref={ref}>
+      <label>{label}</label>
+      <div className="color-field-row">
         <button
-          key={color}
           type="button"
-          className={`banner-color-swatch${value === color ? ' active' : ''}`}
-          style={{ background: color }}
-          onClick={() => onPick(color)}
-        />
-      ))}
-      <input
-        type="color"
-        className="banner-color-swatch banner-color-custom"
-        value={value && value.startsWith('#') ? value : '#5865f2'}
-        onChange={(e) => onPick(e.target.value)}
-      />
+          className={`color-field-btn${isGradient ? ' active' : ''}`}
+          style={isGradient ? { backgroundImage: value } : undefined}
+          onClick={() => setOpen((o) => (o === 'gradient' ? null : 'gradient'))}
+        >
+          Gradient
+        </button>
+        <button
+          type="button"
+          className={`color-field-btn${isCustom ? ' active' : ''}`}
+          style={isCustom ? { background: value } : undefined}
+          onClick={() => setOpen((o) => (o === 'custom' ? null : 'custom'))}
+        >
+          Cores
+        </button>
+      </div>
+      {open === 'gradient' && (
+        <div className="color-field-popup">
+          <button
+            type="button"
+            className={`banner-color-swatch banner-color-reset${!value ? ' active' : ''}`}
+            onClick={() => { onPick(null); setOpen(null) }}
+            title="Padrão"
+          >
+            <IconMinusCircle size={14} />
+          </button>
+          {BANNER_COLORS.map((color) => (
+            <button
+              key={color}
+              type="button"
+              className={`banner-color-swatch${value === color ? ' active' : ''}`}
+              style={{ background: color }}
+              onClick={() => { onPick(color); setOpen(null) }}
+            />
+          ))}
+        </div>
+      )}
+      {open === 'custom' && (
+        <div className="color-field-popup">
+          <input
+            type="color"
+            value={isCustom ? value : '#5865f2'}
+            onChange={(e) => onPick(e.target.value)}
+          />
+        </div>
+      )}
     </div>
   )
 }
@@ -1106,7 +1151,17 @@ export function ChatList({
     }
   }
 
-  async function setAppColor(field: 'app_bg_color' | 'app_sidebar_color' | 'app_button_color' | 'app_card_color' | 'app_text_size', value: string | null) {
+  async function setAppColor(
+    field:
+      | 'app_bg_color'
+      | 'app_sidebar_color'
+      | 'app_button_color'
+      | 'app_card_color'
+      | 'app_incoming_color'
+      | 'app_outgoing_color'
+      | 'app_text_size',
+    value: string | null,
+  ) {
     if (!me) return
     try {
       const { error: err } = await supabase.from('profiles').update({ [field]: value }).eq('id', me.id)
@@ -1809,54 +1864,6 @@ export function ChatList({
 
             <div className="appearance-separator" />
 
-            <label style={{ marginTop: 14 }}>Aparência do app</label>
-            <span className="invite-code">isso é só pra você — muda a cara do app no seu aparelho</span>
-            <div className="app-appearance-preview">
-              <div className="app-appearance-preview-rail" style={{ background: me.app_sidebar_color || '#111820' }} />
-              <div className="app-appearance-preview-main" style={{ background: me.app_bg_color || 'var(--bg-deep)' }}>
-                <span className="app-appearance-preview-btn" style={{ background: me.app_button_color || 'var(--green)' }} />
-              </div>
-            </div>
-
-            <label style={{ marginTop: 10 }}>Fundo</label>
-            <ColorGrid value={me.app_bg_color} onPick={(v) => setAppColor('app_bg_color', v)} />
-
-            <label style={{ marginTop: 12 }}>Barra lateral</label>
-            <ColorGrid value={me.app_sidebar_color} onPick={(v) => setAppColor('app_sidebar_color', v)} />
-
-            <label style={{ marginTop: 12 }}>Botões</label>
-            <ColorGrid value={me.app_button_color} onPick={(v) => setAppColor('app_button_color', v)} />
-
-            <label style={{ marginTop: 12 }}>Cards (comunidade)</label>
-            <ColorGrid value={me.app_card_color} onPick={(v) => setAppColor('app_card_color', v)} />
-
-            <label style={{ marginTop: 12 }}>Tamanho do texto</label>
-            <div className="name-style-picker">
-              <button
-                type="button"
-                className={`name-effect-option${(me.app_text_size || 'normal') === 'small' ? ' active' : ''}`}
-                onClick={() => setAppColor('app_text_size', 'small')}
-              >
-                Menor
-              </button>
-              <button
-                type="button"
-                className={`name-effect-option${(me.app_text_size || 'normal') === 'normal' ? ' active' : ''}`}
-                onClick={() => setAppColor('app_text_size', null)}
-              >
-                Padrão
-              </button>
-              <button
-                type="button"
-                className={`name-effect-option${(me.app_text_size || 'normal') === 'large' ? ' active' : ''}`}
-                onClick={() => setAppColor('app_text_size', 'large')}
-              >
-                Maior
-              </button>
-            </div>
-
-            <div className="appearance-separator" />
-
             <label style={{ marginTop: 14 }}>Estilo do nome</label>
             <span className="invite-code">como seu nome aparece no chat pra todo mundo</span>
 
@@ -1900,23 +1907,44 @@ export function ChatList({
               ))}
             </div>
 
-            {(me.name_style_effect === 'gradient') && (
-              <>
-                <label style={{ marginTop: 12 }}>Cor</label>
-                <ColorGrid value={me.name_style_color} onPick={(v) => setNameStyle('name_style_color', v)} />
-              </>
-            )}
-            {(!me.name_style_effect || me.name_style_effect === 'solid' || me.name_style_effect === 'neon') && (
-              <>
-                <label style={{ marginTop: 12 }}>Cor</label>
-                <input
-                  type="color"
-                  value={me.name_style_color && me.name_style_color.startsWith('#') ? me.name_style_color : '#8b9dff'}
-                  onChange={(e) => setNameStyle('name_style_color', e.target.value)}
-                  style={{ width: 60, height: 36, padding: 2, cursor: 'pointer' }}
-                />
-              </>
-            )}
+            <ColorField label="Cor" value={me.name_style_color} onPick={(v) => setNameStyle('name_style_color', v)} />
+
+            <div className="appearance-separator" />
+
+            <label style={{ marginTop: 14 }}>Aparência do app</label>
+            <span className="invite-code">isso é só pra você — muda a cara do app no seu aparelho</span>
+
+            <ColorField label="Fundo" value={me.app_bg_color} onPick={(v) => setAppColor('app_bg_color', v)} />
+            <ColorField label="Barra lateral" value={me.app_sidebar_color} onPick={(v) => setAppColor('app_sidebar_color', v)} />
+            <ColorField label="Botões" value={me.app_button_color} onPick={(v) => setAppColor('app_button_color', v)} />
+            <ColorField label="Mensagem recebida" value={me.app_incoming_color} onPick={(v) => setAppColor('app_incoming_color', v)} />
+            <ColorField label="Mensagem enviada" value={me.app_outgoing_color} onPick={(v) => setAppColor('app_outgoing_color', v)} />
+            <ColorField label="Cards (comunidade)" value={me.app_card_color} onPick={(v) => setAppColor('app_card_color', v)} />
+
+            <label style={{ marginTop: 12 }}>Tamanho do texto</label>
+            <div className="name-style-picker">
+              <button
+                type="button"
+                className={`name-effect-option${(me.app_text_size || 'normal') === 'small' ? ' active' : ''}`}
+                onClick={() => setAppColor('app_text_size', 'small')}
+              >
+                Menor
+              </button>
+              <button
+                type="button"
+                className={`name-effect-option${(me.app_text_size || 'normal') === 'normal' ? ' active' : ''}`}
+                onClick={() => setAppColor('app_text_size', null)}
+              >
+                Padrão
+              </button>
+              <button
+                type="button"
+                className={`name-effect-option${(me.app_text_size || 'normal') === 'large' ? ' active' : ''}`}
+                onClick={() => setAppColor('app_text_size', 'large')}
+              >
+                Maior
+              </button>
+            </div>
           </div>
         )}
 

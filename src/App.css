@@ -224,8 +224,8 @@ body{
   line-height:1.42;font-size:14px;box-shadow:0 1px 1px #0004;
   overflow-wrap:break-word;word-break:break-word;min-width:0;
 }
-.in .bubble{background:var(--rail-bg,var(--bg-surface));color:var(--rail-icon,inherit);border-top-left-radius:3px}
-.out .bubble{background:var(--btn-custom,var(--bubble));color:var(--on-button,inherit);border-top-right-radius:3px;text-align:right}
+.in .bubble{background:var(--in-custom,var(--bg-surface));color:var(--on-in,inherit);border-top-left-radius:3px}
+.out .bubble{background:var(--out-custom,var(--bubble));color:var(--on-out,inherit);border-top-right-radius:3px;text-align:right}
 .message-footer{display:flex;justify-content:flex-end;align-items:center;margin-top:4px;gap:8px}
 .meta{color:#8da39f;font-size:10px;white-space:nowrap}
 .author-label{font-size:11px;color:var(--muted);margin-bottom:2px;display:block}
@@ -515,6 +515,21 @@ body{
   display:grid;place-items:center;pointer-events:none;color:var(--muted);
 }
 .profile-banner-preview-avatar img{width:100%;height:100%;object-fit:cover}
+.color-field{position:relative;margin-top:12px}
+.color-field label{display:block;margin-bottom:6px}
+.color-field-row{display:flex;gap:8px}
+.color-field-btn{
+  flex:1;padding:9px 10px;border-radius:8px;border:1px solid var(--line-2);
+  background:var(--bg-deep);color:var(--text);cursor:pointer;font-size:.85rem;
+  background-size:cover;background-position:center;
+}
+.color-field-btn.active{border-color:var(--green);color:#fff;text-shadow:0 1px 2px #0008}
+.color-field-popup{
+  position:absolute;top:100%;left:0;right:0;margin-top:4px;z-index:20;
+  display:flex;flex-wrap:wrap;gap:8px;padding:10px;border-radius:10px;
+  background:var(--bg-surface);border:1px solid var(--line-2);box-shadow:0 8px 24px #0006;
+}
+.color-field-popup input[type="color"]{width:60px;height:36px;padding:2px;cursor:pointer}
 .banner-color-picker{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
 .banner-color-swatch{
   width:30px;height:30px;border-radius:8px;border:2px solid transparent;cursor:pointer;padding:0;flex-shrink:0;

@@ -16,6 +16,8 @@ export type Profile = {
   app_sidebar_color?: string | null
   app_button_color?: string | null
   app_card_color?: string | null
+  app_incoming_color?: string | null
+  app_outgoing_color?: string | null
   app_text_size?: 'small' | 'normal' | 'large' | null
   name_style_font?: string | null
   name_style_effect?: 'solid' | 'gradient' | 'neon' | 'prism' | null
