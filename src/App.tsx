@@ -13,7 +13,7 @@ import { playNudgeSound, triggerNudgeShake } from './lib/nudge'
 import { playWinkEffect, playCustomWinkEffect } from './lib/winks'
 import { saveCustomWink, type CustomWink } from './lib/customWinks'
 import { addNotification } from './lib/notifications'
-import { registerPushNotifications } from './lib/pushNotifications'
+import { registerPushNotifications, setCurrentConversationId } from './lib/pushNotifications'
 import { promptDisableBatteryOptimization } from './lib/batteryOpt'
 import { displayName } from './lib/displayName'
 import './App.css'
@@ -90,6 +90,10 @@ function App() {
   const [accountOpen, setAccountOpen] = useState(false)
   const [groupsOpen, setGroupsOpen] = useState(false)
   const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    setCurrentConversationId(selected?.id || null)
+  }, [selected?.id])
 
   useEffect(() => {
     navStateRef.current = { panelOpen, accountOpen, groupsOpen, selectedCommunity: !!selectedCommunity, selected: !!selected }

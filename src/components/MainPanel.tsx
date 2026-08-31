@@ -398,7 +398,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
           }
         })
       })
-    sendPush(Object.keys(members).filter((id) => id !== me.id), displayName(me), 'chamou sua atenção')
+    sendPush(Object.keys(members).filter((id) => id !== me.id), displayName(me), 'chamou sua atenção', conversation.id)
   }
 
   function sendWink(winkId: string) {
@@ -421,7 +421,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
           }
         })
       })
-    sendPush(Object.keys(members).filter((id) => id !== me.id), displayName(me), 'mandou um wink')
+    sendPush(Object.keys(members).filter((id) => id !== me.id), displayName(me), 'mandou um wink', conversation.id)
   }
 
   const MAX_WINK_IMAGE_BYTES = 300 * 1024
@@ -503,7 +503,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
           }
         })
       })
-    sendPush(Object.keys(members).filter((id) => id !== me.id), displayName(me), `mandou um wink (${wink.label})`)
+    sendPush(Object.keys(members).filter((id) => id !== me.id), displayName(me), `mandou um wink (${wink.label})`, conversation.id)
   }
 
   function broadcastMedia(dataUrl: string | null) {
@@ -831,7 +831,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     }
 
     const recipientIds = Object.keys(members).filter((id) => id !== me.id)
-    sendPush(recipientIds, displayName(me), content)
+    sendPush(recipientIds, displayName(me), content, conversation.id)
   }
 
 

@@ -1,10 +1,12 @@
 import { supabase } from './supabase'
 
-export async function sendPush(userIds: string[], title: string, body: string) {
+export async function sendPush(userIds: string[], title: string, body: string, conversationId?: string) {
   if (userIds.length === 0) return
   try {
-    await supabase.functions.invoke('send-push', { body: { userIds, title, body } })
-  } catch {
-    // best-effort, nao trava o envio se a notificacao falhar
+    const { data, error } = await supabase.functions.invoke('send-push', { body: { userIds, title, body, conversationId } })
+    if (error) console.error('sendPush error', error)
+    else console.log('sendPush ok', data)
+  } catch (e) {
+    console.error('sendPush threw', e)
   }
 }
