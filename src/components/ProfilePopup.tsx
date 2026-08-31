@@ -141,14 +141,14 @@ export function ProfilePopup({ me, userId, onClose, onOpenCommunity, blockedIds,
           <IconArrowLeft size={20} />
         </button>
         {view === 'profile' && currentId !== me.id && (
-          <button type="button" className="icon-btn" style={{ position: 'absolute', top: 8, right: 8, zIndex: 2 }} onClick={() => setMenuOpen((v) => !v)}>
+          <button type="button" className="icon-btn" style={{ position: 'absolute', top: 14, right: 12, zIndex: 2 }} onClick={() => setMenuOpen((v) => !v)}>
             <IconMore size={18} />
           </button>
         )}
         {menuOpen && (
           <>
             <div style={{ position: 'absolute', inset: 0, zIndex: 5 }} onClick={() => setMenuOpen(false)} />
-            <div className="request-menu" style={{ top: 40, right: 8, zIndex: 6 }}>
+            <div className="request-menu" style={{ top: 60, right: 12, zIndex: 6 }}>
               {blockedIds.has(currentId) ? (
                 <span style={{ padding: '6px 8px', fontSize: '.75rem', color: '#8696a0' }}>bloqueado</span>
               ) : (
