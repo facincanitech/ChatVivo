@@ -508,7 +508,14 @@ body{
   width:32px;height:32px;border-radius:10px;border:2px solid transparent;cursor:pointer;padding:0;
 }
 .banner-color-swatch.active{border-color:var(--text)}
-.banner-color-custom{width:32px;height:32px;padding:0;border-radius:10px;border:2px solid var(--line-2);background:none;cursor:pointer}
+.banner-color-custom{width:32px;height:32px;padding:0;border-radius:10px;border:2px solid var(--line-2);background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red);cursor:pointer}
+.banner-color-custom::-webkit-color-swatch-wrapper{padding:2px;border-radius:8px}
+.banner-color-custom::-webkit-color-swatch{border:0;border-radius:6px}
+.banner-color-reset{
+  background:var(--bg-deep);color:var(--muted);border:2px solid var(--line-2);
+  display:grid;place-items:center;
+}
+.appearance-separator{border-top:1px solid var(--line-2);margin-top:20px}
 
 .profile-banner{
   position:absolute;left:8px;right:8px;top:8px;height:188px;border-radius:16px;

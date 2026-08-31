@@ -20,6 +20,7 @@ import {
   IconKey,
   IconLock,
   IconMailUnread,
+  IconMinusCircle,
   IconMore,
   IconSearch,
   IconTrash,
@@ -29,7 +30,7 @@ import type { Community, Conversation, PanelView, Profile } from '../types'
 
 type AccountView = 'root' | 'profile' | 'appearance' | 'account' | 'privacy' | 'blocked' | 'terms'
 
-const BANNER_COLORS = ['#5865f2', '#2f9e6e', '#c2410c', '#9333ea', '#dc2626', '#0891b2', '#78716c']
+const BANNER_COLORS = ['#5865f2', '#2f9e6e', '#9333ea', '#dc2626', '#0891b2', '#78716c']
 
 type FilterKey = 'all' | 'favorites' | 'archived' | 'group' | 'communities'
 const DEFAULT_FILTER_ORDER: FilterKey[] = ['all', 'favorites', 'archived', 'group', 'communities']
@@ -996,6 +997,22 @@ export function ChatList({
     }
   }
 
+  async function resetBannerToDefault() {
+    if (!me) return
+    setBannerSaving(true)
+    setAccountError(null)
+    const { error: err } = await supabase.from('profiles').update({ banner_color: null, banner_image_url: null }).eq('id', me.id)
+    if (err) {
+      console.error('resetBannerToDefault failed', err)
+      setAccountError(getErrorMessage(err))
+    } else {
+      setBannerColorDraft(null)
+      setBannerImageDraft(null)
+      onProfileChange({ banner_color: null, banner_image_url: null })
+    }
+    setBannerSaving(false)
+  }
+
   async function setBannerColor(color: string) {
     if (!me) return
     setBannerSaving(true)
@@ -1629,6 +1646,15 @@ export function ChatList({
 
             <label style={{ marginTop: 12 }}>Cor</label>
             <div className="banner-color-picker">
+              <button
+                type="button"
+                className={`banner-color-swatch banner-color-reset${!bannerColorDraft && !bannerImageDraft ? ' active' : ''}`}
+                disabled={bannerSaving}
+                onClick={resetBannerToDefault}
+                title="Padrão"
+              >
+                <IconMinusCircle size={14} />
+              </button>
               {BANNER_COLORS.map((color) => (
                 <button
                   key={color}
@@ -1648,7 +1674,7 @@ export function ChatList({
               />
             </div>
 
-            <label style={{ marginTop: 14 }}>Imagem ou GIF</label>
+            <label style={{ marginTop: 8 }}>Imagem ou GIF</label>
             <input ref={bannerInputRef} type="file" accept="image/*" hidden onChange={uploadBannerImage} />
             <button type="button" disabled={bannerUploading} onClick={() => bannerInputRef.current?.click()}>
               {bannerUploading ? 'enviando...' : bannerImageDraft ? 'Trocar imagem' : 'Escolher imagem'}
@@ -1659,6 +1685,8 @@ export function ChatList({
               </button>
             )}
             {accountError && <span className="auth-error">{accountError}</span>}
+
+            <div className="appearance-separator" />
           </div>
         )}
 
