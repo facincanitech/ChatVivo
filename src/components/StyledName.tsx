@@ -1,11 +1,10 @@
 export const NAME_FONTS = [
   { id: 'default', label: 'Padrão', family: 'inherit' },
-  { id: 'poppins', label: 'Poppins', family: "'Poppins', sans-serif" },
+  { id: 'righteous', label: 'Righteous', family: "'Righteous', cursive" },
   { id: 'bebas', label: 'Bebas Neue', family: "'Bebas Neue', cursive" },
   { id: 'pacifico', label: 'Pacifico', family: "'Pacifico', cursive" },
-  { id: 'pixel', label: 'Press Start 2P', family: "'Press Start 2P', monospace" },
-  { id: 'righteous', label: 'Righteous', family: "'Righteous', cursive" },
   { id: 'caveat', label: 'Caveat', family: "'Caveat', cursive" },
+  { id: 'pixel', label: 'Press Start 2P', family: "'Press Start 2P', monospace" },
 ]
 
 export const NAME_EFFECTS: { id: 'solid' | 'gradient' | 'neon' | 'prism'; label: string; locked?: boolean }[] = [

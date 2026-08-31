@@ -109,11 +109,13 @@ function App() {
         if (textVar) root.removeProperty(textVar)
       }
     }
-    applyVar('--bg-deep', profile?.app_bg_color)
+    applyVar('--bg-deep', profile?.app_bg_color, '--text')
     applyVar('--bg-panel', profile?.app_bg_color)
     applyVar('--rail-bg', profile?.app_sidebar_color, '--rail-icon')
     applyVar('--green', profile?.app_button_color)
-  }, [profile?.app_bg_color, profile?.app_sidebar_color, profile?.app_button_color])
+    const zoom = profile?.app_text_size === 'small' ? '0.75' : profile?.app_text_size === 'large' ? '1.5' : null
+    applyVar('--ui-zoom', zoom)
+  }, [profile?.app_bg_color, profile?.app_sidebar_color, profile?.app_button_color, profile?.app_text_size])
 
   const [selected, setSelected] = useState<Conversation | null>(null)
   const [selectedCommunity, setSelectedCommunity] = useState<Community | null>(null)
@@ -183,7 +185,7 @@ function App() {
     }
     supabase
       .from('profiles')
-      .select('id, username, email, status, last_seen_at, display_name, avatar_url, is_idle, age, city, banner_color, banner_image_url, banner_image_position, app_bg_color, app_sidebar_color, app_button_color, name_style_font, name_style_effect, name_style_color')
+      .select('id, username, email, status, last_seen_at, display_name, avatar_url, is_idle, age, city, banner_color, banner_image_url, banner_image_position, app_bg_color, app_sidebar_color, app_button_color, app_text_size, name_style_font, name_style_effect, name_style_color')
       .eq('id', session.user.id)
       .single()
       .then(({ data }) => {
