@@ -17,8 +17,15 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);
 
+        java.util.List<String> missing = new java.util.ArrayList<>();
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO}, 1001);
+            missing.add(Manifest.permission.RECORD_AUDIO);
+        }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            missing.add(Manifest.permission.CAMERA);
+        }
+        if (!missing.isEmpty()) {
+            ActivityCompat.requestPermissions(this, missing.toArray(new String[0]), 1001);
         }
     }
 }

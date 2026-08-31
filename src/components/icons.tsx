@@ -290,6 +290,56 @@ export function IconMic({ size = 20 }: IconProps) {
   )
 }
 
+export function IconPhone({ size = 20 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size}>
+      <path d="M4 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L14 13l5 2v4a2 2 0 0 1-2 2C9.5 21 3 14.5 3 6a2 2 0 0 1 1-2z" />
+    </svg>
+  )
+}
+
+export function IconPhoneOff({ size = 20 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size}>
+      <path d="M4 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L14 13l5 2v4a2 2 0 0 1-2 2C9.5 21 3 14.5 3 6a2 2 0 0 1 1-2z" />
+      <line x1="3" y1="21" x2="21" y2="3" />
+    </svg>
+  )
+}
+
+export function IconVideo({ size = 20 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size}>
+      <rect x="2" y="6" width="14" height="12" rx="2" />
+      <path d="M16 10l5-3v10l-5-3" />
+    </svg>
+  )
+}
+
+export function IconVideoOff({ size = 20 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size}>
+      <path d="M16 10l5-3v10l-5-3" />
+      <path d="M2 8v8a2 2 0 0 0 2 2h9" />
+      <path d="M13.5 6H4a2 2 0 0 0-2 2" />
+      <line x1="2" y1="2" x2="22" y2="22" />
+    </svg>
+  )
+}
+
+export function IconMicOff({ size = 20 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size}>
+      <path d="M9 9V5a3 3 0 0 1 6 0v4" />
+      <path d="M15 10v.5a3 3 0 0 1-4.7 2.5" />
+      <path d="M5 10a7 7 0 0 0 10.5 6" />
+      <path d="M12 19v3" />
+      <line x1="8" y1="22" x2="16" y2="22" />
+      <line x1="2" y1="2" x2="22" y2="22" />
+    </svg>
+  )
+}
+
 export function IconDownload({ size = 20 }: IconProps) {
   return (
     <svg {...base} width={size} height={size}>

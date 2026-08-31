@@ -21,7 +21,8 @@ import {
   type EphemeralMediaView,
   type EphemeralOpenResult,
 } from '../lib/ephemeralMedia'
-import { IconArrowLeft, IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconChevronDown, IconCrown, IconDownload, IconHeart, IconLock, IconMic, IconNudge, IconPlus, IconSend, IconSmile } from './icons'
+import { IconArrowLeft, IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconChevronDown, IconCrown, IconDownload, IconHeart, IconLock, IconMic, IconNudge, IconPhone, IconPlus, IconSend, IconSmile, IconVideo } from './icons'
+import type { CallKind, CallPeer } from '../lib/call'
 import { ReplayPlayer, type ReplayEvent } from './ReplayPlayer'
 import { ProfilePopup } from './ProfilePopup'
 import type { Community, Conversation, Message, Profile } from '../types'
@@ -119,9 +120,10 @@ type Props = {
   onConversationUpdate: (patch: Partial<Conversation>) => void
   blockedIds: Set<string>
   onOpenCommunity: (c: Community) => void
+  onStartCall: (peer: CallPeer, kind: CallKind) => void
 }
 
-export function MainPanel({ me, conversation, onBack, onConversationUpdate, blockedIds, onOpenCommunity }: Props) {
+export function MainPanel({ me, conversation, onBack, onConversationUpdate, blockedIds, onOpenCommunity, onStartCall }: Props) {
   const [messages, setMessages] = useState<Message[]>([])
   const [members, setMembers] = useState<Record<string, MemberMeta>>({})
   const [draft, setDraft] = useState('')
@@ -1214,6 +1216,26 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
           </div>
         </div>
         <div className="header-actions">
+          {otherMember && otherMemberEntry && (
+            <>
+              <button
+                type="button"
+                className="icon-btn"
+                title="Chamada de voz"
+                onClick={() => onStartCall({ id: otherMemberEntry[0], name: displayName(otherMember), avatarUrl: otherMember.avatar_url }, 'audio')}
+              >
+                <IconPhone size={20} />
+              </button>
+              <button
+                type="button"
+                className="icon-btn"
+                title="Chamada de vídeo"
+                onClick={() => onStartCall({ id: otherMemberEntry[0], name: displayName(otherMember), avatarUrl: otherMember.avatar_url }, 'video')}
+              >
+                <IconVideo size={20} />
+              </button>
+            </>
+          )}
           <button
             type="button"
             className="nudge-btn"

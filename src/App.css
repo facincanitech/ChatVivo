@@ -517,6 +517,34 @@ body{
 }
 .appearance-separator{border-top:1px solid var(--line-2);margin-top:20px}
 
+.call-overlay{
+  position:fixed;inset:0;z-index:300;background:#0e1418;color:#fff;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+}
+.call-remote-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
+.call-local-video{
+  position:absolute;top:20px;right:20px;width:110px;height:150px;border-radius:12px;
+  object-fit:cover;background:#000;border:2px solid rgba(255,255,255,.3);z-index:1;
+}
+.call-peer-info{display:flex;flex-direction:column;align-items:center;gap:10px;z-index:1}
+.call-peer-avatar{
+  width:120px;height:120px;border-radius:26px;overflow:hidden;background:var(--avatar-bg);
+  display:grid;place-items:center;color:#fff;
+}
+.call-peer-avatar img{width:100%;height:100%;object-fit:cover}
+.call-peer-name{font-size:22px;font-weight:700}
+.call-peer-status{font-size:14px;color:#aab4ba}
+.call-controls{
+  position:absolute;bottom:60px;left:0;right:0;display:flex;justify-content:center;gap:22px;z-index:1;
+}
+.call-btn{
+  width:58px;height:58px;border-radius:50%;border:0;cursor:pointer;
+  display:grid;place-items:center;background:rgba(255,255,255,.12);color:#fff;
+}
+.call-btn-secondary.active{background:rgba(255,255,255,.35)}
+.call-btn-accept{background:var(--green)}
+.call-btn-decline{background:#e5484d}
+
 .profile-banner{
   position:absolute;left:8px;right:8px;top:8px;height:188px;border-radius:16px;
   background-size:cover;background-position:center;z-index:0;
