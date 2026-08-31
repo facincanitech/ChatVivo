@@ -1552,7 +1552,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
               value={draft}
               onChange={handleChange}
               onKeyDown={handleKeyDown}
-              placeholder="Digite uma mensagem... tudo aqui é visto ao vivo"
+              placeholder="Digite sua mensagem"
               rows={1}
             />
           </div>
