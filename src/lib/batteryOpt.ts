@@ -10,10 +10,6 @@ const BatteryOpt = registerPlugin<BatteryOptPlugin>('BatteryOpt')
 
 const ASKED_KEY = 'flux-battery-opt-asked'
 
-function wait(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
 export async function promptDisableBatteryOptimization() {
   if (!Capacitor.isNativePlatform()) return
   try {
@@ -23,10 +19,7 @@ export async function promptDisableBatteryOptimization() {
     const { ignoring } = await BatteryOpt.isIgnoringOptimizations()
     if (!ignoring) {
       await BatteryOpt.requestIgnoreOptimizations()
-      await wait(1500)
     }
-
-    await BatteryOpt.openAutoStartSettings()
   } catch {
     // plugin indisponivel - nao critico
   }
