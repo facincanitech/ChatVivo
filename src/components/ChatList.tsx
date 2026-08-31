@@ -1396,9 +1396,8 @@ export function ChatList({
                   </div>
                   <div className="chat-info">
                     <div className="row">
-                      <div className="name">
-                        <StyledName name={c.label} font={c.nameStyleFont} effect={c.nameStyleEffect} color={c.nameStyleColor} />
-                      </div>
+                      {/* estilo do nome fica so no card de perfil por pedido do usuario - c.nameStyle* continua disponivel se quiser trazer de volta aqui */}
+                      <div className="name">{c.label}</div>
                       {(c.unreadCount > 0 || c.isManuallyUnread) && (
                         <span className="unread-badge">{c.unreadCount > 0 ? c.unreadCount : ''}</span>
                       )}
@@ -1459,9 +1458,8 @@ export function ChatList({
                   <div className="chat-info">
                     <div className="row">
                       <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
-                        <div className="name">
-                          <StyledName name={c.label} font={c.nameStyleFont} effect={c.nameStyleEffect} color={c.nameStyleColor} />
-                        </div>
+                        {/* estilo do nome fica so no card de perfil por pedido do usuario - c.nameStyle* continua disponivel se quiser trazer de volta aqui */}
+                        <div className="name">{c.label}</div>
                         {c.isFavorite && (
                           <span className="favorite-heart" title="Favoritado">
                             <IconHeart size={13} />

@@ -25,7 +25,6 @@ import { IconArrowLeft, IconAttach, IconBell, IconChat, IconCheck, IconCheckDoub
 import type { CallKind, CallPeer } from '../lib/call'
 import { ReplayPlayer, type ReplayEvent } from './ReplayPlayer'
 import { ProfilePopup } from './ProfilePopup'
-import { StyledName } from './StyledName'
 import type { Community, Conversation, Message, Profile } from '../types'
 
 const EMOJIS = [
@@ -1215,16 +1214,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
             else if (isRoleGroup) openGroupEdit()
           }}
           >
-            {conversation.type === 'dm' && otherMember ? (
-              <StyledName
-                name={displayTitle}
-                font={otherMember.name_style_font}
-                effect={otherMember.name_style_effect}
-                color={otherMember.name_style_color}
-              />
-            ) : (
-              displayTitle
-            )}
+            {displayTitle}
             {isOrganicGroup && <span className="grupal-badge">Grupo</span>}
             {nudgeFrom && (
               <span className="nudge-indicator" title="chamou sua atenção">
@@ -1459,14 +1449,8 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                       style={{ cursor: members[m.author_id] ? 'pointer' : 'default' }}
                       onClick={() => members[m.author_id] && setProfilePopupId(m.author_id)}
                     >
-                      {members[m.author_id] ? (
-                        <StyledName
-                          name={displayName(members[m.author_id])}
-                          font={members[m.author_id].name_style_font}
-                          effect={members[m.author_id].name_style_effect}
-                          color={members[m.author_id].name_style_color}
-                        />
-                      ) : '...'}
+                      {/* estilo do nome fica só no card de perfil por pedido do usuário - members[id].name_style_* continua disponível se quiser trazer de volta aqui */}
+                      {members[m.author_id] ? displayName(members[m.author_id]) : '...'}
                     </span>
                   )}
                   {(() => {
@@ -1558,14 +1542,8 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                       style={{ cursor: members[m.author_id] ? 'pointer' : 'default' }}
                       onClick={() => members[m.author_id] && setProfilePopupId(m.author_id)}
                     >
-                      {members[m.author_id] ? (
-                        <StyledName
-                          name={displayName(members[m.author_id])}
-                          font={members[m.author_id].name_style_font}
-                          effect={members[m.author_id].name_style_effect}
-                          color={members[m.author_id].name_style_color}
-                        />
-                      ) : '...'}
+                      {/* estilo do nome fica só no card de perfil por pedido do usuário - members[id].name_style_* continua disponível se quiser trazer de volta aqui */}
+                      {members[m.author_id] ? displayName(members[m.author_id]) : '...'}
                     </span>
                   )}
                   {m.content}
