@@ -237,6 +237,12 @@ body{
   font-size:10px;color:var(--muted);background:none;
   border:1px solid var(--line-2);border-radius:4px;cursor:pointer;padding:1px 6px;
 }
+.ephemeral-btn{
+  display:inline-flex;align-items:center;gap:6px;font-size:13px;
+  background:rgba(255,255,255,.08);border:1px solid var(--line-2);border-radius:8px;
+  padding:8px 12px;cursor:pointer;color:inherit;font-family:inherit;
+}
+.ephemeral-btn.expired{opacity:.6;cursor:default}
 .edit-message-input{
   width:100%;background:var(--bg-deep);border:1px solid var(--line-2);border-radius:6px;
   color:var(--text);padding:6px 8px;font-family:inherit;font-size:14px;

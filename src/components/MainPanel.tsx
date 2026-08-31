@@ -12,7 +12,15 @@ import { sanitizeImageUrl } from '../lib/imageUrl'
 import { uploadImage } from '../lib/uploadImage'
 import { readCache, writeCache } from '../lib/cache'
 import { sendPush } from '../lib/pushSend'
-import { IconArrowLeft, IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconCrown, IconHeart, IconMic, IconPlus, IconSend, IconSmile } from './icons'
+import {
+  uploadEphemeralMedia,
+  openEphemeralMedia,
+  checkExpireEphemeralMedia,
+  type EphemeralKind,
+  type EphemeralMediaRow,
+  type EphemeralOpenResult,
+} from '../lib/ephemeralMedia'
+import { IconArrowLeft, IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconCrown, IconHeart, IconLock, IconMic, IconPlus, IconSend, IconSmile } from './icons'
 import { ReplayPlayer, type ReplayEvent } from './ReplayPlayer'
 import { ProfilePopup } from './ProfilePopup'
 import type { Community, Conversation, Message, Profile } from '../types'
@@ -138,10 +146,15 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const [atBottom, setAtBottom] = useState(true)
   const [nudgeFrom, setNudgeFrom] = useState<string | null>(null)
   const [editedIds, setEditedIds] = useState<Set<string>>(new Set())
+  const [ephemeralByMessage, setEphemeralByMessage] = useState<Record<string, EphemeralMediaRow>>({})
+  const [pendingEphemeralFile, setPendingEphemeralFile] = useState<File | null>(null)
+  const [ephemeralSending, setEphemeralSending] = useState(false)
+  const [ephemeralViewer, setEphemeralViewer] = useState<(EphemeralOpenResult & { id: string }) | null>(null)
 
   const channelRef = useRef<RealtimeChannel | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const ephemeralFileInputRef = useRef<HTMLInputElement>(null)
   const replayBuffer = useRef<ReplayEvent[]>([])
   const messagesRef = useRef<Message[]>([])
   useEffect(() => {
@@ -171,6 +184,9 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     setAtBottom(true)
     setNudgeFrom(null)
     setEditedIds(new Set())
+    setEphemeralByMessage({})
+    setPendingEphemeralFile(null)
+    setEphemeralViewer(null)
     setShowChatConfig(false)
     setConfigView('root')
     setConfirmDeleteGroup(false)
@@ -220,7 +236,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
 
       const { data: msgs } = await supabase
         .from('messages')
-        .select('*, message_replays(events)')
+        .select('*, message_replays(events), ephemeral_media(*)')
         .eq('conversation_id', conversation.id)
         .order('created_at', { ascending: true })
         .limit(200)
@@ -229,12 +245,19 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
         setMessages(msgs as Message[])
         writeCache(`flux-messages:${conversation.id}`, msgs.slice(-100))
         const edited = new Set<string>()
-        for (const m of msgs as (Message & { message_replays: { events: ReplayEvent[] }[] | { events: ReplayEvent[] } | null })[]) {
+        const ephemeralMap: Record<string, EphemeralMediaRow> = {}
+        for (const m of msgs as (Message & {
+          message_replays: { events: ReplayEvent[] }[] | { events: ReplayEvent[] } | null
+          ephemeral_media: EphemeralMediaRow[] | EphemeralMediaRow | null
+        })[]) {
           const raw = m.message_replays
           const events = Array.isArray(raw) ? raw[0]?.events : raw?.events
           if (events && hasHiddenEdit(events, m.content)) edited.add(m.id)
+          const eph = Array.isArray(m.ephemeral_media) ? m.ephemeral_media[0] : m.ephemeral_media
+          if (eph) ephemeralMap[m.id] = eph
         }
         setEditedIds(edited)
+        setEphemeralByMessage(ephemeralMap)
       }
       await markRead()
     }
@@ -291,6 +314,14 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
             return next
           })
           markRead()
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'ephemeral_media', filter: `conversation_id=eq.${conversation.id}` },
+        (payload) => {
+          const row = payload.new as EphemeralMediaRow
+          setEphemeralByMessage((prev) => ({ ...prev, [row.message_id]: row }))
         },
       )
       .on(
@@ -764,6 +795,76 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     reader.readAsDataURL(file)
   }
 
+  function handleEphemeralFilePicked(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setPendingEphemeralFile(file)
+  }
+
+  async function sendEphemeralMedia(kind: EphemeralKind) {
+    if (!pendingEphemeralFile || !conversation || !me) return
+    setEphemeralSending(true)
+    try {
+      const label = kind === 'view_once' ? 'Mídia de visualização única' : 'Mídia temporária'
+      const { data: msg, error: msgErr } = await supabase
+        .from('messages')
+        .insert({ conversation_id: conversation.id, author_id: me.id, content: label, kind: 'ephemeral' })
+        .select()
+        .single()
+      if (msgErr || !msg) throw msgErr
+
+      const { storagePath, mediaType, fileName } = await uploadEphemeralMedia(pendingEphemeralFile, conversation.id, msg.id)
+
+      const { data: ephemeralRow, error: ephErr } = await supabase
+        .from('ephemeral_media')
+        .insert({
+          message_id: msg.id,
+          conversation_id: conversation.id,
+          storage_path: storagePath,
+          media_type: mediaType,
+          file_name: fileName,
+          kind,
+        })
+        .select()
+        .single()
+      if (ephErr) throw ephErr
+
+      setEphemeralByMessage((prev) => ({ ...prev, [msg.id]: ephemeralRow as EphemeralMediaRow }))
+      setPendingEphemeralFile(null)
+
+      const recipientIds = Object.keys(members).filter((id) => id !== me.id)
+      sendPush(recipientIds, displayName(me), kind === 'view_once' ? 'mandou uma mídia de visualização única' : 'mandou uma mídia temporária', conversation.id)
+    } catch (err) {
+      console.error('sendEphemeralMedia failed', err)
+    } finally {
+      setEphemeralSending(false)
+    }
+  }
+
+  async function handleOpenEphemeral(row: EphemeralMediaRow) {
+    if (row.expired) return
+    try {
+      const result = await openEphemeralMedia(row.id)
+      if ('expired' in result) {
+        setEphemeralByMessage((prev) => ({ ...prev, [row.message_id]: { ...prev[row.message_id], expired: true } }))
+        return
+      }
+      setEphemeralViewer({ ...result, id: row.id })
+      if (result.kind === 'view_once') {
+        setEphemeralByMessage((prev) => ({ ...prev, [row.message_id]: { ...prev[row.message_id], expired: true, opened_at: new Date().toISOString() } }))
+      } else {
+        setEphemeralByMessage((prev) => ({ ...prev, [row.message_id]: { ...prev[row.message_id], opened_at: prev[row.message_id]?.opened_at || new Date().toISOString() } }))
+        setTimeout(async () => {
+          const { expired } = await checkExpireEphemeralMedia(row.id).catch(() => ({ expired: false }))
+          if (expired) setEphemeralByMessage((prev) => ({ ...prev, [row.message_id]: { ...prev[row.message_id], expired: true } }))
+        }, 61_000)
+      }
+    } catch (err) {
+      console.error('handleOpenEphemeral failed', err)
+    }
+  }
+
   function clearMedia() {
     broadcastMedia(null)
     if (fileInputRef.current) fileInputRef.current.value = ''
@@ -1154,6 +1255,48 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
             {showDate && <div className="date">{formatDateLabel(m.created_at)}</div>}
             {m.kind === 'system' ? (
               <div className="system-message">{m.content}</div>
+            ) : m.kind === 'ephemeral' ? (
+              <div className={`message ${m.author_id === me.id ? 'out' : 'in'}`}>
+                <div className="bubble">
+                  {m.author_id !== me.id && conversation.type === 'group' && (
+                    <span
+                      className="author-label"
+                      style={{ cursor: members[m.author_id] ? 'pointer' : 'default' }}
+                      onClick={() => members[m.author_id] && setProfilePopupId(m.author_id)}
+                    >
+                      {members[m.author_id] ? displayName(members[m.author_id]) : '...'}
+                    </span>
+                  )}
+                  {(() => {
+                    const eph = ephemeralByMessage[m.id]
+                    if (!eph) return <span className="ephemeral-btn">carregando…</span>
+                    if (eph.expired) {
+                      return (
+                        <span className="ephemeral-btn expired">
+                          <IconLock size={16} />
+                          {eph.kind === 'view_once' ? 'Visualização única — já visto' : 'Mídia expirada'}
+                        </span>
+                      )
+                    }
+                    return (
+                      <button type="button" className="ephemeral-btn" onClick={() => handleOpenEphemeral(eph)}>
+                        <IconLock size={16} />
+                        {eph.kind === 'view_once' ? 'Visualização única — toque pra ver' : 'Mídia temporária — toque pra ver'}
+                      </button>
+                    )
+                  })()}
+                  <div className="message-footer">
+                    <span className="meta">
+                      {formatMessageTime(m.created_at)}
+                      {m.author_id === me.id && (
+                        <span className={`read-receipt${isReadByOthers(m) ? ' read' : ''}`}>
+                          {isReadByOthers(m) ? <IconCheckDouble size={15} /> : <IconCheck size={13} />}
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                </div>
+              </div>
             ) : (
               <div className={`message ${m.author_id === me.id ? 'out' : 'in'}`}>
                 <div className="bubble">
@@ -1227,7 +1370,9 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
           </button>
           <button type="button" className="compose-btn" title="Chamar atenção" onClick={sendNudge}><IconBell size={20} /></button>
           <button type="button" className="compose-btn" title="Mandar um wink" onClick={() => setShowWinks((v) => !v)}><IconHeart size={20} /></button>
+          <button type="button" className="compose-btn" title="Mídia temporária" onClick={() => ephemeralFileInputRef.current?.click()}><IconLock size={20} /></button>
           <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handleFileChange} />
+          <input ref={ephemeralFileInputRef} type="file" hidden onChange={handleEphemeralFilePicked} />
         </div>
         <div className="composer-input-row">
           <div className="input">
@@ -1349,6 +1494,48 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       {expandedImage && (
         <div className="image-lightbox" onClick={() => setExpandedImage(null)}>
           <img src={expandedImage} alt="preview ao vivo expandido" />
+        </div>
+      )}
+
+      {pendingEphemeralFile && (
+        <div className="modal-backdrop" onClick={() => !ephemeralSending && setPendingEphemeralFile(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <h2>Enviar como...</h2>
+            <p className="status">{pendingEphemeralFile.name}</p>
+            <div className="new-conv-form">
+              <button type="button" className="primary" disabled={ephemeralSending} onClick={() => sendEphemeralMedia('timed')}>
+                Temporária (some após 1 min de aberta, dá pra baixar)
+              </button>
+              <button type="button" disabled={ephemeralSending} onClick={() => sendEphemeralMedia('view_once')}>
+                Visualização única (some assim que for vista, sem baixar)
+              </button>
+              <button type="button" disabled={ephemeralSending} onClick={() => setPendingEphemeralFile(null)}>cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {ephemeralViewer && (
+        <div className="image-lightbox" onClick={() => setEphemeralViewer(null)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+            {'url' in ephemeralViewer && ephemeralViewer.mediaType === 'image' && <img src={ephemeralViewer.url} alt="mídia temporária" />}
+            {'url' in ephemeralViewer && ephemeralViewer.mediaType === 'video' && (
+              <video src={ephemeralViewer.url} controls autoPlay style={{ maxWidth: '90vw', maxHeight: '80vh' }} />
+            )}
+            {'url' in ephemeralViewer && ephemeralViewer.mediaType === 'file' && (
+              <p style={{ color: '#fff' }}>{ephemeralViewer.fileName || 'arquivo'}</p>
+            )}
+            {'url' in ephemeralViewer && ephemeralViewer.kind === 'timed' && (
+              <a
+                href={ephemeralViewer.url}
+                download={ephemeralViewer.fileName || undefined}
+                className="google-btn"
+                style={{ textDecoration: 'none', textAlign: 'center' }}
+              >
+                Baixar
+              </a>
+            )}
+          </div>
         </div>
       )}
 

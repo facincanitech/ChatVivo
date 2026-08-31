@@ -28,7 +28,7 @@ export type Message = {
   author_id: string
   content: string
   created_at: string
-  kind: 'text' | 'system'
+  kind: 'text' | 'system' | 'ephemeral'
 }
 
 export type TypingPayload = {

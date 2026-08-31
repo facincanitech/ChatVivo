@@ -1551,7 +1551,7 @@ export function ChatList({
             </div>
             <div className="new-conv-option">
               <div className="option-icon"><IconLock size={20} /></div>
-              <span>Mensagens temporárias (em breve)</span>
+              <span>Mensagens temporárias — use o ícone de cadeado no campo de digitar do chat</span>
             </div>
             <div className="new-conv-option" onClick={() => setAccountView('terms')}>
               <div className="option-icon"><IconKey size={20} /></div>
@@ -1573,6 +1573,11 @@ export function ChatList({
             <p>
               O texto das mensagens enviadas fica salvo no banco de dados junto com o
               remetente, por tempo indeterminado.
+            </p>
+            <p>
+              Mídias enviadas como "temporária" ou "visualização única" são apagadas
+              automaticamente do armazenamento após serem abertas (ou após 1 minuto, no caso
+              da temporária) e não ficam salvas no histórico.
             </p>
             <p>
               Quebra de sigilo dessas informações só ocorre mediante requisição jurídica
