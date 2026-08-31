@@ -1076,44 +1076,60 @@ export function ChatList({
     if (!me) return
     setBannerSaving(true)
     setAccountError(null)
-    const { error: err } = await supabase.from('profiles').update({ banner_color: null, banner_image_url: null }).eq('id', me.id)
-    if (err) {
-      console.error('resetBannerToDefault failed', err)
-      setAccountError(getErrorMessage(err))
-    } else {
+    try {
+      const { error: err } = await supabase.from('profiles').update({ banner_color: null, banner_image_url: null }).eq('id', me.id)
+      if (err) throw err
       setBannerColorDraft(null)
       setBannerImageDraft(null)
       onProfileChange({ banner_color: null, banner_image_url: null })
+    } catch (err) {
+      console.error('resetBannerToDefault failed', err)
+      setAccountError(getErrorMessage(err))
+    } finally {
+      setBannerSaving(false)
     }
-    setBannerSaving(false)
   }
 
   async function setAppColor(field: 'app_bg_color' | 'app_sidebar_color' | 'app_button_color', value: string | null) {
     if (!me) return
-    const { error: err } = await supabase.from('profiles').update({ [field]: value }).eq('id', me.id)
-    if (!err) onProfileChange({ [field]: value })
+    try {
+      const { error: err } = await supabase.from('profiles').update({ [field]: value }).eq('id', me.id)
+      if (err) throw err
+      onProfileChange({ [field]: value })
+    } catch (err) {
+      console.error('setAppColor failed', err)
+      setAccountError(getErrorMessage(err))
+    }
   }
 
   async function setNameStyle(field: 'name_style_font' | 'name_style_effect' | 'name_style_color', value: string | null) {
     if (!me) return
-    const { error: err } = await supabase.from('profiles').update({ [field]: value }).eq('id', me.id)
-    if (!err) onProfileChange({ [field]: value })
+    try {
+      const { error: err } = await supabase.from('profiles').update({ [field]: value }).eq('id', me.id)
+      if (err) throw err
+      onProfileChange({ [field]: value })
+    } catch (err) {
+      console.error('setNameStyle failed', err)
+      setAccountError(getErrorMessage(err))
+    }
   }
 
   async function setBannerColor(color: string) {
     if (!me) return
     setBannerSaving(true)
     setAccountError(null)
-    const { error: err } = await supabase.from('profiles').update({ banner_color: color, banner_image_url: null }).eq('id', me.id)
-    if (err) {
-      console.error('setBannerColor failed', err)
-      setAccountError(getErrorMessage(err))
-    } else {
+    try {
+      const { error: err } = await supabase.from('profiles').update({ banner_color: color, banner_image_url: null }).eq('id', me.id)
+      if (err) throw err
       setBannerColorDraft(color)
       setBannerImageDraft(null)
       onProfileChange({ banner_color: color, banner_image_url: null })
+    } catch (err) {
+      console.error('setBannerColor failed', err)
+      setAccountError(getErrorMessage(err))
+    } finally {
+      setBannerSaving(false)
     }
-    setBannerSaving(false)
   }
 
   async function uploadBannerImage(e: React.ChangeEvent<HTMLInputElement>) {
