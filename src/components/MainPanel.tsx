@@ -18,6 +18,7 @@ import {
   checkExpireEphemeralMedia,
   type EphemeralKind,
   type EphemeralMediaRow,
+  type EphemeralMediaView,
   type EphemeralOpenResult,
 } from '../lib/ephemeralMedia'
 import { IconArrowLeft, IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconCrown, IconHeart, IconLock, IconMic, IconPlus, IconSend, IconSmile } from './icons'
@@ -249,7 +250,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
 
       const { data: msgs } = await supabase
         .from('messages')
-        .select('*, message_replays(events), ephemeral_media(*)')
+        .select('*, message_replays(events), ephemeral_media(*, ephemeral_media_views(*))')
         .eq('conversation_id', conversation.id)
         .order('created_at', { ascending: true })
         .limit(200)
@@ -826,22 +827,39 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     }
   }
 
+  function myEphemeralView(eph: EphemeralMediaRow) {
+    return eph.ephemeral_media_views?.find((v) => v.user_id === me?.id) || null
+  }
+
+  function upsertMyEphemeralView(messageId: string, patch: Partial<EphemeralMediaView>) {
+    setEphemeralByMessage((prev) => {
+      const eph = prev[messageId]
+      if (!eph || !me) return prev
+      const views = eph.ephemeral_media_views || []
+      const existing = views.find((v) => v.user_id === me.id)
+      const nextViews = existing
+        ? views.map((v) => (v.user_id === me.id ? { ...v, ...patch } : v))
+        : [...views, { id: 'local', ephemeral_media_id: eph.id, user_id: me.id, opened_at: null, expired: false, ...patch }]
+      return { ...prev, [messageId]: { ...eph, ephemeral_media_views: nextViews } }
+    })
+  }
+
   async function handleOpenEphemeral(row: EphemeralMediaRow) {
-    if (row.expired) return
+    if (row.storage_deleted || myEphemeralView(row)?.expired) return
     try {
       const result = await openEphemeralMedia(row.id)
       if ('expired' in result) {
-        setEphemeralByMessage((prev) => ({ ...prev, [row.message_id]: { ...prev[row.message_id], expired: true } }))
+        upsertMyEphemeralView(row.message_id, { expired: true })
         return
       }
       setEphemeralViewer({ ...result, id: row.id })
       if (result.kind === 'view_once') {
-        setEphemeralByMessage((prev) => ({ ...prev, [row.message_id]: { ...prev[row.message_id], expired: true, opened_at: new Date().toISOString() } }))
+        upsertMyEphemeralView(row.message_id, { expired: true, opened_at: new Date().toISOString() })
       } else {
-        setEphemeralByMessage((prev) => ({ ...prev, [row.message_id]: { ...prev[row.message_id], opened_at: prev[row.message_id]?.opened_at || new Date().toISOString() } }))
+        upsertMyEphemeralView(row.message_id, { opened_at: myEphemeralView(row)?.opened_at || new Date().toISOString() })
         setTimeout(async () => {
           const { expired } = await checkExpireEphemeralMedia(row.id).catch(() => ({ expired: false }))
-          if (expired) setEphemeralByMessage((prev) => ({ ...prev, [row.message_id]: { ...prev[row.message_id], expired: true } }))
+          if (expired) upsertMyEphemeralView(row.message_id, { expired: true })
         }, 61_000)
       }
     } catch (err) {
@@ -1248,7 +1266,8 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                   {(() => {
                     const eph = ephemeralByMessage[m.id]
                     if (!eph) return <span className="ephemeral-btn">carregando…</span>
-                    if (eph.expired) {
+                    const myView = myEphemeralView(eph)
+                    if (eph.storage_deleted || myView?.expired) {
                       return (
                         <span className="ephemeral-btn expired">
                           <IconLock size={16} />

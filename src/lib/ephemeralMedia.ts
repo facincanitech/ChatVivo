@@ -2,6 +2,14 @@ import { supabase } from './supabase'
 
 export type EphemeralKind = 'timed' | 'view_once'
 
+export type EphemeralMediaView = {
+  id: string
+  ephemeral_media_id: string
+  user_id: string
+  opened_at: string | null
+  expired: boolean
+}
+
 export type EphemeralMediaRow = {
   id: string
   message_id: string
@@ -9,8 +17,8 @@ export type EphemeralMediaRow = {
   media_type: string
   file_name: string | null
   kind: EphemeralKind
-  opened_at: string | null
-  expired: boolean
+  storage_deleted: boolean
+  ephemeral_media_views?: EphemeralMediaView[]
 }
 
 export type EphemeralOpenResult =
