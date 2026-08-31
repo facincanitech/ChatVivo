@@ -112,7 +112,8 @@ function App() {
     applyVar('--bg-deep', profile?.app_bg_color, '--text')
     applyVar('--bg-panel', profile?.app_bg_color)
     applyVar('--rail-bg', profile?.app_sidebar_color, '--rail-icon')
-    applyVar('--green', profile?.app_button_color)
+    applyVar('--green', profile?.app_button_color, '--on-button')
+    applyVar('--btn-custom', profile?.app_button_color)
     const zoom = profile?.app_text_size === 'small' ? '0.75' : profile?.app_text_size === 'large' ? '1.5' : null
     applyVar('--ui-zoom', zoom)
   }, [profile?.app_bg_color, profile?.app_sidebar_color, profile?.app_button_color, profile?.app_text_size])
