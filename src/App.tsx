@@ -9,6 +9,7 @@ import { CommunityView } from './components/CommunityView'
 import { AuthModal } from './components/AuthModal'
 import { CallOverlay } from './components/CallOverlay'
 import type { Community, Conversation, PanelView, Profile } from './types'
+import type { GroupsView } from './components/ChatList'
 import type { OutgoingCallRequest } from './lib/call'
 import { APP_VERSION } from './version'
 import { playNudgeSound, triggerNudgeShake } from './lib/nudge'
@@ -101,6 +102,12 @@ function App() {
   const [accountOpen, setAccountOpen] = useState(false)
   const [accountResetKey, setAccountResetKey] = useState(0)
   const [outgoingCallRequest, setOutgoingCallRequest] = useState<OutgoingCallRequest | null>(null)
+  const [groupsRestoreView, setGroupsRestoreView] = useState<GroupsView | null>(null)
+
+  function leaveGroupsPanel(fromView: GroupsView) {
+    setGroupsRestoreView(fromView)
+    setGroupsOpen(false)
+  }
   const [groupsOpen, setGroupsOpen] = useState(false)
   const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set())
 
@@ -406,6 +413,9 @@ function App() {
         accountResetKey={accountResetKey}
         groupsOpen={groupsOpen}
         onGroupsOpenChange={setGroupsOpen}
+        groupsRestoreView={groupsRestoreView}
+        onConsumeGroupsRestore={() => setGroupsRestoreView(null)}
+        onLeaveGroupsPanel={leaveGroupsPanel}
         onProfileChange={(patch) => setProfile((p) => (p ? { ...p, ...patch } : p))}
         theme={theme}
         onThemeChange={setTheme}
@@ -419,14 +429,20 @@ function App() {
           onTabChange={setCommunityTab}
           onCommunityUpdate={(patch) => setSelectedCommunity((c) => (c ? { ...c, ...patch } : c))}
           onDeleted={() => setSelectedCommunity(null)}
-          onBack={() => setSelectedCommunity(null)}
+          onBack={() => {
+            setSelectedCommunity(null)
+            if (groupsRestoreView) setGroupsOpen(true)
+          }}
         />
       ) : (
         <MainPanel
           me={profile}
           conversation={selected}
           blockedIds={blockedIds}
-          onBack={() => setSelected(null)}
+          onBack={() => {
+            setSelected(null)
+            if (groupsRestoreView) setGroupsOpen(true)
+          }}
           onConversationUpdate={(patch) => setSelected((c) => (c ? { ...c, ...patch } : c))}
           onOpenCommunity={(c) => { setSelected(null); setCommunityTab('home'); setSelectedCommunity(c) }}
           onStartCall={(peer, kind) => selected && setOutgoingCallRequest({ peer, kind, conversationId: selected.id })}

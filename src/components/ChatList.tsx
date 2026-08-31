@@ -30,7 +30,26 @@ import type { Community, Conversation, PanelView, Profile } from '../types'
 
 type AccountView = 'root' | 'profile' | 'appearance' | 'account' | 'privacy' | 'blocked' | 'terms'
 
-const BANNER_COLORS = ['#5865f2', '#2f9e6e', '#9333ea', '#dc2626', '#0891b2', '#78716c']
+export type GroupsView = 'root' | 'group-root' | 'group-create' | 'community-root' | 'community-create' | 'community-search'
+
+const BANNER_COLORS = [
+  'linear-gradient(135deg,#36d1dc,#5b86e5)',
+  'linear-gradient(135deg,#396afc,#c62d8f)',
+  'linear-gradient(135deg,#43e97b,#38f9d7)',
+  'linear-gradient(135deg,#f857a6,#ff5858)',
+  'linear-gradient(135deg,#7f00ff,#e100ff)',
+  'linear-gradient(135deg,#1e3c72,#2a5298)',
+  'linear-gradient(135deg,#f7971e,#ffd200)',
+  'linear-gradient(135deg,#43cea2,#185a9d)',
+  'linear-gradient(135deg,#ff9966,#ff5e62)',
+  'linear-gradient(135deg,#a8ff78,#78ffd6)',
+  'linear-gradient(135deg,#e0c3fc,#8ec5fc)',
+  'linear-gradient(135deg,#f6d365,#fda085)',
+  'linear-gradient(135deg,#5f2c82,#49a09d)',
+  'linear-gradient(135deg,#ee0979,#ff6a00)',
+  'linear-gradient(135deg,#0f2027,#2c5364)',
+  'linear-gradient(135deg,#f83600,#f9d423)',
+]
 
 type FilterKey = 'all' | 'favorites' | 'archived' | 'group' | 'communities'
 const DEFAULT_FILTER_ORDER: FilterKey[] = ['all', 'favorites', 'archived', 'group', 'communities']
@@ -55,6 +74,9 @@ type Props = {
   accountResetKey: number
   groupsOpen: boolean
   onGroupsOpenChange: (open: boolean) => void
+  groupsRestoreView: GroupsView | null
+  onConsumeGroupsRestore: () => void
+  onLeaveGroupsPanel: (fromView: GroupsView) => void
   onProfileChange: (patch: Partial<Profile>) => void
   blockedIds: Set<string>
   onSelectCommunity: (c: Community) => void
@@ -107,6 +129,9 @@ export function ChatList({
   accountResetKey,
   groupsOpen,
   onGroupsOpenChange,
+  groupsRestoreView,
+  onConsumeGroupsRestore,
+  onLeaveGroupsPanel,
   onProfileChange,
   blockedIds,
   onSelectCommunity,
@@ -128,7 +153,7 @@ export function ChatList({
     if (!lastUserId) return []
     return readCache<ConvWithLabel[]>(`flux-conversations:${lastUserId}`) || []
   })
-  const [groupsView, setGroupsView] = useState<'root' | 'group-root' | 'group-create' | 'community-root' | 'community-create' | 'community-search'>('root')
+  const [groupsView, setGroupsView] = useState<GroupsView>('root')
   const [myGroups, setMyGroups] = useState<{ id: string; name: string; role: string | null; image_url: string | null }[]>([])
   const [newGroupName, setNewGroupName] = useState('')
   const [newGroupDesc, setNewGroupDesc] = useState('')
@@ -234,6 +259,7 @@ export function ChatList({
   const [cityDraft, setCityDraft] = useState('')
   const [accountSaving, setAccountSaving] = useState(false)
   const [accountError, setAccountError] = useState<string | null>(null)
+  const [confirmSignOut, setConfirmSignOut] = useState(false)
   const [blocked, setBlocked] = useState<BlockedUser[]>([])
   const [avatarUploading, setAvatarUploading] = useState(false)
   const avatarInputRef = useRef<HTMLInputElement>(null)
@@ -782,6 +808,7 @@ export function ChatList({
       setBannerImagePosDraft(me.banner_image_position || '50% 50%')
       setAccountView('root')
       setAccountError(null)
+      setConfirmSignOut(false)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accountOpen, me?.id, accountResetKey])
@@ -855,6 +882,14 @@ export function ChatList({
       loadTrendingCommunities()
     }
   }, [groupsOpen, me?.id])
+
+  useEffect(() => {
+    if (groupsOpen && groupsRestoreView) {
+      setGroupsView(groupsRestoreView)
+      onConsumeGroupsRestore()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupsOpen, groupsRestoreView])
 
   async function createCommunity() {
     if (!me) return
@@ -1126,11 +1161,11 @@ export function ChatList({
     accountView === 'root'
       ? (me ? displayName(me) : '')
       : accountView === 'profile'
-        ? 'Perfil'
+        ? 'Conta'
         : accountView === 'appearance'
           ? 'Aparência'
         : accountView === 'account'
-          ? 'Conta'
+          ? 'Configurações'
           : accountView === 'privacy'
             ? 'Privacidade'
             : accountView === 'terms'
@@ -1530,19 +1565,11 @@ export function ChatList({
 
         {accountView === 'root' && me && (
           <>
-            <div className="account-status-wrap" onClick={() => setAccountView('profile')}>
-              <span className="account-status-bubble">{me.status || "What's happening?"}</span>
-            </div>
-            <div className="account-avatar-wrap">
-              <div className="account-avatar" style={{ overflow: 'hidden' }}>
-                {me.avatar_url ? <img src={me.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <IconUser size={40} />}
-              </div>
-            </div>
             <div className="new-conv-list">
               <div className="new-conv-option" onClick={() => setAccountView('profile')}>
                 <div className="option-icon"><IconUser size={20} /></div>
                 <div>
-                  <div>Perfil</div>
+                  <div>Conta</div>
                   <div className="option-subtitle">Nome, foto do perfil, nome de usuário</div>
                 </div>
               </div>
@@ -1556,8 +1583,8 @@ export function ChatList({
               <div className="new-conv-option" onClick={() => setAccountView('account')}>
                 <div className="option-icon"><IconKey size={20} /></div>
                 <div>
-                  <div>Conta</div>
-                  <div className="option-subtitle">Notificações de segurança, dados da conta</div>
+                  <div>Configurações</div>
+                  <div className="option-subtitle">Tema, dados da conta, sair</div>
                 </div>
               </div>
               <div className="new-conv-option" onClick={() => setAccountView('privacy')}>
@@ -1741,6 +1768,24 @@ export function ChatList({
               Transcrição automática dos áudios que eu gravar
             </label>
             <span className="invite-code">com isso ligado, ao gravar um áudio o texto falado fica disponível pra quem recebe, tocando em "Transcrever"</span>
+
+            <div style={{ marginTop: 24, borderTop: '1px solid var(--line-2)', paddingTop: 16 }}>
+              {confirmSignOut ? (
+                <>
+                  <span className="invite-code">Tem certeza que quer sair da sua conta?</span>
+                  <button type="button" className="account-signout" onClick={() => supabase.auth.signOut()} style={{ marginTop: 8 }}>
+                    Sim, sair
+                  </button>
+                  <button type="button" onClick={() => setConfirmSignOut(false)} style={{ marginTop: 6 }}>
+                    Cancelar
+                  </button>
+                </>
+              ) : (
+                <button type="button" className="account-signout" onClick={() => setConfirmSignOut(true)}>
+                  Sair
+                </button>
+              )}
+            </div>
           </div>
         )}
 
@@ -1808,9 +1853,6 @@ export function ChatList({
           </div>
         )}
 
-        {me && (
-          <button type="button" className="account-signout" onClick={() => supabase.auth.signOut()}>Sair</button>
-        )}
       </div>
 
       <div className={`new-conv-panel${groupsOpen ? ' open' : ''}`}>
@@ -1852,7 +1894,7 @@ export function ChatList({
                   key={c.id}
                   className="chat"
                   onClick={() => {
-                    onGroupsOpenChange(false)
+                    onLeaveGroupsPanel('root')
                     onSelectCommunity(c)
                   }}
                 >
@@ -1888,7 +1930,7 @@ export function ChatList({
                   className="chat"
                   onClick={() => {
                     onSelect({ id: g.id, type: 'group', name: g.name, image_url: g.image_url, created_by: '', created_at: '' } as Conversation)
-                    onGroupsOpenChange(false)
+                    onLeaveGroupsPanel('group-root')
                   }}
                 >
                   <AvatarBox src={g.image_url} id={g.id} fallbackLetter="G" className="photo" />
@@ -1925,7 +1967,7 @@ export function ChatList({
                   key={c.id}
                   className="chat"
                   onClick={() => {
-                    onGroupsOpenChange(false)
+                    onLeaveGroupsPanel('community-root')
                     onSelectCommunity(c)
                   }}
                 >
@@ -2029,7 +2071,7 @@ export function ChatList({
                     key={c.id}
                     className="chat"
                     onClick={() => {
-                      onGroupsOpenChange(false)
+                      onLeaveGroupsPanel('community-search')
                       onSelectCommunity(c)
                     }}
                   >

@@ -503,9 +503,9 @@ body{
   display:grid;place-items:center;pointer-events:none;color:var(--muted);
 }
 .profile-banner-preview-avatar img{width:100%;height:100%;object-fit:cover}
-.banner-color-picker{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.banner-color-picker{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:6px}
 .banner-color-swatch{
-  width:32px;height:32px;border-radius:10px;border:2px solid transparent;cursor:pointer;padding:0;
+  width:100%;aspect-ratio:1;border-radius:14px;border:2px solid transparent;cursor:pointer;padding:0;
 }
 .banner-color-swatch.active{border-color:var(--text)}
 .banner-color-custom{width:32px;height:32px;padding:0;border-radius:10px;border:2px solid var(--line-2);background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red);cursor:pointer}
@@ -552,8 +552,8 @@ body{
 .profile-popup-avatar-wrap{position:relative;z-index:1;margin-top:85px}
 .profile-popup-avatar-wrap .account-avatar{border:4px solid var(--bg-surface)}
 .account-signout{
-  margin:auto 22px 20px;padding:10px;border-radius:6px;border:1px solid var(--danger-bg);
-  background:none;color:var(--accent-text);cursor:pointer;font-size:.85rem;flex-shrink:0;
+  width:100%;padding:10px;border-radius:6px;border:1px solid #e5484d;
+  background:none;color:#e5484d;cursor:pointer;font-size:.85rem;font-weight:600;flex-shrink:0;
 }
 
 .friend-request-list{
