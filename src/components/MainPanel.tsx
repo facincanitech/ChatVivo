@@ -49,6 +49,25 @@ function formatDateLabel(iso: string): string {
   return d.toLocaleDateString('pt-BR')
 }
 
+// fecha um popup (menu/picker) ao clicar ou tocar fora de qualquer um dos elementos passados em `refs`
+function useOutsideClose(active: boolean, refs: React.RefObject<HTMLElement | null>[], onClose: () => void) {
+  useEffect(() => {
+    if (!active) return
+    function onOutside(e: MouseEvent | TouchEvent) {
+      const target = e.target as Node
+      if (refs.some((r) => r.current?.contains(target))) return
+      onClose()
+    }
+    document.addEventListener('mousedown', onOutside)
+    document.addEventListener('touchstart', onOutside)
+    return () => {
+      document.removeEventListener('mousedown', onOutside)
+      document.removeEventListener('touchstart', onOutside)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active])
+}
+
 type SpeechRecognitionLike = {
   lang: string
   continuous: boolean
@@ -158,22 +177,14 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const requestedInlineRef = useRef<Set<string>>(new Set())
   const attachMenuRef = useRef<HTMLDivElement>(null)
   const attachBtnRef = useRef<HTMLButtonElement>(null)
+  const emojiMenuRef = useRef<HTMLDivElement>(null)
+  const emojiBtnRef = useRef<HTMLButtonElement>(null)
+  const winkMenuRef = useRef<HTMLDivElement>(null)
+  const winkBtnRef = useRef<HTMLButtonElement>(null)
 
-  useEffect(() => {
-    if (!showAttachMenu) return
-    function onOutside(e: MouseEvent | TouchEvent) {
-      const target = e.target as Node
-      if (attachMenuRef.current?.contains(target)) return
-      if (attachBtnRef.current?.contains(target)) return
-      setShowAttachMenu(false)
-    }
-    document.addEventListener('mousedown', onOutside)
-    document.addEventListener('touchstart', onOutside)
-    return () => {
-      document.removeEventListener('mousedown', onOutside)
-      document.removeEventListener('touchstart', onOutside)
-    }
-  }, [showAttachMenu])
+  useOutsideClose(showAttachMenu, [attachMenuRef, attachBtnRef], () => setShowAttachMenu(false))
+  useOutsideClose(showEmoji, [emojiMenuRef, emojiBtnRef], () => setShowEmoji(false))
+  useOutsideClose(showWinks, [winkMenuRef, winkBtnRef], () => setShowWinks(false))
 
   useEffect(() => {
     if (!pendingEphemeralFile) {
@@ -1518,7 +1529,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
 
       <footer className="composer">
         <div className="composer-icons">
-          <button type="button" className="compose-btn" onClick={() => setShowEmoji((v) => !v)} title="Emoji"><IconSmile size={20} /></button>
+          <button ref={emojiBtnRef} type="button" className="compose-btn" onClick={() => setShowEmoji((v) => !v)} title="Emoji"><IconSmile size={20} /></button>
           <button ref={attachBtnRef} type="button" className="compose-btn" onClick={() => setShowAttachMenu((v) => !v)} title="Anexar"><IconAttach size={20} /></button>
           <button
             type="button"
@@ -1529,7 +1540,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
             <IconMic size={20} />
           </button>
           <button type="button" className="compose-btn" title="Chamar atenção" onClick={sendNudge}><IconBell size={20} /></button>
-          <button type="button" className="compose-btn" title="Mandar um wink" onClick={() => setShowWinks((v) => !v)}><IconHeart size={20} /></button>
+          <button ref={winkBtnRef} type="button" className="compose-btn" title="Mandar um wink" onClick={() => setShowWinks((v) => !v)}><IconHeart size={20} /></button>
           <input ref={docInputRef} type="file" hidden onChange={handleAttachFilePicked} />
           <input ref={mediaInputRef} type="file" accept="image/*,video/*" hidden onChange={handleAttachFilePicked} />
           <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" hidden onChange={handleAttachFilePicked} />
@@ -1558,7 +1569,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
         )}
 
         {showEmoji && (
-          <div className="emoji-picker">
+          <div className="emoji-picker" ref={emojiMenuRef}>
             {EMOJIS.map((e) => (
               <button
                 key={e}
@@ -1574,7 +1585,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
         )}
 
         {showWinks && (
-          <div className="emoji-picker wink-picker">
+          <div className="emoji-picker wink-picker" ref={winkMenuRef}>
             {WINKS.map((w) => (
               <button key={w.id} type="button" title={w.label} onClick={() => sendWink(w.id)}>
                 {w.emoji}
