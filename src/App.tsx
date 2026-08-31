@@ -151,7 +151,7 @@ function App() {
     }
     supabase
       .from('profiles')
-      .select('id, username, email, status, last_seen_at, display_name, avatar_url, is_idle, age, city, banner_color, banner_image_url')
+      .select('id, username, email, status, last_seen_at, display_name, avatar_url, is_idle, age, city, banner_color, banner_image_url, banner_image_position')
       .eq('id', session.user.id)
       .single()
       .then(({ data }) => {

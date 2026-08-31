@@ -11,6 +11,7 @@ export type Profile = {
   city?: string | null
   banner_color?: string | null
   banner_image_url?: string | null
+  banner_image_position?: string | null
 }
 
 export type Conversation = {

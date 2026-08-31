@@ -18,6 +18,7 @@ type ProfileData = {
   city: string | null
   banner_color: string | null
   banner_image_url: string | null
+  banner_image_position: string | null
 }
 
 type ListPerson = { id: string; username: string; display_name: string | null; avatar_url: string | null }
@@ -56,7 +57,7 @@ export function ProfilePopup({ me, userId, onClose, onOpenCommunity, blockedIds,
     async function load() {
       const { data: p } = await supabase
         .from('profiles')
-        .select('id, username, display_name, avatar_url, status, last_seen_at, email, age, city, banner_color, banner_image_url')
+        .select('id, username, display_name, avatar_url, status, last_seen_at, email, age, city, banner_color, banner_image_url, banner_image_position')
         .eq('id', currentId)
         .single()
       setProfile((p as ProfileData) || null)
@@ -165,7 +166,7 @@ export function ProfilePopup({ me, userId, onClose, onOpenCommunity, blockedIds,
               className="profile-banner"
               style={
                 profile.banner_image_url
-                  ? { backgroundImage: `url(${profile.banner_image_url})` }
+                  ? { backgroundImage: `url(${profile.banner_image_url})`, backgroundPosition: profile.banner_image_position || '50% 50%' }
                   : { background: profile.banner_color || 'var(--green)' }
               }
             />
@@ -244,8 +245,6 @@ export function ProfilePopup({ me, userId, onClose, onOpenCommunity, blockedIds,
             </div>
           </>
         )}
-
-        <button type="button" className="modal-close" onClick={onClose}>fechar</button>
       </div>
     </div>
   )

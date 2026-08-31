@@ -238,9 +238,12 @@ export function ChatList({
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const [bannerColorDraft, setBannerColorDraft] = useState<string | null>(null)
   const [bannerImageDraft, setBannerImageDraft] = useState<string | null>(null)
+  const [bannerImagePosDraft, setBannerImagePosDraft] = useState('50% 50%')
   const [bannerUploading, setBannerUploading] = useState(false)
   const [bannerSaving, setBannerSaving] = useState(false)
   const bannerInputRef = useRef<HTMLInputElement>(null)
+  const bannerPreviewRef = useRef<HTMLDivElement>(null)
+  const bannerDragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number } | null>(null)
   const [autoTranscribe, setAutoTranscribe] = useState(() => {
     try {
       return localStorage.getItem('flux-auto-transcribe') !== '0'
@@ -775,6 +778,7 @@ export function ChatList({
       setCityDraft(me.city || '')
       setBannerColorDraft(me.banner_color || null)
       setBannerImageDraft(me.banner_image_url || null)
+      setBannerImagePosDraft(me.banner_image_position || '50% 50%')
       setAccountView('root')
       setAccountError(null)
     }
@@ -1023,11 +1027,15 @@ export function ChatList({
       const { data } = supabase.storage.from('avatars').getPublicUrl(path)
       const banner_image_url = `${data.publicUrl}?t=${Date.now()}`
 
-      const { error: updateErr } = await supabase.from('profiles').update({ banner_image_url }).eq('id', me.id)
+      const { error: updateErr } = await supabase
+        .from('profiles')
+        .update({ banner_image_url, banner_image_position: '50% 50%' })
+        .eq('id', me.id)
       if (updateErr) throw updateErr
 
       setBannerImageDraft(banner_image_url)
-      onProfileChange({ banner_image_url })
+      setBannerImagePosDraft('50% 50%')
+      onProfileChange({ banner_image_url, banner_image_position: '50% 50%' })
     } catch (err) {
       setAccountError(getErrorMessage(err))
     } finally {
@@ -1041,6 +1049,37 @@ export function ChatList({
     await supabase.from('profiles').update({ banner_image_url: null }).eq('id', me.id)
     setBannerImageDraft(null)
     onProfileChange({ banner_image_url: null })
+  }
+
+  function parseBannerPos(pos: string): [number, number] {
+    const [x, y] = pos.split(' ').map((p) => parseFloat(p))
+    return [Number.isFinite(x) ? x : 50, Number.isFinite(y) ? y : 50]
+  }
+
+  function handleBannerPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    if (!bannerImageDraft) return
+    const [x, y] = parseBannerPos(bannerImagePosDraft)
+    bannerDragRef.current = { startX: e.clientX, startY: e.clientY, startPosX: x, startPosY: y }
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+
+  function handleBannerPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    const drag = bannerDragRef.current
+    if (!drag || !bannerPreviewRef.current) return
+    const rect = bannerPreviewRef.current.getBoundingClientRect()
+    const dxPct = ((e.clientX - drag.startX) / rect.width) * 100
+    const dyPct = ((e.clientY - drag.startY) / rect.height) * 100
+    const nextX = Math.min(100, Math.max(0, drag.startPosX + dxPct))
+    const nextY = Math.min(100, Math.max(0, drag.startPosY + dyPct))
+    setBannerImagePosDraft(`${nextX.toFixed(0)}% ${nextY.toFixed(0)}%`)
+  }
+
+  async function handleBannerPointerUp() {
+    if (!bannerDragRef.current) return
+    bannerDragRef.current = null
+    if (!me) return
+    await supabase.from('profiles').update({ banner_image_position: bannerImagePosDraft }).eq('id', me.id)
+    onProfileChange({ banner_image_position: bannerImagePosDraft })
   }
 
   async function openBlocked() {
@@ -1570,13 +1609,23 @@ export function ChatList({
           <div className="new-conv-form">
             <span className="invite-code">aparece atrás da sua foto quando alguém abre seu perfil</span>
             <div
+              ref={bannerPreviewRef}
               className="profile-banner-preview"
               style={
                 bannerImageDraft
-                  ? { backgroundImage: `url(${bannerImageDraft})` }
+                  ? { backgroundImage: `url(${bannerImageDraft})`, backgroundPosition: bannerImagePosDraft, cursor: 'grab' }
                   : { background: bannerColorDraft || 'var(--green)' }
               }
-            />
+              onPointerDown={handleBannerPointerDown}
+              onPointerMove={handleBannerPointerMove}
+              onPointerUp={handleBannerPointerUp}
+              onPointerLeave={handleBannerPointerUp}
+            >
+              <div className="profile-banner-preview-avatar">
+                {me.avatar_url ? <img src={me.avatar_url} alt="" /> : <IconUser size={26} />}
+              </div>
+            </div>
+            {bannerImageDraft && <span className="invite-code">arraste a imagem pra ajustar o enquadramento</span>}
 
             <label style={{ marginTop: 12 }}>Cor</label>
             <div className="banner-color-picker">
