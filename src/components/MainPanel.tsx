@@ -1216,7 +1216,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
           </div>
         </div>
         <div className="header-actions">
-          {otherMember && otherMemberEntry && (
+          {conversation.type === 'dm' && otherMember && otherMemberEntry && (
             <>
               <button
                 type="button"
