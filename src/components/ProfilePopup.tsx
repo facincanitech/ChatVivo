@@ -16,6 +16,8 @@ type ProfileData = {
   email: string
   age: number | null
   city: string | null
+  banner_color: string | null
+  banner_image_url: string | null
 }
 
 type ListPerson = { id: string; username: string; display_name: string | null; avatar_url: string | null }
@@ -54,7 +56,7 @@ export function ProfilePopup({ me, userId, onClose, onOpenCommunity, blockedIds,
     async function load() {
       const { data: p } = await supabase
         .from('profiles')
-        .select('id, username, display_name, avatar_url, status, last_seen_at, email, age, city')
+        .select('id, username, display_name, avatar_url, status, last_seen_at, email, age, city, banner_color, banner_image_url')
         .eq('id', currentId)
         .single()
       setProfile((p as ProfileData) || null)
@@ -138,7 +140,7 @@ export function ProfilePopup({ me, userId, onClose, onOpenCommunity, blockedIds,
           <IconArrowLeft size={20} />
         </button>
         {view === 'profile' && currentId !== me.id && (
-          <button type="button" className="icon-btn" style={{ position: 'absolute', top: 8, right: 8 }} onClick={() => setMenuOpen((v) => !v)}>
+          <button type="button" className="icon-btn" style={{ position: 'absolute', top: 8, right: 8, zIndex: 2 }} onClick={() => setMenuOpen((v) => !v)}>
             <IconMore size={18} />
           </button>
         )}
@@ -159,7 +161,15 @@ export function ProfilePopup({ me, userId, onClose, onOpenCommunity, blockedIds,
 
         {!loading && profile && view === 'profile' && (
           <>
-            <div className="account-avatar-wrap">
+            <div
+              className="profile-banner"
+              style={
+                profile.banner_image_url
+                  ? { backgroundImage: `url(${profile.banner_image_url})` }
+                  : { background: profile.banner_color || 'var(--green)' }
+              }
+            />
+            <div className="account-avatar-wrap profile-popup-avatar-wrap">
               <div className="account-avatar" style={{ overflow: 'hidden' }}>
                 {profile.avatar_url ? (
                   <img src={profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />

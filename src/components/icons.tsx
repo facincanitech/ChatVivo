@@ -308,6 +308,17 @@ export function IconChevronDown({ size = 16 }: IconProps) {
   )
 }
 
+export function IconPaint({ size = 20 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size}>
+      <path d="M12 2a9 9 0 1 0 0 18h1.5a1.5 1.5 0 0 0 1.06-2.56 1.5 1.5 0 0 1 1.06-2.56H17a3 3 0 0 0 3-3 8 8 0 0 0-8-9z" />
+      <circle cx="7.5" cy="10.5" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="11" cy="7" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="8.5" r="1.2" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
 export function IconBell({ size = 20 }: IconProps) {
   return (
     <svg {...base} width={size} height={size}>

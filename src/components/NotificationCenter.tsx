@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { IconBell, IconHeart, IconStar } from './icons'
+import { IconBell, IconHeart } from './icons'
 import {
   getNotifications,
   getUnreadCount,
@@ -53,8 +53,8 @@ export function NotificationCenter() {
 
   return (
     <div style={{ position: 'relative' }}>
-      <button title="Notificações" onClick={toggle}>
-        <IconStar />
+      <button className="icon-btn" title="Notificações" onClick={toggle}>
+        <IconBell size={20} />
       </button>
       {hasBadge && <span className="rail-badge" />}
       {open && (

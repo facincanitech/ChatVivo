@@ -9,6 +9,8 @@ export type Profile = {
   is_idle?: boolean
   age?: number | null
   city?: string | null
+  banner_color?: string | null
+  banner_image_url?: string | null
 }
 
 export type Conversation = {

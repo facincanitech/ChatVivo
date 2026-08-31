@@ -5,6 +5,7 @@ import { sanitizeImageUrl } from '../lib/imageUrl'
 import { uploadImage } from '../lib/uploadImage'
 import { displayName } from '../lib/displayName'
 import { AvatarBox } from './AvatarBox'
+import { NotificationCenter } from './NotificationCenter'
 import { readCache, writeCache } from '../lib/cache'
 import { APP_VERSION, APK_DOWNLOAD_URL } from '../version'
 import {
@@ -13,6 +14,7 @@ import {
   IconBellOff,
   IconEdit,
   IconGrip,
+  IconPaint,
   IconGroup,
   IconHeart,
   IconKey,
@@ -25,7 +27,9 @@ import {
 } from './icons'
 import type { Community, Conversation, PanelView, Profile } from '../types'
 
-type AccountView = 'root' | 'profile' | 'account' | 'privacy' | 'blocked' | 'terms'
+type AccountView = 'root' | 'profile' | 'appearance' | 'account' | 'privacy' | 'blocked' | 'terms'
+
+const BANNER_COLORS = ['#5865f2', '#2f9e6e', '#c2410c', '#9333ea', '#dc2626', '#0891b2', '#78716c']
 
 type FilterKey = 'all' | 'favorites' | 'archived' | 'group' | 'communities'
 const DEFAULT_FILTER_ORDER: FilterKey[] = ['all', 'favorites', 'archived', 'group', 'communities']
@@ -232,6 +236,11 @@ export function ChatList({
   const [blocked, setBlocked] = useState<BlockedUser[]>([])
   const [avatarUploading, setAvatarUploading] = useState(false)
   const avatarInputRef = useRef<HTMLInputElement>(null)
+  const [bannerColorDraft, setBannerColorDraft] = useState<string | null>(null)
+  const [bannerImageDraft, setBannerImageDraft] = useState<string | null>(null)
+  const [bannerUploading, setBannerUploading] = useState(false)
+  const [bannerSaving, setBannerSaving] = useState(false)
+  const bannerInputRef = useRef<HTMLInputElement>(null)
   const [autoTranscribe, setAutoTranscribe] = useState(() => {
     try {
       return localStorage.getItem('flux-auto-transcribe') !== '0'
@@ -764,6 +773,8 @@ export function ChatList({
       setStatusDraft(me.status || '')
       setAgeDraft(me.age != null ? String(me.age) : '')
       setCityDraft(me.city || '')
+      setBannerColorDraft(me.banner_color || null)
+      setBannerImageDraft(me.banner_image_url || null)
       setAccountView('root')
       setAccountError(null)
     }
@@ -981,6 +992,53 @@ export function ChatList({
     }
   }
 
+  async function setBannerColor(color: string) {
+    if (!me) return
+    setBannerSaving(true)
+    const { error: err } = await supabase.from('profiles').update({ banner_color: color, banner_image_url: null }).eq('id', me.id)
+    if (!err) {
+      setBannerColorDraft(color)
+      setBannerImageDraft(null)
+      onProfileChange({ banner_color: color, banner_image_url: null })
+    }
+    setBannerSaving(false)
+  }
+
+  async function uploadBannerImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !me) return
+    setBannerUploading(true)
+    setAccountError(null)
+    try {
+      const path = `${me.id}/banner`
+      const { error: uploadErr } = await supabase.storage
+        .from('avatars')
+        .upload(path, file, { upsert: true, cacheControl: '3600' })
+      if (uploadErr) throw uploadErr
+
+      const { data } = supabase.storage.from('avatars').getPublicUrl(path)
+      const banner_image_url = `${data.publicUrl}?t=${Date.now()}`
+
+      const { error: updateErr } = await supabase.from('profiles').update({ banner_image_url }).eq('id', me.id)
+      if (updateErr) throw updateErr
+
+      setBannerImageDraft(banner_image_url)
+      onProfileChange({ banner_image_url })
+    } catch (err) {
+      setAccountError(getErrorMessage(err))
+    } finally {
+      setBannerUploading(false)
+      if (bannerInputRef.current) bannerInputRef.current.value = ''
+    }
+  }
+
+  async function removeBannerImage() {
+    if (!me) return
+    await supabase.from('profiles').update({ banner_image_url: null }).eq('id', me.id)
+    setBannerImageDraft(null)
+    onProfileChange({ banner_image_url: null })
+  }
+
   async function openBlocked() {
     if (!me) return
     setAccountView('blocked')
@@ -1009,6 +1067,8 @@ export function ChatList({
       ? (me ? displayName(me) : '')
       : accountView === 'profile'
         ? 'Perfil'
+        : accountView === 'appearance'
+          ? 'Aparência'
         : accountView === 'account'
           ? 'Conta'
           : accountView === 'privacy'
@@ -1086,6 +1146,9 @@ export function ChatList({
         <>
           <div className="top">
             <div className="brand">Flux <span className="app-version">v{APP_VERSION}</span></div>
+            <div style={{ marginLeft: 'auto' }}>
+              <NotificationCenter />
+            </div>
           </div>
 
           <div className="search-wrap">
@@ -1423,6 +1486,13 @@ export function ChatList({
                   <div className="option-subtitle">Nome, foto do perfil, nome de usuário</div>
                 </div>
               </div>
+              <div className="new-conv-option" onClick={() => setAccountView('appearance')}>
+                <div className="option-icon"><IconPaint size={20} /></div>
+                <div>
+                  <div>Aparência</div>
+                  <div className="option-subtitle">Cor ou imagem de fundo do seu perfil</div>
+                </div>
+              </div>
               <div className="new-conv-option" onClick={() => setAccountView('account')}>
                 <div className="option-icon"><IconKey size={20} /></div>
                 <div>
@@ -1434,7 +1504,7 @@ export function ChatList({
                 <div className="option-icon"><IconLock size={20} /></div>
                 <div>
                   <div>Privacidade</div>
-                  <div className="option-subtitle">Contatos bloqueados, mensagens temporárias</div>
+                  <div className="option-subtitle">Contatos bloqueados, termo de uso</div>
                 </div>
               </div>
             </div>
@@ -1489,6 +1559,53 @@ export function ChatList({
             <button type="button" disabled={accountSaving} onClick={saveProfile} style={{ marginTop: 10 }}>
               {accountSaving ? 'salvando...' : 'Salvar'}
             </button>
+          </div>
+        )}
+
+        {accountView === 'appearance' && me && (
+          <div className="new-conv-form">
+            <span className="invite-code">aparece atrás da sua foto quando alguém abre seu perfil</span>
+            <div
+              className="profile-banner-preview"
+              style={
+                bannerImageDraft
+                  ? { backgroundImage: `url(${bannerImageDraft})` }
+                  : { background: bannerColorDraft || 'var(--green)' }
+              }
+            />
+
+            <label style={{ marginTop: 12 }}>Cor</label>
+            <div className="banner-color-picker">
+              {BANNER_COLORS.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  className={`banner-color-swatch${!bannerImageDraft && bannerColorDraft === color ? ' active' : ''}`}
+                  style={{ background: color }}
+                  disabled={bannerSaving}
+                  onClick={() => setBannerColor(color)}
+                />
+              ))}
+              <input
+                type="color"
+                className="banner-color-swatch banner-color-custom"
+                value={bannerColorDraft || '#5865f2'}
+                disabled={bannerSaving}
+                onChange={(e) => setBannerColor(e.target.value)}
+              />
+            </div>
+
+            <label style={{ marginTop: 14 }}>Imagem ou GIF</label>
+            <input ref={bannerInputRef} type="file" accept="image/*" hidden onChange={uploadBannerImage} />
+            <button type="button" disabled={bannerUploading} onClick={() => bannerInputRef.current?.click()}>
+              {bannerUploading ? 'enviando...' : bannerImageDraft ? 'Trocar imagem' : 'Escolher imagem'}
+            </button>
+            {bannerImageDraft && (
+              <button type="button" onClick={removeBannerImage} style={{ marginTop: 6 }}>
+                Remover imagem
+              </button>
+            )}
+            {accountError && <span className="auth-error">{accountError}</span>}
           </div>
         )}
 

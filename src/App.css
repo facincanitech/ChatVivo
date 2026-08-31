@@ -394,7 +394,7 @@ body{
 .auth-error{color:#f77;font-size:.8rem;margin-top:10px}
 
 .profile-popup{position:relative;padding-top:44px}
-.profile-popup-back{position:absolute;top:8px;left:8px}
+.profile-popup-back{position:absolute;top:8px;left:8px;z-index:2}
 .profile-popup-stats{display:flex;justify-content:center;gap:10px;margin:12px 0}
 .profile-popup-stats button{
   background:none;border:1px solid var(--line-2);border-radius:8px;color:var(--text-secondary);
@@ -488,6 +488,23 @@ body{
   background:var(--green);color:#fff;display:grid;place-items:center;
   border:2px solid var(--bg-surface);
 }
+.profile-banner-preview{
+  width:100%;height:96px;border-radius:16px;background-size:cover;background-position:center;
+  margin-top:8px;
+}
+.banner-color-picker{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.banner-color-swatch{
+  width:32px;height:32px;border-radius:10px;border:2px solid transparent;cursor:pointer;padding:0;
+}
+.banner-color-swatch.active{border-color:var(--text)}
+.banner-color-custom{width:32px;height:32px;padding:0;border-radius:10px;border:2px solid var(--line-2);background:none;cursor:pointer}
+
+.profile-banner{
+  position:absolute;left:8px;right:8px;top:8px;height:96px;border-radius:16px;
+  background-size:cover;background-position:center;z-index:0;
+}
+.profile-popup-avatar-wrap{position:relative;z-index:1;margin-top:-8px}
+.profile-popup-avatar-wrap .account-avatar{border:4px solid var(--bg-surface)}
 .account-signout{
   margin:auto 22px 20px;padding:10px;border-radius:6px;border:1px solid var(--danger-bg);
   background:none;color:var(--accent-text);cursor:pointer;font-size:.85rem;flex-shrink:0;
@@ -609,7 +626,7 @@ body{
 
 .notif-backdrop{position:fixed;inset:0;z-index:145;background:transparent}
 .notif-panel{
-  position:absolute;left:60px;bottom:0;width:260px;max-height:60vh;overflow-y:auto;
+  position:absolute;right:0;top:48px;width:260px;max-height:60vh;overflow-y:auto;
   background:var(--bg-surface);border:1px solid var(--line);border-radius:10px;
   box-shadow:0 8px 24px #0007;z-index:146;padding:6px;
 }
