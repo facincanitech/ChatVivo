@@ -514,9 +514,9 @@ body{
   display:grid;place-items:center;pointer-events:none;color:var(--muted);
 }
 .profile-banner-preview-avatar img{width:100%;height:100%;object-fit:cover}
-.banner-color-picker{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-top:6px}
+.banner-color-picker{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
 .banner-color-swatch{
-  width:100%;aspect-ratio:1;border-radius:10px;border:2px solid transparent;cursor:pointer;padding:0;
+  width:30px;height:30px;border-radius:8px;border:2px solid transparent;cursor:pointer;padding:0;flex-shrink:0;
 }
 .banner-color-swatch.active{border-color:var(--text)}
 .banner-color-custom{width:32px;height:32px;padding:0;border-radius:10px;border:2px solid var(--line-2);background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red);cursor:pointer}
@@ -527,6 +527,35 @@ body{
   display:grid;place-items:center;
 }
 .appearance-separator{border-top:1px solid var(--line-2);margin-top:20px}
+
+.styled-name{font-weight:inherit}
+.name-effect-gradient{
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.name-effect-prism{
+  background-image:linear-gradient(90deg,#ff0000,#ff9900,#33ff00,#00fffb,#0066ff,#cc00ff,#ff0000);
+  background-size:400% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;
+  animation:namePrismShift 4s linear infinite;
+}
+@keyframes namePrismShift{
+  0%{background-position:0% 50%}
+  100%{background-position:400% 50%}
+}
+.name-style-picker{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.name-font-option{
+  padding:8px 12px;border-radius:8px;border:1px solid var(--line-2);background:var(--bg-deep);
+  color:var(--text);cursor:pointer;font-size:.9rem;
+}
+.name-font-option.active{border-color:var(--green);background:var(--bg-selected)}
+.name-effect-option{
+  padding:8px 14px;border-radius:8px;border:1px solid var(--line-2);background:var(--bg-deep);
+  color:var(--text);cursor:pointer;font-size:.85rem;
+}
+.name-effect-option.active{border-color:var(--green);background:var(--bg-selected)}
+.name-style-preview{
+  padding:16px;border-radius:10px;background:var(--bg-panel);border:1px solid var(--line-2);
+  display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:700;margin-top:10px;
+}
 
 .call-overlay{
   position:fixed;inset:0;z-index:300;background:#0e1418;color:#fff;

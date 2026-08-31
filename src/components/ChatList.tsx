@@ -6,6 +6,7 @@ import { uploadImage } from '../lib/uploadImage'
 import { displayName } from '../lib/displayName'
 import { AvatarBox } from './AvatarBox'
 import { NotificationCenter } from './NotificationCenter'
+import { StyledName, NAME_FONTS, NAME_EFFECTS } from './StyledName'
 import { readCache, writeCache } from '../lib/cache'
 import { APP_VERSION, APK_DOWNLOAD_URL } from '../version'
 import {
@@ -1093,6 +1094,12 @@ export function ChatList({
     if (!err) onProfileChange({ [field]: value })
   }
 
+  async function setNameStyle(field: 'name_style_font' | 'name_style_effect' | 'name_style_color', value: string | null) {
+    if (!me) return
+    const { error: err } = await supabase.from('profiles').update({ [field]: value }).eq('id', me.id)
+    if (!err) onProfileChange({ [field]: value })
+  }
+
   async function setBannerColor(color: string) {
     if (!me) return
     setBannerSaving(true)
@@ -1716,7 +1723,18 @@ export function ChatList({
             </div>
             {bannerImageDraft && <span className="invite-code">arraste a imagem pra ajustar o enquadramento</span>}
 
-            <label style={{ marginTop: 12 }}>Cor</label>
+            <label style={{ marginTop: 12 }}>Imagem ou GIF</label>
+            <input ref={bannerInputRef} type="file" accept="image/*" hidden onChange={uploadBannerImage} />
+            <button type="button" disabled={bannerUploading} onClick={() => bannerInputRef.current?.click()}>
+              {bannerUploading ? 'enviando...' : bannerImageDraft ? 'Trocar imagem' : 'Escolher imagem'}
+            </button>
+            {bannerImageDraft && (
+              <button type="button" onClick={removeBannerImage} style={{ marginTop: 6 }}>
+                Remover imagem
+              </button>
+            )}
+
+            <label style={{ marginTop: 12 }}>Cor de fundo (foto)</label>
             <div className="banner-color-picker">
               <button
                 type="button"
@@ -1745,17 +1763,6 @@ export function ChatList({
                 onChange={(e) => setBannerColor(e.target.value)}
               />
             </div>
-
-            <label style={{ marginTop: 8 }}>Imagem ou GIF</label>
-            <input ref={bannerInputRef} type="file" accept="image/*" hidden onChange={uploadBannerImage} />
-            <button type="button" disabled={bannerUploading} onClick={() => bannerInputRef.current?.click()}>
-              {bannerUploading ? 'enviando...' : bannerImageDraft ? 'Trocar imagem' : 'Escolher imagem'}
-            </button>
-            {bannerImageDraft && (
-              <button type="button" onClick={removeBannerImage} style={{ marginTop: 6 }}>
-                Remover imagem
-              </button>
-            )}
             {accountError && <span className="auth-error">{accountError}</span>}
 
             <div className="appearance-separator" />
@@ -1771,6 +1778,67 @@ export function ChatList({
 
             <label style={{ marginTop: 12 }}>Botões</label>
             <ColorGrid value={me.app_button_color} onPick={(v) => setAppColor('app_button_color', v)} />
+
+            <div className="appearance-separator" />
+
+            <label style={{ marginTop: 14 }}>Estilo do nome</label>
+            <span className="invite-code">como seu nome aparece no chat pra todo mundo</span>
+
+            <div className="name-style-preview">
+              <StyledName
+                name={displayName(me)}
+                font={me.name_style_font}
+                effect={me.name_style_effect}
+                color={me.name_style_color}
+              />
+            </div>
+
+            <label style={{ marginTop: 10 }}>Fonte</label>
+            <div className="name-style-picker">
+              {NAME_FONTS.map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  className={`name-font-option${(me.name_style_font || 'default') === f.id ? ' active' : ''}`}
+                  style={f.id !== 'default' ? { fontFamily: f.family } : undefined}
+                  onClick={() => setNameStyle('name_style_font', f.id)}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
+            <label style={{ marginTop: 12 }}>Efeito</label>
+            <div className="name-style-picker">
+              {NAME_EFFECTS.map((e) => (
+                <button
+                  key={e.id}
+                  type="button"
+                  className={`name-effect-option${(me.name_style_effect || 'solid') === e.id ? ' active' : ''}`}
+                  onClick={() => setNameStyle('name_style_effect', e.id)}
+                >
+                  {e.label}
+                </button>
+              ))}
+            </div>
+
+            {(me.name_style_effect === 'gradient') && (
+              <>
+                <label style={{ marginTop: 12 }}>Cor</label>
+                <ColorGrid value={me.name_style_color} onPick={(v) => setNameStyle('name_style_color', v)} />
+              </>
+            )}
+            {(!me.name_style_effect || me.name_style_effect === 'solid' || me.name_style_effect === 'neon') && (
+              <>
+                <label style={{ marginTop: 12 }}>Cor</label>
+                <input
+                  type="color"
+                  value={me.name_style_color && me.name_style_color.startsWith('#') ? me.name_style_color : '#8b9dff'}
+                  onChange={(e) => setNameStyle('name_style_color', e.target.value)}
+                  style={{ width: 60, height: 36, padding: 2, cursor: 'pointer' }}
+                />
+              </>
+            )}
           </div>
         )}
 

@@ -25,6 +25,7 @@ import { IconArrowLeft, IconAttach, IconBell, IconChat, IconCheck, IconCheckDoub
 import type { CallKind, CallPeer } from '../lib/call'
 import { ReplayPlayer, type ReplayEvent } from './ReplayPlayer'
 import { ProfilePopup } from './ProfilePopup'
+import { StyledName } from './StyledName'
 import type { Community, Conversation, Message, Profile } from '../types'
 
 const EMOJIS = [
@@ -111,6 +112,9 @@ type MemberMeta = {
   added_by: string | null
   is_leader: boolean
   role: string | null
+  name_style_font: string | null
+  name_style_effect: 'solid' | 'gradient' | 'neon' | 'prism' | null
+  name_style_color: string | null
 }
 
 type Props = {
@@ -275,7 +279,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       if (!conversation) return
       const { data: rows } = await supabase
         .from('conversation_members')
-        .select('user_id, last_read_at, added_by, is_leader, role, profile:profiles!conversation_members_user_id_fkey(id, username, display_name, email, avatar_url, status, last_seen_at, is_idle)')
+        .select('user_id, last_read_at, added_by, is_leader, role, profile:profiles!conversation_members_user_id_fkey(id, username, display_name, email, avatar_url, status, last_seen_at, is_idle, name_style_font, name_style_effect, name_style_color)')
         .eq('conversation_id', conversation.id)
 
       if (!cancelled && rows) {
@@ -295,6 +299,9 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
               added_by: row.added_by as string | null,
               is_leader: row.is_leader as boolean,
               role: row.role as string | null,
+              name_style_font: p.name_style_font ?? null,
+              name_style_effect: p.name_style_effect ?? null,
+              name_style_color: p.name_style_color ?? null,
             }
           }
         }
@@ -649,6 +656,9 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
           added_by: me.id,
           is_leader: false,
           role: isRoleGroup ? 'member' : null,
+          name_style_font: null,
+          name_style_effect: null,
+          name_style_color: null,
         },
       }))
 
@@ -1205,7 +1215,16 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
             else if (isRoleGroup) openGroupEdit()
           }}
           >
-            {displayTitle}
+            {conversation.type === 'dm' && otherMember ? (
+              <StyledName
+                name={displayTitle}
+                font={otherMember.name_style_font}
+                effect={otherMember.name_style_effect}
+                color={otherMember.name_style_color}
+              />
+            ) : (
+              displayTitle
+            )}
             {isOrganicGroup && <span className="grupal-badge">Grupo</span>}
             {nudgeFrom && (
               <span className="nudge-indicator" title="chamou sua atenção">
@@ -1440,7 +1459,14 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                       style={{ cursor: members[m.author_id] ? 'pointer' : 'default' }}
                       onClick={() => members[m.author_id] && setProfilePopupId(m.author_id)}
                     >
-                      {members[m.author_id] ? displayName(members[m.author_id]) : '...'}
+                      {members[m.author_id] ? (
+                        <StyledName
+                          name={displayName(members[m.author_id])}
+                          font={members[m.author_id].name_style_font}
+                          effect={members[m.author_id].name_style_effect}
+                          color={members[m.author_id].name_style_color}
+                        />
+                      ) : '...'}
                     </span>
                   )}
                   {(() => {
@@ -1532,7 +1558,14 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                       style={{ cursor: members[m.author_id] ? 'pointer' : 'default' }}
                       onClick={() => members[m.author_id] && setProfilePopupId(m.author_id)}
                     >
-                      {members[m.author_id] ? displayName(members[m.author_id]) : '...'}
+                      {members[m.author_id] ? (
+                        <StyledName
+                          name={displayName(members[m.author_id])}
+                          font={members[m.author_id].name_style_font}
+                          effect={members[m.author_id].name_style_effect}
+                          color={members[m.author_id].name_style_color}
+                        />
+                      ) : '...'}
                     </span>
                   )}
                   {m.content}
