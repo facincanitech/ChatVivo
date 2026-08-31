@@ -141,7 +141,7 @@ body{
 }
 .chat.selected{background:var(--bg-selected)}
 .photo{
-  width:52px;height:52px;border-radius:50%;object-fit:cover;flex:none;
+  width:52px;height:52px;border-radius:14px;object-fit:cover;flex:none;
   background:linear-gradient(135deg,var(--avatar-bg),var(--bg-surface-2));display:grid;place-items:center;
   font-weight:700;overflow:hidden;
 }
@@ -171,7 +171,7 @@ body{
   height:78px;background:var(--bg-surface);border-bottom:1px solid var(--line);
   display:flex;align-items:center;padding:0 22px;gap:14px;flex-shrink:0;
 }
-.header-photo{width:48px;height:48px;flex-shrink:0;border-radius:50%;overflow:hidden;background:var(--avatar-bg);display:grid;place-items:center;font-weight:700}
+.header-photo{width:48px;height:48px;flex-shrink:0;border-radius:13px;overflow:hidden;background:var(--avatar-bg);display:grid;place-items:center;font-weight:700}
 .header-photo img{width:100%;height:100%;object-fit:cover;display:block}
 .presence-dot{
   position:absolute;bottom:0;right:0;width:12px;height:12px;border-radius:50%;
@@ -370,7 +370,7 @@ body{
   background:#e5484d;border-color:#e5484d;color:#fff;
 }
 .group-info-avatar{
-  width:96px;height:96px;border-radius:50%;overflow:hidden;background:var(--avatar-bg);
+  width:96px;height:96px;border-radius:22px;overflow:hidden;background:var(--avatar-bg);
   display:grid;place-items:center;font-size:34px;font-weight:700;color:var(--text);
   margin:0 auto 10px;
 }
@@ -663,6 +663,7 @@ body{
   background:var(--bg-panel);border:1px solid var(--line);border-radius:10px;padding:14px;
 }
 .community-post-header{display:flex;align-items:center;gap:10px}
+.community-post-header .post-avatar{border-radius:12px}
 .community-post-content{margin:10px 0 0;white-space:pre-wrap;font-size:14.5px}
 .community-post-image{max-width:100%;border-radius:8px;margin-top:10px;display:block}
 .community-post-actions{display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap}

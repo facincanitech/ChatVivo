@@ -450,7 +450,7 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
           return (
             <div key={post.id} className="community-post">
               <div className="community-post-header">
-                <div className="option-icon"><IconUser size={18} /></div>
+                <div className="option-icon post-avatar"><IconUser size={18} /></div>
                 <div>
                   <div className="author-label" style={{ marginBottom: 0 }}>
                     {authorLabel(post.author_id)}
