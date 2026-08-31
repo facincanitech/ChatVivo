@@ -320,7 +320,7 @@ body{
 .emoji-picker{
   position:absolute;bottom:74px;left:18px;display:flex;flex-wrap:wrap;gap:4px;
   padding:8px;border:1px solid var(--line-2);background:var(--bg-surface);border-radius:10px;
-  max-width:220px;box-shadow:0 8px 24px #0006;
+  max-width:220px;max-height:260px;overflow-y:auto;box-shadow:0 8px 24px #0006;
 }
 .emoji-picker button{font-size:1.3rem;background:none;border:0;cursor:pointer;padding:4px;border-radius:6px}
 
