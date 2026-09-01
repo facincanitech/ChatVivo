@@ -14,10 +14,8 @@ import { APP_VERSION } from './version'
 import { playNudgeSound, triggerNudgeShake } from './lib/nudge'
 import { playWinkEffect, playCustomWinkEffect } from './lib/winks'
 import { saveCustomWink, type CustomWink } from './lib/customWinks'
-import { addNotification, markAllRead } from './lib/notifications'
 import { registerPushNotifications, setCurrentConversationId } from './lib/pushNotifications'
 import { promptDisableBatteryOptimization } from './lib/batteryOpt'
-import { displayName } from './lib/displayName'
 import { readCache, writeCache } from './lib/cache'
 import { pickTextColor } from './lib/appTheme'
 import './App.css'
@@ -171,10 +169,6 @@ function App() {
   const [nudgers, setNudgers] = useState<{ fromId: string; conversationId: string; at: number }[]>([])
 
   useEffect(() => {
-    if (selected) markAllRead()
-  }, [selected])
-
-  useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s)
@@ -311,12 +305,6 @@ function App() {
     }
   }, [profile?.id])
 
-  async function notifyFrom(userId: string, verb: string) {
-    const { data } = await supabase.from('profiles').select('username, display_name').eq('id', userId).single()
-    const name = data ? displayName(data) : 'Alguém'
-    addNotification(verb === 'chamou sua atenção' ? 'nudge' : 'wink', `${name} ${verb}`)
-  }
-
   useEffect(() => {
     if (!profile) return
     const channel = supabase
@@ -326,7 +314,6 @@ function App() {
         if (conversationId && mutedIdsRef.current.has(conversationId)) return
         triggerNudgeShake()
         playNudgeSound()
-        notifyFrom(userId, 'chamou sua atenção')
         if (!conversationId) return
         setNudgers((prev) => {
           if (prev.some((n) => n.conversationId === conversationId)) return prev
@@ -337,10 +324,9 @@ function App() {
         }, 600000)
       })
       .on('broadcast', { event: 'wink' }, ({ payload }) => {
-        const { userId, conversationId, winkId } = payload as { userId: string; conversationId?: string; winkId?: string }
+        const { conversationId, winkId } = payload as { userId: string; conversationId?: string; winkId?: string }
         if (conversationId && mutedIdsRef.current.has(conversationId)) return
         if (winkId) playWinkEffect(winkId)
-        notifyFrom(userId, 'mandou um wink')
       })
       .on('broadcast', { event: 'customWink' }, ({ payload }) => {
         const { userId, conversationId, label, imageData, soundData } = payload as {
@@ -354,7 +340,6 @@ function App() {
         playCustomWinkEffect(imageData, soundData)
         const wink: CustomWink = { id: crypto.randomUUID(), label, imageData, soundData, fromUser: userId }
         saveCustomWink(wink).catch(() => {})
-        notifyFrom(userId, `mandou um wink (${label})`)
       })
       .subscribe()
     return () => {
