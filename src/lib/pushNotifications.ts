@@ -4,9 +4,14 @@ import { LocalNotifications } from '@capacitor/local-notifications'
 import { supabase } from './supabase'
 
 let currentConversationId: string | null = null
+let callOverlayActive = false
 
 export function setCurrentConversationId(id: string | null) {
   currentConversationId = id
+}
+
+export function setCallOverlayActive(active: boolean) {
+  callOverlayActive = active
 }
 
 export async function registerPushNotifications(userId: string) {
@@ -59,6 +64,7 @@ export async function registerPushNotifications(userId: string) {
   await PushNotifications.addListener('pushNotificationReceived', async (notification) => {
     const data = notification.data as { conversationId?: string; type?: string } | undefined
     const isCall = data?.type === 'call'
+    if (isCall && callOverlayActive) return
     if (!isCall && data?.conversationId && data.conversationId === currentConversationId) return
 
     await LocalNotifications.schedule({

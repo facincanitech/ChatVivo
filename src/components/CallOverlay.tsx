@@ -5,7 +5,8 @@ import { displayName } from '../lib/displayName'
 import { triggerNudgeShake } from '../lib/nudge'
 import { sendPush } from '../lib/pushSend'
 import { ICE_SERVERS, type CallKind, type CallPeer, type CallSignal, type OutgoingCallRequest, type PendingCallRow } from '../lib/call'
-import { setSpeakerphoneOn } from '../lib/audioRoute'
+import { setSpeakerphoneOn, startCallAudio, stopCallAudio, startRingtone, stopRingtone } from '../lib/audioRoute'
+import { setCallOverlayActive } from '../lib/pushNotifications'
 import {
   IconCameraFlip,
   IconMic,
@@ -119,6 +120,9 @@ export const CallOverlay = forwardRef<CallOverlayHandle, Props>(function CallOve
   function cleanupCall() {
     const callId = sessionRef.current?.callId
     if (callId) clearCallRow(callId)
+    stopRingtone()
+    stopCallAudio()
+    setCallOverlayActive(false)
     clearRingTimeout()
     pcRef.current?.close()
     pcRef.current = null
@@ -142,6 +146,10 @@ export const CallOverlay = forwardRef<CallOverlayHandle, Props>(function CallOve
   }
 
   function setupPeerConnection(peerId: string, callId: string, kind: CallKind, stream: MediaStream) {
+    startCallAudio()
+    setSpeakerOn(kind === 'video')
+    setSpeakerphoneOn(kind === 'video')
+
     const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS })
     pcRef.current = pc
     stream.getTracks().forEach((t) => pc.addTrack(t, stream))
@@ -163,10 +171,6 @@ export const CallOverlay = forwardRef<CallOverlayHandle, Props>(function CallOve
       if (pc.connectionState === 'connected') {
         clearRingTimeout()
         setSession((s) => (s ? { ...s, status: 'connected', startedAt: s.startedAt ?? Date.now() } : s))
-        if (kind === 'video') {
-          setSpeakerOn(true)
-          setSpeakerphoneOn(true)
-        }
       } else if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected' || pc.connectionState === 'closed') {
         if (sessionRef.current?.callId === callId) cleanupCall()
       }
@@ -256,6 +260,8 @@ export const CallOverlay = forwardRef<CallOverlayHandle, Props>(function CallOve
     if (!me || !s || s.direction !== 'incoming' || !pendingOfferRef.current) return
     clearRingTimeout()
     clearCallRow(s.callId)
+    stopRingtone()
+    setCallOverlayActive(false)
 
     let stream: MediaStream
     try {
@@ -360,6 +366,8 @@ export const CallOverlay = forwardRef<CallOverlayHandle, Props>(function CallOve
     if (sessionRef.current) return
     pendingOfferRef.current = row.offer_sdp
     triggerNudgeShake()
+    startRingtone()
+    setCallOverlayActive(true)
     setSession({
       callId: row.id,
       peer: { id: row.caller_id, name: row.caller_name, avatarUrl: row.caller_avatar },
@@ -415,6 +423,8 @@ export const CallOverlay = forwardRef<CallOverlayHandle, Props>(function CallOve
           }
           pendingOfferRef.current = signal.sdp
           triggerNudgeShake()
+          startRingtone()
+          setCallOverlayActive(true)
           setSession({
             callId: signal.callId,
             peer: { id: signal.from, name: signal.fromName, avatarUrl: signal.fromAvatar },
