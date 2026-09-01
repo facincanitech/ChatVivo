@@ -42,7 +42,7 @@ export type CallOverlayHandle = {
   startCall: (req: OutgoingCallRequest) => void
 }
 
-const RING_TIMEOUT_MS = 30000
+const RING_TIMEOUT_MS = 60000
 
 function formatDuration(ms: number): string {
   const total = Math.floor(ms / 1000)
