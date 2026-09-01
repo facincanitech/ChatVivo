@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { displayName } from '../lib/displayName'
 import { triggerNudgeShake } from '../lib/nudge'
 import { sendPush } from '../lib/pushSend'
-import { ICE_SERVERS, type CallKind, type CallPeer, type CallSignal, type OutgoingCallRequest } from '../lib/call'
+import { ICE_SERVERS, type CallKind, type CallPeer, type CallSignal, type OutgoingCallRequest, type PendingCallRow } from '../lib/call'
 import { setSpeakerphoneOn } from '../lib/audioRoute'
 import {
   IconCameraFlip,
@@ -112,7 +112,13 @@ export const CallOverlay = forwardRef<CallOverlayHandle, Props>(function CallOve
     peerChannelRef.current?.send({ type: 'broadcast', event: 'call', payload: signal })
   }
 
+  function clearCallRow(callId: string) {
+    supabase.from('calls').delete().eq('id', callId).then(() => {}, () => {})
+  }
+
   function cleanupCall() {
+    const callId = sessionRef.current?.callId
+    if (callId) clearCallRow(callId)
     clearRingTimeout()
     pcRef.current?.close()
     pcRef.current = null
@@ -199,6 +205,20 @@ export const CallOverlay = forwardRef<CallOverlayHandle, Props>(function CallOve
     const offer = await pc.createOffer()
     await pc.setLocalDescription(offer)
 
+    supabase.from('calls').insert({
+      id: callId,
+      caller_id: me.id,
+      callee_id: req.peer.id,
+      conversation_id: req.conversationId,
+      kind: req.kind,
+      status: 'ringing',
+      offer_sdp: offer,
+      caller_name: displayName(me),
+      caller_avatar: me.avatar_url ?? null,
+    }).then(({ error }) => {
+      if (error) console.error('insert call row failed', error)
+    })
+
     const ch = await openPeerChannel(req.peer.id)
     ch.send({
       type: 'broadcast',
@@ -224,9 +244,10 @@ export const CallOverlay = forwardRef<CallOverlayHandle, Props>(function CallOve
 
     sendPush(
       [req.peer.id],
-      displayName(me),
-      req.kind === 'video' ? 'te ligou (chamada de vídeo)' : 'te ligou (chamada de voz)',
+      req.kind === 'video' ? 'Chamada de vídeo' : 'Chamada de voz',
+      `${displayName(me)} tá te ligando`,
       req.conversationId,
+      'call',
     )
   }
 
@@ -234,6 +255,7 @@ export const CallOverlay = forwardRef<CallOverlayHandle, Props>(function CallOve
     const s = sessionRef.current
     if (!me || !s || s.direction !== 'incoming' || !pendingOfferRef.current) return
     clearRingTimeout()
+    clearCallRow(s.callId)
 
     let stream: MediaStream
     try {
@@ -333,6 +355,50 @@ export const CallOverlay = forwardRef<CallOverlayHandle, Props>(function CallOve
       startOutgoingCall(req)
     },
   }))
+
+  function showIncomingFromRow(row: PendingCallRow) {
+    if (sessionRef.current) return
+    pendingOfferRef.current = row.offer_sdp
+    triggerNudgeShake()
+    setSession({
+      callId: row.id,
+      peer: { id: row.caller_id, name: row.caller_name, avatarUrl: row.caller_avatar },
+      conversationId: row.conversation_id,
+      kind: row.kind,
+      direction: 'incoming',
+      status: 'ringing',
+      startedAt: null,
+    })
+    const remaining = RING_TIMEOUT_MS - (Date.now() - new Date(row.created_at).getTime())
+    ringTimeoutRef.current = setTimeout(() => {
+      if (sessionRef.current?.callId === row.id && sessionRef.current.status === 'ringing') cleanupCall()
+    }, Math.max(remaining, 0))
+  }
+
+  async function checkPendingCall() {
+    if (!me || sessionRef.current) return
+    const { data } = await supabase
+      .from('calls')
+      .select('*')
+      .eq('callee_id', me.id)
+      .eq('status', 'ringing')
+      .gte('created_at', new Date(Date.now() - RING_TIMEOUT_MS).toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1)
+    const row = (data?.[0] as PendingCallRow | undefined)
+    if (row) showIncomingFromRow(row)
+  }
+
+  useEffect(() => {
+    if (!me) return
+    checkPendingCall()
+    function onVisible() {
+      if (document.visibilityState === 'visible') checkPendingCall()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me?.id])
 
   useEffect(() => {
     if (!me) return

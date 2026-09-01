@@ -33,6 +33,17 @@ export async function registerPushNotifications(userId: string) {
     lights: true,
   }).catch(() => {})
 
+  await LocalNotifications.createChannel({
+    id: 'flux_calls',
+    name: 'Chamadas do Flux',
+    description: 'Chamadas de voz e vídeo',
+    importance: 5,
+    visibility: 1,
+    sound: undefined,
+    vibration: true,
+    lights: true,
+  }).catch(() => {})
+
   await PushNotifications.addListener('registration', async (token) => {
     await supabase
       .from('push_tokens')
@@ -46,8 +57,9 @@ export async function registerPushNotifications(userId: string) {
   // Quando o app ainda esta "vivo" (mesmo em segundo plano), o FCM entrega
   // direto pro codigo em vez de mostrar sozinho na bandeja - tem que mostrar na mao.
   await PushNotifications.addListener('pushNotificationReceived', async (notification) => {
-    const conversationId = (notification.data as { conversationId?: string } | undefined)?.conversationId
-    if (conversationId && conversationId === currentConversationId) return
+    const data = notification.data as { conversationId?: string; type?: string } | undefined
+    const isCall = data?.type === 'call'
+    if (!isCall && data?.conversationId && data.conversationId === currentConversationId) return
 
     await LocalNotifications.schedule({
       notifications: [
@@ -55,7 +67,7 @@ export async function registerPushNotifications(userId: string) {
           id: Math.floor(Math.random() * 1000000),
           title: notification.title || 'Flux',
           body: notification.body || '',
-          channelId: 'flux_messages',
+          channelId: isCall ? 'flux_calls' : 'flux_messages',
         },
       ],
     }).catch(() => {})

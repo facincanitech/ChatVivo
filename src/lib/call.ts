@@ -17,6 +17,19 @@ export type OutgoingCallRequest = {
   conversationId: string
 }
 
+export type PendingCallRow = {
+  id: string
+  caller_id: string
+  callee_id: string
+  conversation_id: string
+  kind: CallKind
+  status: 'ringing' | 'answered' | 'declined' | 'ended'
+  offer_sdp: RTCSessionDescriptionInit
+  caller_name: string
+  caller_avatar: string | null
+  created_at: string
+}
+
 export type CallSignal =
   | {
       type: 'call-offer'
