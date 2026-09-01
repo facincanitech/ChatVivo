@@ -15,7 +15,7 @@ import { playNudgeSound, triggerNudgeShake } from './lib/nudge'
 import { playWinkEffect, playCustomWinkEffect } from './lib/winks'
 import { saveCustomWink, type CustomWink } from './lib/customWinks'
 import { registerPushNotifications, setCurrentConversationId } from './lib/pushNotifications'
-import { promptDisableBatteryOptimization } from './lib/batteryOpt'
+import { promptDisableBatteryOptimization, promptFullScreenIntentPermission } from './lib/batteryOpt'
 import { readCache, writeCache } from './lib/cache'
 import { pickTextColor } from './lib/appTheme'
 import './App.css'
@@ -207,6 +207,7 @@ function App() {
     if (!profile) return
     registerPushNotifications(profile.id).catch(() => {})
     promptDisableBatteryOptimization().catch(() => {})
+    promptFullScreenIntentPermission().catch(() => {})
   }, [profile?.id])
 
   const lastActivityRef = useRef(Date.now())

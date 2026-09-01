@@ -4,6 +4,8 @@ import { supabase } from '../lib/supabase'
 import { playNudgeSound, triggerNudgeShake } from '../lib/nudge'
 import { WINKS, playWinkEffect, playCustomWinkEffect } from '../lib/winks'
 import { getCustomWinks, saveCustomWink, deleteCustomWink, fileToDataUrl, type CustomWink } from '../lib/customWinks'
+import { getCustomStickers, saveCustomSticker, deleteCustomSticker, uploadStickerImage, type CustomSticker } from '../lib/stickers'
+import { searchGifs, type GifResult } from '../lib/gifSearch'
 import { getPresenceColor } from '../lib/presence'
 import { getErrorMessage } from '../lib/errors'
 import { displayName } from '../lib/displayName'
@@ -167,6 +169,130 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     setNewWinkError(null)
     setWinkManagerView('form')
   }
+
+  const [winkPickerTab, setWinkPickerTab] = useState<'winks' | 'stickers' | 'gifs'>('winks')
+  const [customStickers, setCustomStickers] = useState<CustomSticker[]>([])
+  const [stickerManagerView, setStickerManagerView] = useState<'closed' | 'list' | 'form'>('closed')
+  const [editingStickerId, setEditingStickerId] = useState<string | null>(null)
+  const [newStickerLabel, setNewStickerLabel] = useState('')
+  const [newStickerImage, setNewStickerImage] = useState<string | null>(null)
+  const [newStickerError, setNewStickerError] = useState<string | null>(null)
+  const [stickerSending, setStickerSending] = useState(false)
+  const stickerImageInputRef = useRef<HTMLInputElement>(null)
+
+  const [gifQuery, setGifQuery] = useState('')
+  const [gifResults, setGifResults] = useState<GifResult[]>([])
+  const [gifLoading, setGifLoading] = useState(false)
+  const [gifError, setGifError] = useState<string | null>(null)
+
+  function reloadCustomStickers() {
+    getCustomStickers().then(setCustomStickers).catch(() => setCustomStickers([]))
+  }
+
+  useEffect(() => {
+    if (!showWinks) return
+    reloadCustomStickers()
+  }, [showWinks])
+
+  useEffect(() => {
+    if (!showWinks || winkPickerTab !== 'gifs') return
+    setGifLoading(true)
+    setGifError(null)
+    const timer = setTimeout(() => {
+      searchGifs(gifQuery)
+        .then(setGifResults)
+        .catch((err) => setGifError(getErrorMessage(err)))
+        .finally(() => setGifLoading(false))
+    }, 350)
+    return () => clearTimeout(timer)
+  }, [showWinks, winkPickerTab, gifQuery])
+
+  function openStickerManager() {
+    setShowWinks(false)
+    reloadCustomStickers()
+    setStickerManagerView('list')
+  }
+
+  function openStickerForm(existing?: CustomSticker) {
+    setEditingStickerId(existing?.id || null)
+    setNewStickerLabel(existing?.label || '')
+    setNewStickerImage(existing?.imageData || null)
+    setNewStickerError(null)
+    setStickerManagerView('form')
+  }
+
+  const MAX_STICKER_IMAGE_BYTES = 300 * 1024
+
+  async function pickStickerImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    if (file.size > MAX_STICKER_IMAGE_BYTES) {
+      setNewStickerError('Imagem muito grande, escolhe uma menor (até 300KB)')
+      return
+    }
+    setNewStickerError(null)
+    setNewStickerImage(await fileToDataUrl(file))
+  }
+
+  async function saveStickerForm() {
+    if (!newStickerImage) {
+      setNewStickerError('Escolhe uma imagem ou gif')
+      return
+    }
+    const sticker: CustomSticker = {
+      id: editingStickerId || crypto.randomUUID(),
+      label: newStickerLabel.trim() || 'Figurinha',
+      imageData: newStickerImage,
+    }
+    await saveCustomSticker(sticker)
+    setCustomStickers((prev) => {
+      const exists = prev.some((s) => s.id === sticker.id)
+      return exists ? prev.map((s) => (s.id === sticker.id ? sticker : s)) : [...prev, sticker]
+    })
+    setStickerManagerView('list')
+  }
+
+  async function removeCustomSticker(id: string) {
+    await deleteCustomSticker(id)
+    setCustomStickers((prev) => prev.filter((s) => s.id !== id))
+    if (editingStickerId === id) setStickerManagerView('list')
+  }
+
+  async function sendSticker(sticker: CustomSticker) {
+    if (!me || !conversation || stickerSending) return
+    setShowWinks(false)
+    setStickerSending(true)
+    try {
+      const url = await uploadStickerImage(sticker.imageData, me.id)
+      const { error } = await supabase
+        .from('messages')
+        .insert({ conversation_id: conversation.id, author_id: me.id, content: url, kind: 'sticker' })
+      if (error) throw error
+      const recipientIds = Object.keys(members).filter((id) => id !== me.id)
+      sendPush(recipientIds, displayName(me), 'mandou uma figurinha', conversation.id)
+    } catch (err) {
+      console.error('sendSticker failed', err)
+    } finally {
+      setStickerSending(false)
+    }
+  }
+
+  async function sendGif(gif: GifResult) {
+    if (!me || !conversation) return
+    setShowWinks(false)
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .insert({ conversation_id: conversation.id, author_id: me.id, content: gif.url, kind: 'gif' })
+      if (error) throw error
+      const recipientIds = Object.keys(members).filter((id) => id !== me.id)
+      sendPush(recipientIds, displayName(me), 'mandou um gif', conversation.id)
+    } catch (err) {
+      console.error('sendGif failed', err)
+    }
+  }
+
   const [recording, setRecording] = useState(false)
   const [replayFor, setReplayFor] = useState<Message | null>(null)
   const [replayEvents, setReplayEvents] = useState<ReplayEvent[] | null>(null)
@@ -1500,6 +1626,22 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                   </div>
                 </div>
               </div>
+            ) : m.kind === 'sticker' || m.kind === 'gif' ? (
+              <div className={`message ${m.author_id === me.id ? 'out' : 'in'}`}>
+                <div className="sticker-message">
+                  {m.author_id !== me.id && conversation.type === 'group' && (
+                    <span
+                      className="author-label"
+                      style={{ cursor: members[m.author_id] ? 'pointer' : 'default' }}
+                      onClick={() => members[m.author_id] && setProfilePopupId(m.author_id)}
+                    >
+                      {members[m.author_id] ? displayName(members[m.author_id]) : '...'}
+                    </span>
+                  )}
+                  <img src={m.content} alt="" className="sticker-img" onClick={() => setExpandedImage(m.content)} />
+                  <span className="meta sticker-meta">{formatMessageTime(m.created_at)}</span>
+                </div>
+              </div>
             ) : m.kind === 'ephemeral' ? (
               <div className={`message ${m.author_id === me.id ? 'out' : 'in'}`}>
                 <div className="bubble">
@@ -1699,26 +1841,80 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
 
         {showWinks && (
           <div className="emoji-picker wink-picker" ref={winkMenuRef}>
-            {WINKS.map((w) => (
-              <button key={w.id} type="button" title={w.label} onClick={() => sendWink(w.id)}>
-                {w.emoji}
-              </button>
-            ))}
-            {customWinks.map((w) => (
-              <button
-                key={w.id}
-                type="button"
-                title={w.label}
-                className="wink-picker-custom"
-                onClick={() => sendCustomWink(w)}
-                onContextMenu={(e) => { e.preventDefault(); removeCustomWink(w.id) }}
-              >
-                <img src={w.imageData} alt="" />
-              </button>
-            ))}
-            <button type="button" title="Meus winks" className="wink-picker-add" onClick={openWinkManager}>
-              <IconPlus size={16} />
-            </button>
+            <div className="wink-picker-tabs">
+              <button type="button" className={winkPickerTab === 'winks' ? 'active' : ''} onClick={() => setWinkPickerTab('winks')}>Winks</button>
+              <button type="button" className={winkPickerTab === 'stickers' ? 'active' : ''} onClick={() => setWinkPickerTab('stickers')}>Figurinhas</button>
+              <button type="button" className={winkPickerTab === 'gifs' ? 'active' : ''} onClick={() => setWinkPickerTab('gifs')}>GIFs</button>
+            </div>
+
+            {winkPickerTab === 'winks' && (
+              <div className="wink-picker-grid">
+                {WINKS.map((w) => (
+                  <button key={w.id} type="button" title={w.label} onClick={() => sendWink(w.id)}>
+                    {w.emoji}
+                  </button>
+                ))}
+                {customWinks.map((w) => (
+                  <button
+                    key={w.id}
+                    type="button"
+                    title={w.label}
+                    className="wink-picker-custom"
+                    onClick={() => sendCustomWink(w)}
+                    onContextMenu={(e) => { e.preventDefault(); removeCustomWink(w.id) }}
+                  >
+                    <img src={w.imageData} alt="" />
+                  </button>
+                ))}
+                <button type="button" title="Meus winks" className="wink-picker-add" onClick={openWinkManager}>
+                  <IconPlus size={16} />
+                </button>
+              </div>
+            )}
+
+            {winkPickerTab === 'stickers' && (
+              <div className="wink-picker-grid">
+                {customStickers.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    title={s.label}
+                    className="wink-picker-custom"
+                    disabled={stickerSending}
+                    onClick={() => sendSticker(s)}
+                    onContextMenu={(e) => { e.preventDefault(); removeCustomSticker(s.id) }}
+                  >
+                    <img src={s.imageData} alt="" />
+                  </button>
+                ))}
+                <button type="button" title="Minhas figurinhas" className="wink-picker-add" onClick={openStickerManager}>
+                  <IconPlus size={16} />
+                </button>
+              </div>
+            )}
+
+            {winkPickerTab === 'gifs' && (
+              <div className="gif-picker">
+                <input
+                  type="text"
+                  placeholder="Buscar GIF..."
+                  value={gifQuery}
+                  onChange={(e) => setGifQuery(e.target.value)}
+                />
+                {gifLoading && <p className="gif-picker-status">carregando...</p>}
+                {gifError && <p className="gif-picker-status error">{gifError}</p>}
+                {!gifLoading && !gifError && gifResults.length === 0 && (
+                  <p className="gif-picker-status">nenhum gif encontrado</p>
+                )}
+                <div className="gif-picker-grid">
+                  {gifResults.map((g) => (
+                    <button key={g.id} type="button" onClick={() => sendGif(g)}>
+                      <img src={g.previewUrl} alt="" loading="lazy" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -1767,6 +1963,52 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                   <button type="button" className="danger" onClick={() => removeCustomWink(editingWinkId)}>Excluir wink</button>
                 )}
                 <button type="button" onClick={() => setWinkManagerView('list')}>voltar</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {stickerManagerView === 'list' && (
+          <div className="modal-backdrop" onClick={() => setStickerManagerView('closed')}>
+            <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+              <h2>Minhas figurinhas</h2>
+              <button type="button" className="primary" onClick={() => openStickerForm()}>+ Criar figurinha</button>
+              <div className="wink-manager-list">
+                {customStickers.length === 0 && <p style={{ color: '#8696a0', fontSize: '.85rem' }}>nenhuma figurinha criada ainda</p>}
+                {customStickers.map((s) => (
+                  <button key={s.id} type="button" className="wink-manager-item" onClick={() => openStickerForm(s)}>
+                    <img src={s.imageData} alt="" />
+                    <span>{s.label}</span>
+                  </button>
+                ))}
+              </div>
+              <button type="button" onClick={() => setStickerManagerView('closed')}>fechar</button>
+            </div>
+          </div>
+        )}
+
+        {stickerManagerView === 'form' && (
+          <div className="modal-backdrop" onClick={() => setStickerManagerView('list')}>
+            <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+              <h2>{editingStickerId ? 'Editar figurinha' : 'Criar figurinha'}</h2>
+              <div className="new-conv-form">
+                <input
+                  type="text"
+                  placeholder="Nome da figurinha"
+                  value={newStickerLabel}
+                  onChange={(e) => setNewStickerLabel(e.target.value)}
+                />
+                <input ref={stickerImageInputRef} type="file" accept="image/*" hidden onChange={pickStickerImage} />
+                <button type="button" onClick={() => stickerImageInputRef.current?.click()}>
+                  {newStickerImage ? 'Trocar imagem/gif' : 'Escolher imagem/gif'}
+                </button>
+                {newStickerImage && <img src={newStickerImage} alt="" style={{ maxWidth: 120, maxHeight: 120, alignSelf: 'center' }} />}
+                {newStickerError && <p className="error">{newStickerError}</p>}
+                <button type="button" className="primary" onClick={saveStickerForm}>Salvar figurinha</button>
+                {editingStickerId && (
+                  <button type="button" className="danger" onClick={() => removeCustomSticker(editingStickerId)}>Excluir figurinha</button>
+                )}
+                <button type="button" onClick={() => setStickerManagerView('list')}>voltar</button>
               </div>
             </div>
           </div>

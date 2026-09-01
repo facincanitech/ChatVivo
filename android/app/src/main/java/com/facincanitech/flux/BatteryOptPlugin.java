@@ -1,7 +1,10 @@
 package com.facincanitech.flux;
 
+import android.app.NotificationManager;
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.PowerManager;
 import android.provider.Settings;
 
@@ -46,5 +49,27 @@ public class BatteryOptPlugin extends Plugin {
         JSObject ret = new JSObject();
         ret.put("opened", opened);
         call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void canUseFullScreenIntent(PluginCall call) {
+        boolean can = true;
+        if (Build.VERSION.SDK_INT >= 34) {
+            NotificationManager nm = (NotificationManager) getContext().getSystemService(Context.NOTIFICATION_SERVICE);
+            can = nm != null && nm.canUseFullScreenIntent();
+        }
+        JSObject ret = new JSObject();
+        ret.put("can", can);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void requestFullScreenIntentPermission(PluginCall call) {
+        if (Build.VERSION.SDK_INT >= 34) {
+            Intent intent = new Intent("android.settings.MANAGE_APP_USE_FULL_SCREEN_INTENT");
+            intent.setData(Uri.parse("package:" + getContext().getPackageName()));
+            getActivity().startActivity(intent);
+        }
+        call.resolve();
     }
 }

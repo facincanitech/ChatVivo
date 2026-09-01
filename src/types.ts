@@ -41,7 +41,7 @@ export type Message = {
   author_id: string
   content: string
   created_at: string
-  kind: 'text' | 'system' | 'ephemeral' | 'contact'
+  kind: 'text' | 'system' | 'ephemeral' | 'contact' | 'sticker' | 'gif'
 }
 
 export type TypingPayload = {
