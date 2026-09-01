@@ -7,7 +7,7 @@ android {
         applicationId "com.facincanitech.flux"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 73
+        versionCode 74
         versionName "1.5"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
@@ -41,6 +41,7 @@ dependencies {
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
     implementation 'com.github.judemanutd:autostarter:1.1.0'
+    implementation 'com.google.firebase:firebase-messaging:25.0.1'
 }
 
 apply from: 'capacitor.build.gradle'

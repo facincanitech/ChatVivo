@@ -69,6 +69,7 @@ export const CallOverlay = forwardRef<CallOverlayHandle, Props>(function CallOve
   const localVideoRef = useRef<HTMLVideoElement>(null)
   const remoteVideoRef = useRef<HTMLVideoElement>(null)
   const remoteAudioRef = useRef<HTMLAudioElement>(null)
+  const remoteStreamRef = useRef<MediaStream | null>(null)
 
   useEffect(() => {
     sessionRef.current = session
@@ -79,6 +80,12 @@ export const CallOverlay = forwardRef<CallOverlayHandle, Props>(function CallOve
     const id = setInterval(() => setTick((t) => t + 1), 1000)
     return () => clearInterval(id)
   }, [session?.status])
+
+  useEffect(() => {
+    if (session?.kind === 'video' && session.status === 'connected' && remoteVideoRef.current && remoteStreamRef.current) {
+      remoteVideoRef.current.srcObject = remoteStreamRef.current
+    }
+  }, [session?.kind, session?.status])
 
   function clearRingTimeout() {
     if (ringTimeoutRef.current) {
@@ -137,6 +144,7 @@ export const CallOverlay = forwardRef<CallOverlayHandle, Props>(function CallOve
     if (localVideoRef.current) localVideoRef.current.srcObject = null
     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null
     if (remoteAudioRef.current) remoteAudioRef.current.srcObject = null
+    remoteStreamRef.current = null
     setMuted(false)
     setCameraOff(false)
     setSpeakerOn(false)
@@ -163,6 +171,7 @@ export const CallOverlay = forwardRef<CallOverlayHandle, Props>(function CallOve
 
     pc.ontrack = (e) => {
       const remoteStream = e.streams[0]
+      remoteStreamRef.current = remoteStream
       if (kind === 'video' && remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStream
       if (remoteAudioRef.current) remoteAudioRef.current.srcObject = remoteStream
     }
