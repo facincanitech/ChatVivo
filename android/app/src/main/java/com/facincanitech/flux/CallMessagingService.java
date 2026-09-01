@@ -54,9 +54,9 @@ public class CallMessagingService extends MessagingService {
         }
         PendingIntent fullScreenPendingIntent = PendingIntent.getActivity(ctx, notificationId, intent, piFlags);
 
-        RemoteMessage.Notification notif = remoteMessage.getNotification();
-        String title = notif != null && notif.getTitle() != null ? notif.getTitle() : "Chamada";
-        String body = notif != null && notif.getBody() != null ? notif.getBody() : "";
+        Map<String, String> data = remoteMessage.getData();
+        String title = data.get("title") != null ? data.get("title") : "Chamada";
+        String body = data.get("body") != null ? data.get("body") : "";
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(ctx, CHANNEL_ID)
                 .setSmallIcon(getApplicationInfo().icon)
