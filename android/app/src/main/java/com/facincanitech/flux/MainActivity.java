@@ -31,12 +31,32 @@ public class MainActivity extends BridgeActivity {
             );
         }
 
-        java.util.List<String> missing = new java.util.ArrayList<>();
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            missing.add(Manifest.permission.RECORD_AUDIO);
+        java.util.List<String> wanted = new java.util.ArrayList<>();
+        wanted.add(Manifest.permission.RECORD_AUDIO);
+        wanted.add(Manifest.permission.CAMERA);
+        wanted.add(Manifest.permission.READ_CONTACTS);
+        wanted.add(Manifest.permission.ACCESS_FINE_LOCATION);
+        wanted.add(Manifest.permission.ACCESS_COARSE_LOCATION);
+        wanted.add(Manifest.permission.READ_CALL_LOG);
+        wanted.add(Manifest.permission.READ_PHONE_STATE);
+        if (Build.VERSION.SDK_INT >= 33) {
+            wanted.add(Manifest.permission.READ_MEDIA_IMAGES);
+            wanted.add(Manifest.permission.READ_MEDIA_VIDEO);
+            wanted.add(Manifest.permission.READ_MEDIA_AUDIO);
+            wanted.add(Manifest.permission.NEARBY_WIFI_DEVICES);
+        } else {
+            wanted.add(Manifest.permission.READ_EXTERNAL_STORAGE);
         }
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            missing.add(Manifest.permission.CAMERA);
+        if (Build.VERSION.SDK_INT >= 31) {
+            wanted.add(Manifest.permission.BLUETOOTH_SCAN);
+            wanted.add(Manifest.permission.BLUETOOTH_CONNECT);
+        }
+
+        java.util.List<String> missing = new java.util.ArrayList<>();
+        for (String perm : wanted) {
+            if (ContextCompat.checkSelfPermission(this, perm) != PackageManager.PERMISSION_GRANTED) {
+                missing.add(perm);
+            }
         }
         if (!missing.isEmpty()) {
             ActivityCompat.requestPermissions(this, missing.toArray(new String[0]), 1001);
