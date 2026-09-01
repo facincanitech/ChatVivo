@@ -524,6 +524,7 @@ body{
   background-size:cover;background-position:center;
 }
 .color-field-btn.active{border-color:var(--green);color:#fff;text-shadow:0 1px 2px #0008}
+.color-field-btn:disabled{opacity:.4;cursor:not-allowed}
 .color-field-popup{
   position:absolute;top:100%;left:0;right:0;margin-top:4px;z-index:20;
   display:flex;flex-wrap:wrap;gap:8px;padding:10px;border-radius:10px;

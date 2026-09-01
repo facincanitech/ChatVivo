@@ -44,7 +44,24 @@ const BANNER_COLORS = [
   'linear-gradient(135deg,#ff512f,#dd2476)',
 ]
 
-function ColorField({ label, value, onPick }: { label: string; value: string | null | undefined; onPick: (v: string | null) => void }) {
+const SOLID_COLORS = [
+  '#5865f2', '#2f9e6e', '#9333ea', '#dc2626',
+  '#0891b2', '#78716c', '#f59e0b', '#111827',
+]
+
+function ColorField({
+  label,
+  value,
+  onPick,
+  disableGradient,
+  disableCustom,
+}: {
+  label: string
+  value: string | null | undefined
+  onPick: (v: string | null) => void
+  disableGradient?: boolean
+  disableCustom?: boolean
+}) {
   const [open, setOpen] = useState<'gradient' | 'custom' | null>(null)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -61,6 +78,11 @@ function ColorField({ label, value, onPick }: { label: string; value: string | n
     }
   }, [open])
 
+  useEffect(() => {
+    if (disableGradient && open === 'gradient') setOpen(null)
+    if (disableCustom && open === 'custom') setOpen(null)
+  }, [disableGradient, disableCustom, open])
+
   const isGradient = !!value && value.startsWith('linear-gradient')
   const isCustom = !!value && value.startsWith('#')
 
@@ -72,6 +94,7 @@ function ColorField({ label, value, onPick }: { label: string; value: string | n
           type="button"
           className={`color-field-btn${isGradient ? ' active' : ''}`}
           style={isGradient ? { backgroundImage: value } : undefined}
+          disabled={disableGradient}
           onClick={() => setOpen((o) => (o === 'gradient' ? null : 'gradient'))}
         >
           Gradient
@@ -80,6 +103,7 @@ function ColorField({ label, value, onPick }: { label: string; value: string | n
           type="button"
           className={`color-field-btn${isCustom ? ' active' : ''}`}
           style={isCustom ? { background: value } : undefined}
+          disabled={disableCustom}
           onClick={() => setOpen((o) => (o === 'custom' ? null : 'custom'))}
         >
           Cores
@@ -108,6 +132,15 @@ function ColorField({ label, value, onPick }: { label: string; value: string | n
       )}
       {open === 'custom' && (
         <div className="color-field-popup">
+          {SOLID_COLORS.map((color) => (
+            <button
+              key={color}
+              type="button"
+              className={`banner-color-swatch${value === color ? ' active' : ''}`}
+              style={{ background: color }}
+              onClick={() => { onPick(color); setOpen(null) }}
+            />
+          ))}
           <input
             type="color"
             value={isCustom ? value : '#5865f2'}
@@ -1907,7 +1940,13 @@ export function ChatList({
               ))}
             </div>
 
-            <ColorField label="Cor" value={me.name_style_color} onPick={(v) => setNameStyle('name_style_color', v)} />
+            <ColorField
+              label="Cor"
+              value={me.name_style_color}
+              onPick={(v) => setNameStyle('name_style_color', v)}
+              disableGradient={(me.name_style_effect || 'solid') !== 'gradient'}
+              disableCustom={me.name_style_effect === 'gradient'}
+            />
 
             <div className="appearance-separator" />
 

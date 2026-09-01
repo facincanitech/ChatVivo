@@ -7,10 +7,9 @@ import { ChatList } from './components/ChatList'
 import { MainPanel } from './components/MainPanel'
 import { CommunityView } from './components/CommunityView'
 import { AuthModal } from './components/AuthModal'
-import { CallOverlay } from './components/CallOverlay'
+import { CallOverlay, type CallOverlayHandle } from './components/CallOverlay'
 import type { Community, Conversation, PanelView, Profile } from './types'
 import type { GroupsView } from './components/ChatList'
-import type { OutgoingCallRequest } from './lib/call'
 import { APP_VERSION } from './version'
 import { playNudgeSound, triggerNudgeShake } from './lib/nudge'
 import { playWinkEffect, playCustomWinkEffect } from './lib/winks'
@@ -137,7 +136,7 @@ function App() {
   const [panelView, setPanelView] = useState<PanelView>('root')
   const [accountOpen, setAccountOpen] = useState(false)
   const [accountResetKey, setAccountResetKey] = useState(0)
-  const [outgoingCallRequest, setOutgoingCallRequest] = useState<OutgoingCallRequest | null>(null)
+  const callOverlayRef = useRef<CallOverlayHandle>(null)
   const [groupsRestoreView, setGroupsRestoreView] = useState<GroupsView | null>(null)
 
   function leaveGroupsPanel(fromView: GroupsView) {
@@ -481,11 +480,11 @@ function App() {
           }}
           onConversationUpdate={(patch) => setSelected((c) => (c ? { ...c, ...patch } : c))}
           onOpenCommunity={(c) => { setSelected(null); setCommunityTab('home'); setSelectedCommunity(c) }}
-          onStartCall={(peer, kind) => selected && setOutgoingCallRequest({ peer, kind, conversationId: selected.id })}
+          onStartCall={(peer, kind) => selected && callOverlayRef.current?.startCall({ peer, kind, conversationId: selected.id })}
         />
       )}
       {authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}
-      <CallOverlay me={profile} outgoingRequest={outgoingCallRequest} onConsumeOutgoing={() => setOutgoingCallRequest(null)} />
+      <CallOverlay ref={callOverlayRef} me={profile} />
     </div>
   )
 }

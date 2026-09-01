@@ -28,7 +28,7 @@ export function StyledName({ name, font, effect, color, className }: Props) {
 
   if (effect === 'neon' && color) {
     style.color = color
-    style.textShadow = `0 0 2px ${color}, 0 0 5px ${color}, 0 0 9px ${color}`
+    style.textShadow = `0 0 1px ${color}, 0 0 3px ${color}, 0 0 6px ${color}`
   } else if (effect === 'gradient' && color) {
     style.backgroundImage = color
   } else if (effect === 'solid' && color) {

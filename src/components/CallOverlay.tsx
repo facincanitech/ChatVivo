@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { displayName } from '../lib/displayName'
@@ -22,8 +22,10 @@ type Session = {
 
 type Props = {
   me: Profile | null
-  outgoingRequest: OutgoingCallRequest | null
-  onConsumeOutgoing: () => void
+}
+
+export type CallOverlayHandle = {
+  startCall: (req: OutgoingCallRequest) => void
 }
 
 const RING_TIMEOUT_MS = 30000
@@ -35,7 +37,7 @@ function formatDuration(ms: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
-export function CallOverlay({ me, outgoingRequest, onConsumeOutgoing }: Props) {
+export const CallOverlay = forwardRef<CallOverlayHandle, Props>(function CallOverlay({ me }, ref) {
   const [session, setSession] = useState<Session | null>(null)
   const [muted, setMuted] = useState(false)
   const [cameraOff, setCameraOff] = useState(false)
@@ -268,13 +270,12 @@ export function CallOverlay({ me, outgoingRequest, onConsumeOutgoing }: Props) {
     setCameraOff(!track.enabled)
   }
 
-  useEffect(() => {
-    if (!outgoingRequest) return
-    onConsumeOutgoing()
-    if (sessionRef.current) return
-    startOutgoingCall(outgoingRequest)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [outgoingRequest])
+  useImperativeHandle(ref, () => ({
+    startCall: (req: OutgoingCallRequest) => {
+      if (sessionRef.current) return
+      startOutgoingCall(req)
+    },
+  }))
 
   useEffect(() => {
     if (!me) return
@@ -394,4 +395,4 @@ export function CallOverlay({ me, outgoingRequest, onConsumeOutgoing }: Props) {
       </div>
     </div>
   )
-}
+})
