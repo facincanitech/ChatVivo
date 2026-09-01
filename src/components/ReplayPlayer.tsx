@@ -16,5 +16,5 @@ export function ReplayPlayer({ events }: { events: ReplayEvent[] }) {
     return () => timers.forEach(clearTimeout)
   }, [events])
 
-  return <p style={{ minHeight: '2.5em', fontStyle: 'italic', color: '#8696a0' }}>{events[index]?.text}</p>
+  return <p style={{ minHeight: '2.5em', fontStyle: 'italic', color: 'var(--text-secondary)' }}>{events[index]?.text}</p>
 }

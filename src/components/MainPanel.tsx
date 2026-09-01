@@ -21,7 +21,7 @@ import {
   type EphemeralMediaView,
   type EphemeralOpenResult,
 } from '../lib/ephemeralMedia'
-import { IconArrowLeft, IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconChevronDown, IconCrown, IconDownload, IconHeart, IconLock, IconMic, IconNudge, IconPhone, IconPlus, IconSend, IconSmile, IconVideo } from './icons'
+import { IconArrowLeft, IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconChevronDown, IconCrown, IconDownload, IconHeart, IconLock, IconMic, IconNudge, IconPhone, IconPlus, IconSend, IconSmile, IconUser, IconVideo } from './icons'
 import type { CallKind, CallPeer } from '../lib/call'
 import { ReplayPlayer, type ReplayEvent } from './ReplayPlayer'
 import { ProfilePopup } from './ProfilePopup'
@@ -520,6 +520,26 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     sendPush(Object.keys(members).filter((id) => id !== me.id), displayName(me), 'mandou um wink', conversation.id)
   }
 
+  async function sendContactCard() {
+    if (!me || !conversation) return
+    setShowAttachMenu(false)
+    try {
+      const content = JSON.stringify({
+        name: displayName(me),
+        email: me.email,
+        avatarUrl: me.avatar_url ?? null,
+      })
+      const { error } = await supabase
+        .from('messages')
+        .insert({ conversation_id: conversation.id, author_id: me.id, content, kind: 'contact' })
+      if (error) throw error
+      const recipientIds = Object.keys(members).filter((id) => id !== me.id)
+      sendPush(recipientIds, displayName(me), 'mandou um contato', conversation.id)
+    } catch (err) {
+      console.error('sendContactCard failed', err)
+    }
+  }
+
   const MAX_WINK_IMAGE_BYTES = 300 * 1024
   const MAX_WINK_SOUND_BYTES = 150 * 1024
 
@@ -945,7 +965,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
               return next
             })
           }
-        }, 61_000)
+        }, 10 * 60_000 + 5_000)
       }
     } catch (err) {
       console.error('handleOpenEphemeral failed', err)
@@ -1442,6 +1462,34 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
             {showDate && <div className="date">{formatDateLabel(m.created_at)}</div>}
             {m.kind === 'system' ? (
               <div className="system-message">{m.content}</div>
+            ) : m.kind === 'contact' ? (
+              <div className={`message ${m.author_id === me.id ? 'out' : 'in'}`}>
+                <div className="bubble">
+                  {(() => {
+                    let card: { name: string; email: string; avatarUrl: string | null } | null = null
+                    try {
+                      card = JSON.parse(m.content)
+                    } catch {
+                      card = null
+                    }
+                    if (!card) return <span>{m.content}</span>
+                    return (
+                      <div className="contact-card">
+                        <div className="contact-card-avatar">
+                          {card.avatarUrl ? <img src={sanitizeImageUrl(card.avatarUrl) ?? undefined} alt="" /> : <IconUser size={22} />}
+                        </div>
+                        <div className="contact-card-info">
+                          <strong>{card.name}</strong>
+                          <span>{card.email}</span>
+                        </div>
+                      </div>
+                    )
+                  })()}
+                  <div className="message-footer">
+                    <span className="meta">{formatMessageTime(m.created_at)}</span>
+                  </div>
+                </div>
+              </div>
             ) : m.kind === 'ephemeral' ? (
               <div className={`message ${m.author_id === me.id ? 'out' : 'in'}`}>
                 <div className="bubble">
@@ -1619,6 +1667,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
             <button type="button" onClick={() => mediaInputRef.current?.click()}>Fotos e vídeos</button>
             <button type="button" onClick={() => audioInputRef.current?.click()}>Áudio</button>
             <button type="button" onClick={() => docInputRef.current?.click()}>Documento</button>
+            <button type="button" onClick={sendContactCard}>Contato</button>
           </div>
         )}
 
@@ -1756,7 +1805,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
             <p style={{ fontSize: '.75rem', color: 'var(--muted)', marginTop: 6 }}>
               {pendingViewOnce
                 ? 'Some assim que for vista, sem opção de baixar.'
-                : 'Some 1 minuto depois de aberta — dá pra baixar antes disso.'}
+                : 'Some 10 minutos depois de aberta — dá pra baixar antes disso.'}
             </p>
             <div className="new-conv-form" style={{ marginTop: 10 }}>
               <button type="button" className="primary" disabled={ephemeralSending} onClick={sendEphemeralMedia}>

@@ -14,7 +14,7 @@ import { APP_VERSION } from './version'
 import { playNudgeSound, triggerNudgeShake } from './lib/nudge'
 import { playWinkEffect, playCustomWinkEffect } from './lib/winks'
 import { saveCustomWink, type CustomWink } from './lib/customWinks'
-import { addNotification } from './lib/notifications'
+import { addNotification, markAllRead } from './lib/notifications'
 import { registerPushNotifications, setCurrentConversationId } from './lib/pushNotifications'
 import { promptDisableBatteryOptimization } from './lib/batteryOpt'
 import { displayName } from './lib/displayName'
@@ -169,6 +169,10 @@ function App() {
     }
   }, [])
   const [nudgers, setNudgers] = useState<{ fromId: string; conversationId: string; at: number }[]>([])
+
+  useEffect(() => {
+    if (selected) markAllRead()
+  }, [selected])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))

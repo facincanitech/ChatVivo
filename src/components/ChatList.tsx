@@ -2089,7 +2089,7 @@ export function ChatList({
             </p>
             <p>
               Mídias enviadas como "temporária" ou "visualização única" são apagadas
-              automaticamente do armazenamento após serem abertas (ou após 1 minuto, no caso
+              automaticamente do armazenamento após serem abertas (ou após 10 minutos, no caso
               da temporária) e não ficam salvas no histórico.
             </p>
             <p>
