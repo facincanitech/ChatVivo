@@ -1,10 +1,10 @@
 import { playNudgeSound } from './nudge'
 
-export type WinkId = 'heart' | 'laugh' | 'kiss' | 'confetti' | 'shock' | 'splash'
+export type WinkId = 'heart' | 'laugh' | 'kiss' | 'confetti' | 'shock' | 'splash' | 'fart' | 'wolf' | 'knock'
 
 type WinkEffect = 'mark' | 'flash' | 'bounce' | 'shake' | 'burst'
 
-type WinkDef = { id: WinkId; emoji: string; label: string; effect: WinkEffect; color?: string; particleEmoji?: string }
+type WinkDef = { id: WinkId; emoji: string; label: string; effect: WinkEffect; color?: string; particleEmoji?: string; sounds?: string[] }
 
 export const WINKS: WinkDef[] = [
   { id: 'heart', emoji: '❤️', label: 'Coração', effect: 'burst' },
@@ -13,16 +13,22 @@ export const WINKS: WinkDef[] = [
   { id: 'confetti', emoji: '🎉', label: 'Confete', effect: 'burst' },
   { id: 'shock', emoji: '😱', label: 'Susto', effect: 'shake' },
   { id: 'splash', emoji: '🪣', label: 'Baldaço', effect: 'flash', color: 'rgba(56,139,253,.5)', particleEmoji: '💧' },
+  { id: 'fart', emoji: '💨', label: 'Peido', effect: 'shake', sounds: ['wink-far1.m4a', 'wink-far2.m4a', 'wink-far3.m4a'] },
+  { id: 'wolf', emoji: '👀', label: 'Fiu fiu', effect: 'bounce', sounds: ['wink-fiufiu.m4a'] },
+  { id: 'knock', emoji: '🚪', label: 'Toc toc', effect: 'mark', color: 'rgba(217,119,6,.5)', sounds: ['wink-knock-knock.m4a'] },
 ]
 
-function playWinkSound(winkId: string) {
+function playWinkSound(wink: WinkDef) {
   let fallenBack = false
   const fallback = () => {
     if (fallenBack) return
     fallenBack = true
     playNudgeSound()
   }
-  const audio = new Audio(`${import.meta.env.BASE_URL}sounds/wink-${winkId}.mp3`)
+  const file = wink.sounds
+    ? wink.sounds[Math.floor(Math.random() * wink.sounds.length)]
+    : `wink-${wink.id}.mp3`
+  const audio = new Audio(`${import.meta.env.BASE_URL}sounds/${file}`)
   audio.volume = 0.8
   audio.addEventListener('error', fallback)
   audio.play().catch(fallback)
@@ -133,5 +139,5 @@ export function playWinkEffect(winkId: string) {
       break
   }
 
-  playWinkSound(winkId)
+  playWinkSound(wink)
 }
