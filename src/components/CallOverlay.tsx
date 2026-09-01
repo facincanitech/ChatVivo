@@ -3,6 +3,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { displayName } from '../lib/displayName'
 import { triggerNudgeShake } from '../lib/nudge'
+import { sendPush } from '../lib/pushSend'
 import { ICE_SERVERS, type CallKind, type CallPeer, type CallSignal, type OutgoingCallRequest } from '../lib/call'
 import { setSpeakerphoneOn } from '../lib/audioRoute'
 import {
@@ -220,6 +221,13 @@ export const CallOverlay = forwardRef<CallOverlayHandle, Props>(function CallOve
         cleanupCall()
       }
     }, RING_TIMEOUT_MS)
+
+    sendPush(
+      [req.peer.id],
+      displayName(me),
+      req.kind === 'video' ? 'te ligou (chamada de vídeo)' : 'te ligou (chamada de voz)',
+      req.conversationId,
+    )
   }
 
   async function acceptIncomingCall() {
