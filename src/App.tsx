@@ -14,7 +14,7 @@ import { APP_VERSION } from './version'
 import { playNudgeSound, triggerNudgeShake } from './lib/nudge'
 import { playWinkEffect, playCustomWinkEffect } from './lib/winks'
 import { saveCustomWink, type CustomWink } from './lib/customWinks'
-import { registerPushNotifications, setCurrentConversationId } from './lib/pushNotifications'
+import { registerPushNotifications, setCurrentConversationId, clearAllNotifications } from './lib/pushNotifications'
 import { promptDisableBatteryOptimization, promptFullScreenIntentPermission } from './lib/batteryOpt'
 import { readCache, writeCache } from './lib/cache'
 import { pickTextColor } from './lib/appTheme'
@@ -208,7 +208,16 @@ function App() {
     registerPushNotifications(profile.id).catch(() => {})
     promptDisableBatteryOptimization().catch(() => {})
     promptFullScreenIntentPermission().catch(() => {})
+    clearAllNotifications()
   }, [profile?.id])
+
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState === 'visible') clearAllNotifications()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [])
 
   const lastActivityRef = useRef(Date.now())
 

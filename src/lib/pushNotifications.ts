@@ -14,6 +14,15 @@ export function setCallOverlayActive(active: boolean) {
   callOverlayActive = active
 }
 
+export async function clearAllNotifications() {
+  if (!Capacitor.isNativePlatform()) return
+  try {
+    await LocalNotifications.removeAllDeliveredNotifications()
+  } catch {
+    // plugin indisponivel - nao critico
+  }
+}
+
 export async function registerPushNotifications(userId: string) {
   if (!Capacitor.isNativePlatform()) return
 
