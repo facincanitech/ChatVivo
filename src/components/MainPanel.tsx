@@ -24,6 +24,7 @@ import {
 import { IconArrowLeft, IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconChevronDown, IconCrown, IconDownload, IconHeart, IconLock, IconMic, IconNudge, IconPhone, IconPlus, IconSend, IconSmile, IconUser, IconVideo } from './icons'
 import type { CallKind, CallPeer } from '../lib/call'
 import { ReplayPlayer, type ReplayEvent } from './ReplayPlayer'
+import { StyledName } from './StyledName'
 import { ProfilePopup } from './ProfilePopup'
 import type { Community, Conversation, Message, Profile } from '../types'
 
@@ -1236,7 +1237,16 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
             else if (isRoleGroup) openGroupEdit()
           }}
           >
-            {displayTitle}
+            {otherMember ? (
+              <StyledName
+                name={displayTitle}
+                font={otherMember.name_style_font}
+                effect={otherMember.name_style_effect}
+                color={otherMember.name_style_color}
+              />
+            ) : (
+              displayTitle
+            )}
             {isOrganicGroup && <span className="grupal-badge">Grupo</span>}
             {nudgeFrom && (
               <span className="nudge-indicator" title="chamou sua atenção">

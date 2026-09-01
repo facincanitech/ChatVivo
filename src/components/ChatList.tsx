@@ -23,6 +23,7 @@ import {
   IconMailUnread,
   IconMinusCircle,
   IconMore,
+  IconPlus,
   IconSearch,
   IconTrash,
   IconUser,
@@ -1516,7 +1517,24 @@ export function ChatList({
           ) : (
             <div className="chat-list">
               {!me && <div className="empty">Entre para ver suas conversas</div>}
-              {me && filtered.length === 0 && <div className="empty">Nenhuma conversa ainda</div>}
+              {me && filtered.length === 0 && conversations.length === 0 && !query && activeFilter === 'all' && (
+                <div className="empty empty-cta">
+                  <p>Você ainda não tem nenhuma conversa</p>
+                  <button
+                    type="button"
+                    className="primary"
+                    onClick={() => {
+                      onPanelViewChange('contact')
+                      onPanelOpenChange(true)
+                    }}
+                  >
+                    <IconPlus size={16} /> Adicionar contato
+                  </button>
+                </div>
+              )}
+              {me && filtered.length === 0 && (conversations.length > 0 || query || activeFilter !== 'all') && (
+                <div className="empty">Nenhuma conversa ainda</div>
+              )}
               {filtered.map((c) => (
                 <div
                   key={c.id}
