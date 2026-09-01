@@ -346,21 +346,27 @@ export const CallOverlay = forwardRef<CallOverlayHandle, Props>(function CallOve
     const s = sessionRef.current
     if (!s || s.kind !== 'video') return
     const next = facingModeRef.current === 'user' ? 'environment' : 'user'
+    const oldTrack = localStreamRef.current?.getVideoTracks()[0]
     try {
+      // fecha a camera atual antes de abrir a outra - varios aparelhos Android
+      // nao deixam duas sessoes de camera abertas ao mesmo tempo e a troca falha calada
+      if (oldTrack) {
+        oldTrack.stop()
+        localStreamRef.current?.removeTrack(oldTrack)
+      }
       const newStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: next }, audio: false })
       const newTrack = newStream.getVideoTracks()[0]
       const sender = pcRef.current?.getSenders().find((sd) => sd.track?.kind === 'video')
       if (sender) await sender.replaceTrack(newTrack)
-      const oldTrack = localStreamRef.current?.getVideoTracks()[0]
-      if (oldTrack) {
-        localStreamRef.current?.removeTrack(oldTrack)
-        oldTrack.stop()
-      }
       localStreamRef.current?.addTrack(newTrack)
-      if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = null
+        localVideoRef.current.srcObject = localStreamRef.current
+      }
       facingModeRef.current = next
     } catch (err) {
       console.error('flip camera failed', err)
+      alert('Não consegui trocar de câmera nesse aparelho.')
     }
   }
 

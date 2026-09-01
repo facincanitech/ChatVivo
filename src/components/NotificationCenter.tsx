@@ -1,17 +1,41 @@
 import { useEffect, useState } from 'react'
 import { IconBell } from './icons'
 import { checkForUpdate } from '../lib/updateCheck'
+import { downloadAndInstallUpdate } from '../lib/appUpdate'
 import { APP_VERSION, APK_DOWNLOAD_URL } from '../version'
 
 export function NotificationCenter() {
   const [open, setOpen] = useState(false)
   const [updateVersion, setUpdateVersion] = useState<string | null>(null)
+  const [updating, setUpdating] = useState(false)
+  const [updateError, setUpdateError] = useState<string | null>(null)
+
+  function recheckUpdate() {
+    checkForUpdate(APP_VERSION).then((info) => {
+      setUpdateVersion(info.available ? info.version || null : null)
+    })
+  }
 
   useEffect(() => {
-    checkForUpdate(APP_VERSION).then((info) => {
-      if (info.available) setUpdateVersion(info.version || null)
-    })
+    recheckUpdate()
   }, [])
+
+  useEffect(() => {
+    if (open) recheckUpdate()
+  }, [open])
+
+  async function handleUpdateClick() {
+    setUpdateError(null)
+    setUpdating(true)
+    try {
+      await downloadAndInstallUpdate(APK_DOWNLOAD_URL)
+    } catch (err) {
+      console.error('update failed', err)
+      setUpdateError('Não consegui baixar a atualização. Tenta de novo.')
+    } finally {
+      setUpdating(false)
+    }
+  }
 
   const hasBadge = !!updateVersion
 
@@ -26,14 +50,17 @@ export function NotificationCenter() {
           <div className="notif-backdrop" onClick={() => setOpen(false)} />
           <div className="notif-panel">
             {updateVersion && (
-              <a
+              <button
+                type="button"
                 className="notif-item notif-update"
-                href={APK_DOWNLOAD_URL}
+                disabled={updating}
+                onClick={handleUpdateClick}
               >
                 <span className="notif-update-bang">!</span>
-                <span>Nova versão disponível (v{updateVersion}) — baixar atualização</span>
-              </a>
+                <span>{updating ? 'Baixando atualização...' : `Nova versão disponível (v${updateVersion}) — toque pra atualizar`}</span>
+              </button>
             )}
+            {updateError && <p className="notif-empty error">{updateError}</p>}
             {!updateVersion && <p className="notif-empty">nenhuma novidade do app no momento</p>}
           </div>
         </>
