@@ -4,7 +4,19 @@ import { supabase } from '../lib/supabase'
 import { displayName } from '../lib/displayName'
 import { triggerNudgeShake } from '../lib/nudge'
 import { ICE_SERVERS, type CallKind, type CallPeer, type CallSignal, type OutgoingCallRequest } from '../lib/call'
-import { IconMic, IconMicOff, IconPhone, IconPhoneOff, IconUser, IconVideo, IconVideoOff } from './icons'
+import { setSpeakerphoneOn } from '../lib/audioRoute'
+import {
+  IconCameraFlip,
+  IconMic,
+  IconMicOff,
+  IconPhone,
+  IconPhoneOff,
+  IconUser,
+  IconVideo,
+  IconVideoOff,
+  IconVolume,
+  IconVolumeOff,
+} from './icons'
 import type { Profile } from '../types'
 
 type Direction = 'incoming' | 'outgoing'
@@ -41,8 +53,10 @@ export const CallOverlay = forwardRef<CallOverlayHandle, Props>(function CallOve
   const [session, setSession] = useState<Session | null>(null)
   const [muted, setMuted] = useState(false)
   const [cameraOff, setCameraOff] = useState(false)
+  const [speakerOn, setSpeakerOn] = useState(false)
   const [tick, setTick] = useState(0)
 
+  const facingModeRef = useRef<'user' | 'environment'>('user')
   const sessionRef = useRef<Session | null>(null)
   const pcRef = useRef<RTCPeerConnection | null>(null)
   const localStreamRef = useRef<MediaStream | null>(null)
@@ -114,6 +128,9 @@ export const CallOverlay = forwardRef<CallOverlayHandle, Props>(function CallOve
     if (remoteAudioRef.current) remoteAudioRef.current.srcObject = null
     setMuted(false)
     setCameraOff(false)
+    setSpeakerOn(false)
+    setSpeakerphoneOn(false)
+    facingModeRef.current = 'user'
     setSession(null)
   }
 
@@ -139,6 +156,10 @@ export const CallOverlay = forwardRef<CallOverlayHandle, Props>(function CallOve
       if (pc.connectionState === 'connected') {
         clearRingTimeout()
         setSession((s) => (s ? { ...s, status: 'connected', startedAt: s.startedAt ?? Date.now() } : s))
+        if (kind === 'video') {
+          setSpeakerOn(true)
+          setSpeakerphoneOn(true)
+        }
       } else if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected' || pc.connectionState === 'closed') {
         if (sessionRef.current?.callId === callId) cleanupCall()
       }
@@ -270,6 +291,34 @@ export const CallOverlay = forwardRef<CallOverlayHandle, Props>(function CallOve
     setCameraOff(!track.enabled)
   }
 
+  function toggleSpeaker() {
+    const next = !speakerOn
+    setSpeakerOn(next)
+    setSpeakerphoneOn(next)
+  }
+
+  async function flipCamera() {
+    const s = sessionRef.current
+    if (!s || s.kind !== 'video') return
+    const next = facingModeRef.current === 'user' ? 'environment' : 'user'
+    try {
+      const newStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: next }, audio: false })
+      const newTrack = newStream.getVideoTracks()[0]
+      const sender = pcRef.current?.getSenders().find((sd) => sd.track?.kind === 'video')
+      if (sender) await sender.replaceTrack(newTrack)
+      const oldTrack = localStreamRef.current?.getVideoTracks()[0]
+      if (oldTrack) {
+        localStreamRef.current?.removeTrack(oldTrack)
+        oldTrack.stop()
+      }
+      localStreamRef.current?.addTrack(newTrack)
+      if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current
+      facingModeRef.current = next
+    } catch (err) {
+      console.error('flip camera failed', err)
+    }
+  }
+
   useImperativeHandle(ref, () => ({
     startCall: (req: OutgoingCallRequest) => {
       if (sessionRef.current) return
@@ -382,9 +431,18 @@ export const CallOverlay = forwardRef<CallOverlayHandle, Props>(function CallOve
             <button type="button" className={`call-btn call-btn-secondary${muted ? ' active' : ''}`} onClick={toggleMute}>
               {muted ? <IconMicOff size={22} /> : <IconMic size={22} />}
             </button>
-            {session.kind === 'video' && (
-              <button type="button" className={`call-btn call-btn-secondary${cameraOff ? ' active' : ''}`} onClick={toggleCamera}>
-                {cameraOff ? <IconVideoOff size={22} /> : <IconVideo size={22} />}
+            {session.kind === 'video' ? (
+              <>
+                <button type="button" className={`call-btn call-btn-secondary${cameraOff ? ' active' : ''}`} onClick={toggleCamera}>
+                  {cameraOff ? <IconVideoOff size={22} /> : <IconVideo size={22} />}
+                </button>
+                <button type="button" className="call-btn call-btn-secondary" onClick={flipCamera}>
+                  <IconCameraFlip size={22} />
+                </button>
+              </>
+            ) : (
+              <button type="button" className={`call-btn call-btn-secondary${speakerOn ? ' active' : ''}`} onClick={toggleSpeaker}>
+                {speakerOn ? <IconVolume size={22} /> : <IconVolumeOff size={22} />}
               </button>
             )}
             <button type="button" className="call-btn call-btn-decline" onClick={endCall}>

@@ -390,3 +390,33 @@ export function IconNudge({ size = 20 }: IconProps) {
     </svg>
   )
 }
+
+export function IconCameraFlip({ size = 20 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size}>
+      <path d="M4 8a8 8 0 0 1 13.5-4.5L20 6" />
+      <path d="M20 6V2m0 4h-4" />
+      <path d="M20 16a8 8 0 0 1-13.5 4.5L4 18" />
+      <path d="M4 18v4m0-4h4" />
+    </svg>
+  )
+}
+
+export function IconVolume({ size = 20 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size}>
+      <path d="M4 9v6h4l5 4V5L8 9H4z" />
+      <path d="M16.5 8.5a5 5 0 0 1 0 7" />
+    </svg>
+  )
+}
+
+export function IconVolumeOff({ size = 20 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size}>
+      <path d="M4 9v6h4l5 4V5L8 9H4z" />
+      <line x1="16" y1="9" x2="21" y2="14" />
+      <line x1="21" y1="9" x2="16" y2="14" />
+    </svg>
+  )
+}
