@@ -645,7 +645,7 @@ body{
 
 .context-menu-backdrop{position:fixed;inset:0;z-index:60}
 .context-menu{
-  position:fixed;background:#233138;border:1px solid var(--line-2);border-radius:8px;
+  position:fixed;background:var(--bg-surface);border:1px solid var(--line-2);border-radius:8px;
   padding:6px;min-width:220px;box-shadow:0 12px 32px #0008;
 }
 .context-menu button{

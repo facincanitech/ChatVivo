@@ -251,6 +251,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
 
   useEffect(() => {
     setMessages(conversation ? readCache<Message[]>(`flux-messages:${conversation.id}`) || [] : [])
+    setMembers(conversation ? readCache<Record<string, MemberMeta>>(`flux-members:${conversation.id}`) || {} : {})
     setLiveTyping({})
     setDraft('')
     setAtBottom(true)
@@ -305,6 +306,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
           }
         }
         setMembers(map)
+        writeCache(`flux-members:${conversation.id}`, map)
       }
     }
 

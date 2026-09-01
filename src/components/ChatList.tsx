@@ -914,7 +914,8 @@ export function ChatList({
 
   function handleContextMenu(e: React.MouseEvent, conv: ConvWithLabel) {
     e.preventDefault()
-    setContextMenu({ conv, x: e.clientX, y: e.clientY })
+    const rect = e.currentTarget.getBoundingClientRect()
+    setContextMenu({ conv, x: rect.left + 12, y: e.clientY })
   }
 
   function goBack() {
