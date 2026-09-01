@@ -62,9 +62,9 @@ public class AudioRoutePlugin extends Plugin {
                         break;
                     }
                 }
-                if (target != null) {
-                    am.setCommunicationDevice(target);
-                } else {
+                boolean ok = target != null && am.setCommunicationDevice(target);
+                if (!ok) {
+                    // API nova falhou (device nao disponivel/dispositivo recusou) - cai pra API antiga
                     am.setSpeakerphoneOn(on);
                 }
             } else {
