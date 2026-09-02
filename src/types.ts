@@ -42,6 +42,7 @@ export type Message = {
   content: string
   created_at: string
   kind: 'text' | 'system' | 'ephemeral' | 'contact' | 'sticker' | 'gif'
+  reply_to_id: string | null
 }
 
 export type TypingPayload = {

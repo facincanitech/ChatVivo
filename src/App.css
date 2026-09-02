@@ -219,7 +219,22 @@ body{
   background:var(--bg-surface-2);color:var(--text-secondary);padding:7px 13px;border-radius:8px;
   font-size:12px;box-shadow:0 1px 2px #0005;
 }
-.message{position:relative;display:flex;margin:8px 0;min-width:0}
+.message{position:relative;display:flex;margin:8px 0;min-width:0;touch-action:pan-y}
+.reply-quote{
+  display:flex;flex-direction:column;gap:1px;border-left:3px solid var(--green);
+  background:#0002;border-radius:4px;padding:4px 8px;margin-bottom:4px;font-size:12.5px;text-align:left;
+}
+.reply-quote strong{color:var(--green);font-size:11px}
+.reply-quote span{opacity:.8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.reply-preview-bar{
+  flex-basis:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;
+  background:var(--bg-panel);border-left:3px solid var(--green);border-radius:6px;
+  padding:6px 10px;margin-bottom:6px;order:-1;
+}
+.reply-preview-content{display:flex;flex-direction:column;gap:1px;min-width:0;font-size:12.5px}
+.reply-preview-content strong{color:var(--green);font-size:11px}
+.reply-preview-content span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.reply-preview-bar button{background:none;border:0;color:var(--muted);cursor:pointer;flex-shrink:0}
 .message.in{justify-content:flex-start}
 .message.out{justify-content:flex-end;margin-right:-7%}
 .bubble{

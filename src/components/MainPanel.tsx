@@ -23,7 +23,7 @@ import {
   type EphemeralMediaView,
   type EphemeralOpenResult,
 } from '../lib/ephemeralMedia'
-import { IconArrowLeft, IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconChevronDown, IconCopy, IconCrown, IconDownload, IconHeart, IconLock, IconLockOpen, IconMic, IconNudge, IconPhone, IconPlus, IconSend, IconSmile, IconUser, IconVideo } from './icons'
+import { IconArrowLeft, IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconChevronDown, IconCopy, IconCrown, IconDownload, IconHeart, IconLock, IconLockOpen, IconMic, IconMinusCircle, IconNudge, IconPhone, IconPlus, IconSend, IconSmile, IconUser, IconVideo } from './icons'
 import type { CallKind, CallPeer } from '../lib/call'
 import { ReplayPlayer, type ReplayEvent } from './ReplayPlayer'
 import { StyledName } from './StyledName'
@@ -133,6 +133,11 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const [messages, setMessages] = useState<Message[]>([])
   const [members, setMembers] = useState<Record<string, MemberMeta>>({})
   const [draft, setDraft] = useState('')
+  const [replyTarget, setReplyTarget] = useState<Message | null>(null)
+  const [dragMsgId, setDragMsgId] = useState<string | null>(null)
+  const [dragX, setDragX] = useState(0)
+  const dragStartXRef = useRef<number | null>(null)
+  const dragTriggeredRef = useRef(false)
   const [liveTyping, setLiveTyping] = useState<Record<string, string>>({})
   const [showEmoji, setShowEmoji] = useState(false)
   const [showWinks, setShowWinks] = useState(false)
@@ -382,6 +387,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     setMembers(conversation ? readCache<Record<string, MemberMeta>>(`flux-members:${conversation.id}`) || {} : {})
     setLiveTyping({})
     setDraft('')
+    setReplyTarget(null)
     setAtBottom(true)
     setNudgeFrom(null)
     setEditedIds(new Set())
@@ -1246,9 +1252,12 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     setAtBottom(true)
     replayBuffer.current = []
 
+    const replyToId = replyTarget?.id ?? null
+    setReplyTarget(null)
+
     const { data: msg } = await supabase
       .from('messages')
-      .insert({ conversation_id: conversation.id, author_id: me.id, content })
+      .insert({ conversation_id: conversation.id, author_id: me.id, content, reply_to_id: replyToId })
       .select()
       .single()
 
@@ -1280,6 +1289,45 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       .eq('message_id', msg.id)
       .maybeSingle()
     setReplayEvents((data?.events as ReplayEvent[]) || [])
+  }
+
+  const SWIPE_REPLY_THRESHOLD = 56
+  const SWIPE_REPLY_MAX = 80
+
+  function handleMessagePointerDown(e: React.PointerEvent, msg: Message) {
+    if (msg.kind === 'system') return
+    dragStartXRef.current = e.clientX
+    dragTriggeredRef.current = false
+    setDragMsgId(msg.id)
+    setDragX(0)
+  }
+
+  function handleMessagePointerMove(e: React.PointerEvent, msg: Message) {
+    if (dragMsgId !== msg.id || dragStartXRef.current === null) return
+    const delta = e.clientX - dragStartXRef.current
+    const clamped = Math.max(0, Math.min(SWIPE_REPLY_MAX, delta))
+    setDragX(clamped)
+    if (clamped >= SWIPE_REPLY_THRESHOLD && !dragTriggeredRef.current) {
+      dragTriggeredRef.current = true
+      if (navigator.vibrate) navigator.vibrate(15)
+    }
+  }
+
+  function handleMessagePointerUp(msg: Message) {
+    if (dragMsgId !== msg.id) return
+    if (dragTriggeredRef.current) setReplyTarget(msg)
+    dragStartXRef.current = null
+    dragTriggeredRef.current = false
+    setDragMsgId(null)
+    setDragX(0)
+  }
+
+  function replySnippet(msg: Message): string {
+    if (msg.kind === 'sticker') return 'Figurinha'
+    if (msg.kind === 'gif') return 'GIF'
+    if (msg.kind === 'ephemeral') return 'Mídia'
+    if (msg.kind === 'contact') return 'Contato'
+    return msg.content
   }
 
   async function copyMessage(content: string) {
@@ -1757,7 +1805,14 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                 </div>
               </div>
             ) : (
-              <div className={`message ${m.author_id === me.id ? 'out' : 'in'}`}>
+              <div
+                className={`message ${m.author_id === me.id ? 'out' : 'in'}`}
+                onPointerDown={(e) => handleMessagePointerDown(e, m)}
+                onPointerMove={(e) => handleMessagePointerMove(e, m)}
+                onPointerUp={() => handleMessagePointerUp(m)}
+                onPointerCancel={() => handleMessagePointerUp(m)}
+                style={dragMsgId === m.id ? { transform: `translateX(${dragX}px)` } : undefined}
+              >
                 <div className="bubble">
                   {m.author_id !== me.id && conversation.type === 'group' && (
                     <span
@@ -1769,6 +1824,16 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                       {members[m.author_id] ? displayName(members[m.author_id]) : '...'}
                     </span>
                   )}
+                  {m.reply_to_id && (() => {
+                    const original = messages.find((mm) => mm.id === m.reply_to_id)
+                    if (!original) return null
+                    return (
+                      <div className="reply-quote">
+                        <strong>{original.author_id === me.id ? 'Você' : (members[original.author_id] ? displayName(members[original.author_id]) : '...')}</strong>
+                        <span>{replySnippet(original)}</span>
+                      </div>
+                    )
+                  })()}
                   {m.content}
                   <div className="message-footer">
                     <button type="button" className="replay-btn" title="Copiar mensagem" onClick={() => copyMessage(m.content)}>
@@ -1806,6 +1871,15 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       </section>
 
       <footer className="composer">
+        {replyTarget && (
+          <div className="reply-preview-bar">
+            <div className="reply-preview-content">
+              <strong>{replyTarget.author_id === me.id ? 'Você' : (members[replyTarget.author_id] ? displayName(members[replyTarget.author_id]) : '...')}</strong>
+              <span>{replySnippet(replyTarget)}</span>
+            </div>
+            <button type="button" onClick={() => setReplyTarget(null)}><IconMinusCircle size={18} /></button>
+          </div>
+        )}
         <div className="composer-icons">
           <button ref={emojiBtnRef} type="button" className="compose-btn" onClick={() => setShowEmoji((v) => !v)} title="Emoji"><IconSmile size={20} /></button>
           <button ref={attachBtnRef} type="button" className="compose-btn" onClick={() => setShowAttachMenu((v) => !v)} title="Anexar"><IconAttach size={20} /></button>
