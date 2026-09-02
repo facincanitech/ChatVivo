@@ -279,6 +279,24 @@ export function IconLock({ size = 18 }: IconProps) {
   )
 }
 
+export function IconLockOpen({ size = 18 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size}>
+      <rect x="5" y="11" width="14" height="9" rx="2" />
+      <path d="M8 11V7a4 4 0 0 1 7.5-2.5" />
+    </svg>
+  )
+}
+
+export function IconCopy({ size = 18 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size}>
+      <rect x="9" y="9" width="12" height="12" rx="2" />
+      <path d="M5 15V5a2 2 0 0 1 2-2h10" />
+    </svg>
+  )
+}
+
 export function IconMic({ size = 20 }: IconProps) {
   return (
     <svg {...base} width={size} height={size}>

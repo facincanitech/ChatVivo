@@ -23,7 +23,7 @@ import {
   type EphemeralMediaView,
   type EphemeralOpenResult,
 } from '../lib/ephemeralMedia'
-import { IconArrowLeft, IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconChevronDown, IconCrown, IconDownload, IconHeart, IconLock, IconMic, IconNudge, IconPhone, IconPlus, IconSend, IconSmile, IconUser, IconVideo } from './icons'
+import { IconArrowLeft, IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconChevronDown, IconCopy, IconCrown, IconDownload, IconHeart, IconLock, IconLockOpen, IconMic, IconNudge, IconPhone, IconPlus, IconSend, IconSmile, IconUser, IconVideo } from './icons'
 import type { CallKind, CallPeer } from '../lib/call'
 import { ReplayPlayer, type ReplayEvent } from './ReplayPlayer'
 import { StyledName } from './StyledName'
@@ -1082,8 +1082,16 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
           checkExpireEphemeralMedia(row.id).catch(() => {})
         }, 8000)
       } else {
-        upsertMyEphemeralView(row.message_id, { opened_at: myEphemeralView(row)?.opened_at || new Date().toISOString() })
-        setTimeout(async () => {
+        const openedAt = myEphemeralView(row)?.opened_at || new Date().toISOString()
+        upsertMyEphemeralView(row.message_id, { opened_at: openedAt })
+
+        // baseado no opened_at real, nao num timer novo de 10min toda vez que reabre
+        // o chat - senao quem revisita antes do timer antigo terminar reseta o prazo
+        // pra sempre, e a midia nunca chega a expirar de fato
+        const elapsed = Date.now() - new Date(openedAt).getTime()
+        const remaining = 10 * 60_000 + 5_000 - elapsed
+
+        const runExpireCheck = async () => {
           const { expired } = await checkExpireEphemeralMedia(row.id).catch(() => ({ expired: false }))
           if (expired) {
             upsertMyEphemeralView(row.message_id, { expired: true })
@@ -1094,7 +1102,10 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
               return next
             })
           }
-        }, 10 * 60_000 + 5_000)
+        }
+
+        if (remaining <= 0) runExpireCheck()
+        else setTimeout(runExpireCheck, remaining)
       }
     } catch (err) {
       console.error('handleOpenEphemeral failed', err)
@@ -1269,6 +1280,14 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       .eq('message_id', msg.id)
       .maybeSingle()
     setReplayEvents((data?.events as ReplayEvent[]) || [])
+  }
+
+  async function copyMessage(content: string) {
+    try {
+      await navigator.clipboard.writeText(content)
+    } catch (err) {
+      console.error('copyMessage failed', err)
+    }
   }
 
   const isOrganicGroup = conversation?.type === 'group' && !isRoleGroup
@@ -1752,6 +1771,9 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                   )}
                   {m.content}
                   <div className="message-footer">
+                    <button type="button" className="replay-btn" title="Copiar mensagem" onClick={() => copyMessage(m.content)}>
+                      <IconCopy size={12} />
+                    </button>
                     <button type="button" className="replay-btn" onClick={() => openReplay(m)}>
                       replay{editedIds.has(m.id) && <span className="replay-edited" title="tem coisa diferente do texto final">!</span>}
                     </button>
@@ -2048,14 +2070,24 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
             {!pendingEphemeralFile.type.startsWith('image/') && !pendingEphemeralFile.type.startsWith('video/') && (
               <p className="status">{pendingEphemeralFile.name}</p>
             )}
-            <button
-              type="button"
-              className={`theme-option${pendingViewOnce ? ' active' : ''}`}
-              style={{ marginTop: 10 }}
-              onClick={() => setPendingViewOnce((v) => !v)}
-            >
-              <IconLock size={14} /> Visualização única
-            </button>
+            <div className="ephemeral-mode-toggle" style={{ marginTop: 10 }}>
+              <button
+                type="button"
+                className={`theme-option${!pendingViewOnce ? ' active' : ''}`}
+                title="Some 10 minutos depois de aberta — dá pra baixar antes disso"
+                onClick={() => setPendingViewOnce(false)}
+              >
+                <IconLockOpen size={18} />
+              </button>
+              <button
+                type="button"
+                className={`theme-option${pendingViewOnce ? ' active' : ''}`}
+                title="Visualização única — some assim que for vista, sem opção de baixar"
+                onClick={() => setPendingViewOnce(true)}
+              >
+                <IconLock size={18} />
+              </button>
+            </div>
             <p style={{ fontSize: '.75rem', color: 'var(--muted)', marginTop: 6 }}>
               {pendingViewOnce
                 ? 'Some assim que for vista, sem opção de baixar.'

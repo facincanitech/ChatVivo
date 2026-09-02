@@ -223,7 +223,7 @@ body{
 .message.in{justify-content:flex-start}
 .message.out{justify-content:flex-end;margin-right:-7%}
 .bubble{
-  max-width:min(690px,78%);padding:10px 13px 7px;border-radius:9px;
+  max-width:min(480px,78%);padding:10px 13px 7px;border-radius:9px;
   line-height:1.42;font-size:14px;box-shadow:0 1px 1px #0004;
   overflow-wrap:break-word;word-break:break-word;min-width:0;
 }
@@ -319,9 +319,10 @@ body{
   display:flex;align-items:center;padding:0 15px;
 }
 .input textarea{
-  width:100%;background:none;border:0;outline:0;color:var(--text);font-size:15px;
+  width:100%;background:none;border:0;outline:0;color:var(--text-base);font-size:15px;
   resize:none;padding:0;font-family:inherit;max-height:120px;line-height:1.4;
 }
+.input textarea::placeholder{color:var(--muted)}
 .send{
   width:46px;height:46px;border:0;border-radius:50%;background:var(--green);color:var(--on-button,#fff);
   cursor:pointer;font-size:20px;display:grid;place-items:center;flex-shrink:0;
@@ -500,6 +501,8 @@ body{
   background:transparent;color:var(--text-secondary);cursor:pointer;font-size:13px;
 }
 .theme-option.active{background:var(--accent-dim-bg);border-color:var(--accent-dim-bg);color:var(--accent-text)}
+.ephemeral-mode-toggle{display:flex;justify-content:center;gap:10px}
+.ephemeral-mode-toggle .theme-option{padding:10px 18px}
 
 .account-status-wrap{padding:8px 22px 4px;cursor:pointer}
 .account-status-bubble{

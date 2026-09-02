@@ -127,6 +127,7 @@ function App() {
   ])
 
   const [selected, setSelected] = useState<Conversation | null>(null)
+  const restoredSelectedRef = useRef(false)
   const [selectedCommunity, setSelectedCommunity] = useState<Community | null>(null)
   const [communityTab, setCommunityTab] = useState<'home' | 'info'>('home')
   const [authOpen, setAuthOpen] = useState(false)
@@ -361,6 +362,21 @@ function App() {
     if (!selected) return
     setNudgers((prev) => prev.filter((n) => n.conversationId !== selected.id))
   }, [selected?.id])
+
+  useEffect(() => {
+    if (selected) localStorage.setItem('flux-last-conversation', selected.id)
+    else localStorage.removeItem('flux-last-conversation')
+  }, [selected?.id])
+
+  useEffect(() => {
+    if (!profile || restoredSelectedRef.current || selected) return
+    restoredSelectedRef.current = true
+    const lastId = localStorage.getItem('flux-last-conversation')
+    if (!lastId) return
+    supabase.from('conversations').select('*').eq('id', lastId).maybeSingle().then(({ data }) => {
+      if (data) setSelected(data as Conversation)
+    })
+  }, [profile?.id])
 
   async function openNudger() {
     if (nudgers.length === 0) {

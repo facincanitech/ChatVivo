@@ -82,8 +82,12 @@ export const CallOverlay = forwardRef<CallOverlayHandle, Props>(function CallOve
   }, [session?.status])
 
   useEffect(() => {
-    if (session?.kind === 'video' && session.status === 'connected' && remoteVideoRef.current && remoteStreamRef.current) {
+    if (session?.kind !== 'video' || session.status !== 'connected') return
+    if (remoteVideoRef.current && remoteStreamRef.current) {
       remoteVideoRef.current.srcObject = remoteStreamRef.current
+    }
+    if (localVideoRef.current && localStreamRef.current) {
+      localVideoRef.current.srcObject = localStreamRef.current
     }
   }, [session?.kind, session?.status])
 
