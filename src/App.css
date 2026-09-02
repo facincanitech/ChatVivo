@@ -107,7 +107,7 @@ body{
 .app-version{font-size:12px;font-weight:400;color:var(--muted);letter-spacing:0}
 .top-actions{margin-left:auto;display:flex;gap:8px}
 .icon-btn{
-  width:42px;height:42px;border:0;background:transparent;color:var(--text-secondary);
+  width:42px;height:42px;border:0;background:transparent;color:inherit;
   border-radius:50%;font-size:22px;cursor:pointer;
 }
 .search-wrap{padding:0 18px 13px}
@@ -779,7 +779,7 @@ body{
 }
 .notif-item{
   display:flex;align-items:center;gap:8px;padding:9px 8px;border-radius:8px;
-  font-size:.8rem;color:var(--text);text-decoration:none;
+  font-size:.8rem;color:var(--text-base);text-decoration:none;
   width:100%;text-align:left;background:none;border:0;cursor:pointer;font-family:inherit;
 }
 .notif-item:disabled{opacity:.6;cursor:default}
