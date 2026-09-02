@@ -9,6 +9,8 @@ import { NotificationCenter } from './NotificationCenter'
 import { StyledName, NAME_FONTS, NAME_EFFECTS } from './StyledName'
 import { readCache, writeCache } from '../lib/cache'
 import { APP_VERSION, APK_DOWNLOAD_URL } from '../version'
+import { checkForUpdate } from '../lib/updateCheck'
+import { downloadAndInstallUpdate } from '../lib/appUpdate'
 import {
   IconArchive,
   IconArrowLeft,
@@ -357,6 +359,26 @@ export function ChatList({
   const [contextMenu, setContextMenu] = useState<{ conv: ConvWithLabel; x: number; y: number } | null>(null)
 
   const [accountView, setAccountView] = useState<AccountView>('root')
+  const [latestVersion, setLatestVersion] = useState<string>(APP_VERSION)
+  const [appUpdating, setAppUpdating] = useState(false)
+
+  useEffect(() => {
+    if (accountView !== 'account') return
+    checkForUpdate(APP_VERSION).then((info) => {
+      setLatestVersion(info.available && info.version ? info.version : APP_VERSION)
+    })
+  }, [accountView])
+
+  async function handleAppUpdateClick() {
+    setAppUpdating(true)
+    try {
+      await downloadAndInstallUpdate(APK_DOWNLOAD_URL)
+    } catch (err) {
+      console.error('update failed', err)
+    } finally {
+      setAppUpdating(false)
+    }
+  }
   const [usernameDraft, setUsernameDraft] = useState('')
   const [displayNameDraft, setDisplayNameDraft] = useState('')
   const [statusDraft, setStatusDraft] = useState('')
@@ -2013,14 +2035,18 @@ export function ChatList({
             <span className="invite-code">notificações de segurança e mais dados da conta chegam em breve</span>
 
             <label style={{ marginTop: 10 }}>App</label>
-            <a
-              href={APK_DOWNLOAD_URL}
+            <button
+              type="button"
               className="google-btn"
-              style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}
+              disabled={appUpdating}
+              style={{ display: 'block', width: '100%', textAlign: 'center' }}
+              onClick={handleAppUpdateClick}
             >
-              Baixar o app (Android) — v{APP_VERSION}
-            </a>
-            <span className="invite-code">apk de teste — instala liberando "fontes desconhecidas" no Android</span>
+              {appUpdating ? 'Baixando...' : `Baixar o app (Android) — v${latestVersion}`}
+            </button>
+            <span className="invite-code">
+              {latestVersion !== APP_VERSION ? `sua versão instalada: v${APP_VERSION}` : 'você já está na versão mais nova'}
+            </span>
 
             <label style={{ marginTop: 10 }}>Tema</label>
             <div className="theme-picker">
