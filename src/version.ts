@@ -1,3 +1,3 @@
-export const APP_VERSION = "1.1.169"
-export const UPDATE_COUNT = 169
-export const APK_DOWNLOAD_URL = "https://github.com/facincanitech/flux/releases/download/latest/flux.apk"
+export const APP_VERSION = "1.1.170"
+export const UPDATE_COUNT = 170
+export const APK_DOWNLOAD_URL = "https://github.com/facincanitech/thothchat/releases/download/latest/thothchat.apk"
