@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { playNudgeSound, triggerNudgeShake } from '../lib/nudge'
 import { WINKS, playWinkEffect, playCustomWinkEffect } from '../lib/winks'
 import { getCustomWinks, saveCustomWink, deleteCustomWink, fileToDataUrl, type CustomWink } from '../lib/customWinks'
-import { getCustomStickers, saveCustomSticker, deleteCustomSticker, uploadStickerImage, type CustomSticker } from '../lib/stickers'
+import { getCustomStickers, saveCustomSticker, deleteCustomSticker, uploadStickerImage, resizeStickerImage, type CustomSticker } from '../lib/stickers'
 import { searchGifs, type GifResult } from '../lib/gifSearch'
 import { getPresenceColor } from '../lib/presence'
 import { getErrorMessage } from '../lib/errors'
@@ -232,7 +232,8 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       return
     }
     setNewStickerError(null)
-    setNewStickerImage(await fileToDataUrl(file))
+    const raw = await fileToDataUrl(file)
+    setNewStickerImage(await resizeStickerImage(raw, file.type))
   }
 
   async function saveStickerForm() {
