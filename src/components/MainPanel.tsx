@@ -442,12 +442,13 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       if (!conversation) return
       await loadMembers()
 
-      const { data: msgs } = await supabase
+      const { data: recentDesc } = await supabase
         .from('messages')
         .select('*, message_replays(events), ephemeral_media(*, ephemeral_media_views(*))')
         .eq('conversation_id', conversation.id)
-        .order('created_at', { ascending: true })
+        .order('created_at', { ascending: false })
         .limit(200)
+      const msgs = recentDesc ? [...recentDesc].reverse() : null
 
       if (!cancelled && msgs) {
         setMessages(msgs as Message[])
