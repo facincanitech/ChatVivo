@@ -38,7 +38,7 @@ export async function registerPushNotifications(userId: string) {
 
   await LocalNotifications.createChannel({
     id: 'flux_messages',
-    name: 'Mensagens do Flux',
+    name: 'Mensagens do ThothChat',
     description: 'Mensagens, sininho e winks',
     importance: 5,
     visibility: 1,
@@ -49,7 +49,7 @@ export async function registerPushNotifications(userId: string) {
 
   await LocalNotifications.createChannel({
     id: 'flux_calls',
-    name: 'Chamadas do Flux',
+    name: 'Chamadas do ThothChat',
     description: 'Chamadas de voz e vídeo',
     importance: 5,
     visibility: 1,
@@ -80,7 +80,7 @@ export async function registerPushNotifications(userId: string) {
       notifications: [
         {
           id: Math.floor(Math.random() * 1000000),
-          title: notification.title || 'Flux',
+          title: notification.title || 'ThothChat',
           body: notification.body || '',
           channelId: isCall ? 'flux_calls' : 'flux_messages',
         },

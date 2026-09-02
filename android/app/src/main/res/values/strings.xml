@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Flux</string>
-    <string name="title_activity_main">Flux</string>
+    <string name="app_name">ThothChat</string>
+    <string name="title_activity_main">ThothChat</string>
     <string name="package_name">com.facincanitech.flux</string>
     <string name="custom_url_scheme">com.facincanitech.flux</string>
 </resources>

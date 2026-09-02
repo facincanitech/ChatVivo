@@ -426,7 +426,7 @@ export function ChatList({
       .eq('user_id', me.id)
       .is('deleted_at', null)
 
-    // grupos dedicados (com role) so aparecem em "Flux - Grupos", nao na lista de conversas
+    // grupos dedicados (com role) so aparecem em "ThothChat - Grupos", nao na lista de conversas
     const myRows = (memberRows || []).filter((r) => !r.role)
     const convs = myRows
       .map((row) => row.conversation as unknown as Conversation)
@@ -1436,7 +1436,7 @@ export function ChatList({
       ) : (
         <>
           <div className="top">
-            <div className="brand">Flux</div>
+            <div className="brand">ThothChat</div>
             <div style={{ marginLeft: 'auto' }}>
               <NotificationCenter />
             </div>
@@ -2120,7 +2120,7 @@ export function ChatList({
         {accountView === 'terms' && (
           <div className="new-conv-form terms-text">
             <p>
-              O Flux é fornecido "como está". Não nos responsabilizamos por uso indevido do
+              O ThothChat é fornecido "como está". Não nos responsabilizamos por uso indevido do
               app por parte dos usuários, incluindo o conteúdo das mensagens trocadas.
             </p>
             <p>
@@ -2137,7 +2137,7 @@ export function ChatList({
               da temporária) e não ficam salvas no histórico.
             </p>
             <p>
-              O app bloqueia print e gravação de tela em toda a área do Flux — não é possível
+              O app bloqueia print e gravação de tela em toda a área do ThothChat — não é possível
               tirar captura nem gravar o que aparece na tela enquanto o app está aberto.
             </p>
             <p>
@@ -2184,7 +2184,7 @@ export function ChatList({
           >
             <IconArrowLeft size={20} />
           </button>
-          <div className="brand" style={{ fontSize: 18 }}>Flux - Grupos</div>
+          <div className="brand" style={{ fontSize: 18 }}>ThothChat - Grupos</div>
         </div>
 
         {groupsView === 'root' && (
