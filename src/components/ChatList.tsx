@@ -1413,7 +1413,7 @@ export function ChatList({
           <button type="button" className="icon-btn" onClick={onCommunityBack} style={{ alignSelf: 'flex-start' }}>
             <IconArrowLeft size={20} />
           </button>
-          <AvatarBox src={selectedCommunity.image_url} id={selectedCommunity.id} fallbackLetter="C" className="community-sidebar-photo" />
+          <AvatarBox src={selectedCommunity.image_url} id={selectedCommunity.id} fallbackLetter={(selectedCommunity.name || "C")[0]?.toUpperCase()} className="community-sidebar-photo" />
           <div className="community-sidebar-name">{selectedCommunity.name}</div>
           <div className="community-sidebar-count">
             {communityMemberCount} {communityMemberCount === 1 ? 'membro' : 'membros'}
@@ -1508,7 +1508,7 @@ export function ChatList({
                     onSelect({ id: g.id, type: 'group', name: g.name, image_url: g.image_url, created_by: '', created_at: '' } as Conversation)
                   }}
                 >
-                  <AvatarBox src={g.image_url} id={g.id} fallbackLetter="G" className="photo" />
+                  <AvatarBox src={g.image_url} id={g.id} fallbackLetter={(g.name || "G")[0]?.toUpperCase()} className="photo" />
                   <div className="chat-info">
                     <div className="row">
                       <div className="name">{g.name}{g.role === 'admin' ? ' (adm)' : g.role === 'moderator' ? ' (mod)' : ''}</div>
@@ -1526,7 +1526,7 @@ export function ChatList({
                   className="chat"
                   onClick={() => onSelectCommunity(c)}
                 >
-                  <AvatarBox src={c.image_url} id={c.id} fallbackLetter="C" className="photo" />
+                  <AvatarBox src={c.image_url} id={c.id} fallbackLetter={(c.name || "C")[0]?.toUpperCase()} className="photo" />
                   <div className="chat-info">
                     <div className="row">
                       <div className="name">{c.name}</div>
@@ -2213,7 +2213,7 @@ export function ChatList({
                     onSelectCommunity(c)
                   }}
                 >
-                  <AvatarBox src={c.image_url} id={c.id} fallbackLetter="C" className="photo" />
+                  <AvatarBox src={c.image_url} id={c.id} fallbackLetter={(c.name || "C")[0]?.toUpperCase()} className="photo" />
                   <div className="chat-info">
                     <div className="row">
                       <div className="name">{c.name}</div>
@@ -2248,7 +2248,7 @@ export function ChatList({
                     onLeaveGroupsPanel('group-root')
                   }}
                 >
-                  <AvatarBox src={g.image_url} id={g.id} fallbackLetter="G" className="photo" />
+                  <AvatarBox src={g.image_url} id={g.id} fallbackLetter={(g.name || "G")[0]?.toUpperCase()} className="photo" />
                   <div className="chat-info">
                     <div className="row">
                       <div className="name">{g.name}{g.role === 'admin' ? ' (adm)' : g.role === 'moderator' ? ' (mod)' : ''}</div>
@@ -2286,7 +2286,7 @@ export function ChatList({
                     onSelectCommunity(c)
                   }}
                 >
-                  <AvatarBox src={c.image_url} id={c.id} fallbackLetter="C" className="photo" />
+                  <AvatarBox src={c.image_url} id={c.id} fallbackLetter={(c.name || "C")[0]?.toUpperCase()} className="photo" />
                   <div className="chat-info">
                     <div className="row">
                       <div className="name">{c.name}</div>
@@ -2390,7 +2390,7 @@ export function ChatList({
                       onSelectCommunity(c)
                     }}
                   >
-                    <AvatarBox src={c.image_url} id={c.id} fallbackLetter="C" className="photo" />
+                    <AvatarBox src={c.image_url} id={c.id} fallbackLetter={(c.name || "C")[0]?.toUpperCase()} className="photo" />
                     <div className="chat-info">
                       <div className="row">
                         <div className="name">{c.name}</div>

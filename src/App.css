@@ -61,7 +61,7 @@
 button{-webkit-tap-highlight-color:transparent;outline:0}
 button:focus,button:focus-visible,button:active{outline:0}
 .app{user-select:none;-webkit-user-select:none}
-input,textarea,.bubble{user-select:text;-webkit-user-select:text}
+input,textarea{user-select:text;-webkit-user-select:text}
 *{scrollbar-width:thin;scrollbar-color:var(--scrollbar) transparent}
 *::-webkit-scrollbar{width:8px;height:8px}
 *::-webkit-scrollbar-track{background:transparent}
@@ -504,6 +504,14 @@ body{
 }
 .new-conv-form button.danger{background:transparent;border:1px solid var(--danger-bg);color:var(--accent-text)}
 .new-conv-form .invite-code{font-size:.8rem;color:var(--accent-text)}
+.invite-link-box{display:flex;flex-direction:column;gap:8px;padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid var(--line-2)}
+.invite-link-box input{
+  width:100%;padding:10px;border-radius:6px;border:1px solid var(--line-2);background:var(--bg-surface);
+  color:var(--text-base);font-size:.8rem;
+}
+.invite-link-box .invite-code{color:var(--accent-text)}
+.invite-link-actions{display:flex;gap:8px}
+.invite-link-actions button{flex:1}
 .new-conv-form label{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
 .new-conv-form input:disabled{opacity:.6}
 .terms-text p{font-size:.85rem;line-height:1.5;color:var(--text-secondary);margin:0}

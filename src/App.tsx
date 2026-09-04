@@ -128,6 +128,8 @@ function App() {
 
   const [selected, setSelected] = useState<Conversation | null>(null)
   const restoredSelectedRef = useRef(false)
+  const [pendingInviteCode] = useState(() => new URLSearchParams(window.location.search).get('invite'))
+  const inviteConsumedRef = useRef(false)
   const [selectedCommunity, setSelectedCommunity] = useState<Community | null>(null)
   const [communityTab, setCommunityTab] = useState<'home' | 'info'>('home')
   const [authOpen, setAuthOpen] = useState(false)
@@ -369,7 +371,7 @@ function App() {
   }, [selected?.id])
 
   useEffect(() => {
-    if (!profile || restoredSelectedRef.current || selected) return
+    if (!profile || restoredSelectedRef.current || selected || pendingInviteCode) return
     restoredSelectedRef.current = true
     const lastId = localStorage.getItem('flux-last-conversation')
     if (!lastId) return
@@ -377,6 +379,32 @@ function App() {
       if (data) setSelected(data as Conversation)
     })
   }, [profile?.id])
+
+  useEffect(() => {
+    if (!pendingInviteCode) return
+    if (session === null) {
+      setAuthOpen(true)
+      return
+    }
+    if (!profile || inviteConsumedRef.current) return
+    inviteConsumedRef.current = true
+    ;(async () => {
+      const { data: groupRows } = await supabase.rpc('get_group_by_invite_code', { p_code: pendingInviteCode })
+      const group = groupRows?.[0]
+      if (group) {
+        await supabase.from('conversation_members').insert({ conversation_id: group.id, user_id: profile.id })
+        const { data: conv } = await supabase.from('conversations').select('*').eq('id', group.id).maybeSingle()
+        if (conv) setSelected(conv as Conversation)
+        return
+      }
+      const { data: community } = await supabase.from('communities').select('*').eq('invite_code', pendingInviteCode).maybeSingle()
+      if (community) {
+        await supabase.from('community_members').insert({ community_id: community.id, user_id: profile.id })
+        setSelectedCommunity(community as Community)
+        setCommunityTab('home')
+      }
+    })()
+  }, [pendingInviteCode, session, profile?.id])
 
   async function openNudger() {
     if (nudgers.length === 0) {

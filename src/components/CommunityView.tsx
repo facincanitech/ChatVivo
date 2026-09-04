@@ -8,6 +8,7 @@ import { ReplayPlayer, type ReplayEvent } from './ReplayPlayer'
 import { AvatarBox } from './AvatarBox'
 import { IconArrowLeft, IconEdit, IconSend, IconSmile, IconTrash, IconUser } from './icons'
 import type { Community, Profile } from '../types'
+import { generateInviteCode, inviteUrl } from '../lib/inviteLink'
 
 const REACTION_EMOJIS = ['😀', '😂', '😍', '😭', '🔥', '👍', '🙏', '😡']
 const CATEGORY_OPTIONS = ['Religioso', 'Filmes', 'Música', 'Entretenimento', 'Esportes', 'Tecnologia', 'Outros']
@@ -89,6 +90,8 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
   const [editLanguage, setEditLanguage] = useState('')
   const [editIsPrivate, setEditIsPrivate] = useState(false)
   const [infoBusy, setInfoBusy] = useState(false)
+  const [inviteLinkBusy, setInviteLinkBusy] = useState(false)
+  const [inviteLinkCopied, setInviteLinkCopied] = useState(false)
   const [infoError, setInfoError] = useState<string | null>(null)
   const [editingPostId, setEditingPostId] = useState<string | null>(null)
   const [editPostDraft, setEditPostDraft] = useState('')
@@ -204,6 +207,30 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
     } finally {
       setImageUploading(false)
       if (imageInputRef.current) imageInputRef.current.value = ''
+    }
+  }
+
+  async function generateCommunityInviteLink() {
+    setInviteLinkBusy(true)
+    try {
+      const code = generateInviteCode()
+      const { error } = await supabase.from('communities').update({ invite_code: code }).eq('id', community.id)
+      if (error) throw error
+      onCommunityUpdate({ invite_code: code })
+    } catch (err) {
+      console.error('generateCommunityInviteLink failed', err)
+    } finally {
+      setInviteLinkBusy(false)
+    }
+  }
+
+  async function copyInviteLink(code: string) {
+    try {
+      await navigator.clipboard.writeText(inviteUrl(code))
+      setInviteLinkCopied(true)
+      setTimeout(() => setInviteLinkCopied(false), 2000)
+    } catch (err) {
+      console.error('copyInviteLink failed', err)
     }
   }
 
@@ -614,6 +641,24 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
               <p className="status" style={{ margin: '4px 0 0' }}>
                 criada em {new Date(community.created_at).toLocaleDateString('pt-BR')}
               </p>
+              <div className="invite-link-box" style={{ marginTop: 8 }}>
+                {community.invite_code ? (
+                  <>
+                    <input type="text" readOnly value={inviteUrl(community.invite_code)} onClick={(e) => (e.target as HTMLInputElement).select()} />
+                    <div className="invite-link-actions">
+                      <button type="button" onClick={() => community.invite_code && copyInviteLink(community.invite_code)}>
+                        {inviteLinkCopied ? 'copiado!' : 'copiar link'}
+                      </button>
+                      <button type="button" disabled={inviteLinkBusy} onClick={generateCommunityInviteLink}>gerar novo</button>
+                    </div>
+                    <span className="invite-code">quem tem esse link entra direto na comunidade</span>
+                  </>
+                ) : (
+                  <button type="button" disabled={inviteLinkBusy} onClick={generateCommunityInviteLink}>
+                    {inviteLinkBusy ? 'gerando...' : 'gerar link de convite'}
+                  </button>
+                )}
+              </div>
               <button type="button" disabled={infoBusy} onClick={saveCommunityInfo} style={{ marginTop: 8 }}>Salvar</button>
               {infoError && <span className="auth-error">{infoError}</span>}
               {isOwner && !confirmDeleteCommunity && (

@@ -23,12 +23,13 @@ import {
   type EphemeralMediaView,
   type EphemeralOpenResult,
 } from '../lib/ephemeralMedia'
-import { IconArrowLeft, IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconChevronDown, IconCopy, IconCrown, IconDownload, IconHeart, IconLock, IconLockOpen, IconMic, IconMinusCircle, IconNudge, IconPhone, IconPlus, IconSend, IconSmile, IconUser, IconVideo } from './icons'
+import { IconArrowLeft, IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconChevronDown, IconCrown, IconDownload, IconHeart, IconLock, IconLockOpen, IconMic, IconMinusCircle, IconNudge, IconPhone, IconPlus, IconSend, IconSmile, IconUser, IconVideo } from './icons'
 import type { CallKind, CallPeer } from '../lib/call'
 import { ReplayPlayer, type ReplayEvent } from './ReplayPlayer'
 import { StyledName } from './StyledName'
 import { ProfilePopup } from './ProfilePopup'
 import type { Community, Conversation, Message, Profile } from '../types'
+import { generateInviteCode, inviteUrl } from '../lib/inviteLink'
 
 const EMOJIS = [
   '😀', '😁', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😍',
@@ -314,6 +315,8 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const groupImageInputRef = useRef<HTMLInputElement>(null)
   const [editBusy, setEditBusy] = useState(false)
   const [inviteFriends, setInviteFriends] = useState<{ id: string; username: string; display_name: string | null; avatar_url: string | null; email: string }[]>([])
+  const [inviteLinkBusy, setInviteLinkBusy] = useState(false)
+  const [inviteLinkCopied, setInviteLinkCopied] = useState(false)
   const [addError, setAddError] = useState<string | null>(null)
   const [addBusy, setAddBusy] = useState(false)
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
@@ -630,6 +633,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
         })
       })
     sendPush(Object.keys(members).filter((id) => id !== me.id), displayName(me), 'chamou sua atenção', conversation.id)
+    postSystemMessage(`${displayName(me)} chamou atenção`)
   }
 
   function sendWink(winkId: string) {
@@ -653,6 +657,8 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
         })
       })
     sendPush(Object.keys(members).filter((id) => id !== me.id), displayName(me), 'mandou um wink', conversation.id)
+    const winkLabel = WINKS.find((w) => w.id === winkId)?.label || 'wink'
+    postSystemMessage(`${displayName(me)} mandou um wink (${winkLabel})`)
   }
 
   async function sendContactCard() {
@@ -755,8 +761,34 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
         })
       })
     sendPush(Object.keys(members).filter((id) => id !== me.id), displayName(me), `mandou um wink (${wink.label})`, conversation.id)
+    postSystemMessage(`${displayName(me)} mandou um wink (${wink.label})`)
   }
 
+
+  async function generateGroupInviteLink() {
+    if (!conversation) return
+    setInviteLinkBusy(true)
+    try {
+      const code = generateInviteCode()
+      const { error } = await supabase.from('conversations').update({ invite_code: code }).eq('id', conversation.id)
+      if (error) throw error
+      onConversationUpdate({ invite_code: code })
+    } catch (err) {
+      console.error('generateGroupInviteLink failed', err)
+    } finally {
+      setInviteLinkBusy(false)
+    }
+  }
+
+  async function copyInviteLink(code: string) {
+    try {
+      await navigator.clipboard.writeText(inviteUrl(code))
+      setInviteLinkCopied(true)
+      setTimeout(() => setInviteLinkCopied(false), 2000)
+    } catch (err) {
+      console.error('copyInviteLink failed', err)
+    }
+  }
 
   async function postSystemMessage(content: string) {
     if (!me || !conversation) return
@@ -1330,14 +1362,6 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     return msg.content
   }
 
-  async function copyMessage(content: string) {
-    try {
-      await navigator.clipboard.writeText(content)
-    } catch (err) {
-      console.error('copyMessage failed', err)
-    }
-  }
-
   const isOrganicGroup = conversation?.type === 'group' && !isRoleGroup
 
   const otherMemberEntry = useMemo(() => {
@@ -1413,8 +1437,6 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 onError={() => setGroupImageFailed(true)}
               />
-            ) : !otherMember ? (
-              'G'
             ) : (
               title[0]?.toUpperCase()
             )}
@@ -1503,7 +1525,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                 editImageUrl ? (
                   <img src={editImageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
-                  'G'
+                  (editName || conversation.name || title)[0]?.toUpperCase()
                 )
               ) : conversation.image_url && !groupImageFailed ? (
                 <img
@@ -1513,7 +1535,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                   onError={() => setGroupImageFailed(true)}
                 />
               ) : (
-                'G'
+                (conversation.name || title)[0]?.toUpperCase()
               )}
             </div>
             <h2>{conversation.name || title}</h2>
@@ -1632,6 +1654,26 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
             )}
             {configView === 'invite' && (
               <>
+                {isRoleGroup && myMembership?.role === 'admin' && (
+                  <div className="invite-link-box">
+                    {conversation.invite_code ? (
+                      <>
+                        <input type="text" readOnly value={inviteUrl(conversation.invite_code)} onClick={(e) => (e.target as HTMLInputElement).select()} />
+                        <div className="invite-link-actions">
+                          <button type="button" onClick={() => conversation.invite_code && copyInviteLink(conversation.invite_code)}>
+                            {inviteLinkCopied ? 'copiado!' : 'copiar link'}
+                          </button>
+                          <button type="button" disabled={inviteLinkBusy} onClick={generateGroupInviteLink}>gerar novo</button>
+                        </div>
+                        <span className="invite-code">quem tem esse link entra direto, mesmo sem ser seu amigo</span>
+                      </>
+                    ) : (
+                      <button type="button" disabled={inviteLinkBusy} onClick={generateGroupInviteLink}>
+                        {inviteLinkBusy ? 'gerando...' : 'gerar link de convite'}
+                      </button>
+                    )}
+                  </div>
+                )}
                 <div className="chat-config-members">
                   {inviteFriends.filter((f) => !members[f.id]).length === 0 && (
                     <span style={{ fontSize: '.8rem', color: '#8696a0' }}>
@@ -1836,9 +1878,6 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                   })()}
                   {m.content}
                   <div className="message-footer">
-                    <button type="button" className="replay-btn" title="Copiar mensagem" onClick={() => copyMessage(m.content)}>
-                      <IconCopy size={12} />
-                    </button>
                     <button type="button" className="replay-btn" onClick={() => openReplay(m)}>
                       replay{editedIds.has(m.id) && <span className="replay-edited" title="tem coisa diferente do texto final">!</span>}
                     </button>

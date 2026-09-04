@@ -31,6 +31,7 @@ export type Conversation = {
   description?: string | null
   image_url?: string | null
   invite_permission?: 'all' | 'owner'
+  invite_code?: string | null
   created_by: string
   created_at: string
 }
@@ -60,6 +61,7 @@ export type Community = {
   image_url: string | null
   language: string | null
   is_private: boolean
+  invite_code?: string | null
   created_by: string
   created_at: string
 }
