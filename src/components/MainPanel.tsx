@@ -317,6 +317,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const [inviteFriends, setInviteFriends] = useState<{ id: string; username: string; display_name: string | null; avatar_url: string | null; email: string }[]>([])
   const [inviteLinkBusy, setInviteLinkBusy] = useState(false)
   const [inviteLinkCopied, setInviteLinkCopied] = useState(false)
+  const [joinRequests, setJoinRequests] = useState<{ user_id: string; username: string; display_name: string | null; avatar_url: string | null }[]>([])
   const [addError, setAddError] = useState<string | null>(null)
   const [addBusy, setAddBusy] = useState(false)
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
@@ -788,6 +789,42 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     } catch (err) {
       console.error('copyInviteLink failed', err)
     }
+  }
+
+  async function toggleInviteApproval() {
+    if (!conversation) return
+    const next = !conversation.invite_requires_approval
+    const { error } = await supabase.from('conversations').update({ invite_requires_approval: next }).eq('id', conversation.id)
+    if (!error) onConversationUpdate({ invite_requires_approval: next })
+  }
+
+  async function loadJoinRequests() {
+    if (!conversation) return
+    const { data } = await supabase
+      .from('conversation_join_requests')
+      .select('user_id, profile:profiles!conversation_join_requests_user_id_fkey(username, display_name, avatar_url)')
+      .eq('conversation_id', conversation.id)
+    setJoinRequests(
+      (data || []).map((r) => {
+        const p = r.profile as unknown as { username: string; display_name: string | null; avatar_url: string | null }
+        return { user_id: r.user_id as string, username: p?.username, display_name: p?.display_name ?? null, avatar_url: p?.avatar_url ?? null }
+      }),
+    )
+  }
+
+  async function acceptJoinRequest(userId: string) {
+    if (!conversation) return
+    const { error } = await supabase.from('conversation_members').insert({ conversation_id: conversation.id, user_id: userId })
+    if (!error) {
+      await supabase.from('conversation_join_requests').delete().eq('conversation_id', conversation.id).eq('user_id', userId)
+      setJoinRequests((prev) => prev.filter((r) => r.user_id !== userId))
+    }
+  }
+
+  async function rejectJoinRequest(userId: string) {
+    if (!conversation) return
+    await supabase.from('conversation_join_requests').delete().eq('conversation_id', conversation.id).eq('user_id', userId)
+    setJoinRequests((prev) => prev.filter((r) => r.user_id !== userId))
   }
 
   async function postSystemMessage(content: string) {
@@ -1552,7 +1589,16 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
             {configView === 'root' && (
               <div className="group-info-actions">
                 {canInvite && (
-                  <button type="button" onClick={() => { loadInviteFriends(); setConfigView('invite') }}>Convidar amigo</button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      loadInviteFriends()
+                      if (isRoleGroup && myMembership?.role === 'admin') loadJoinRequests()
+                      setConfigView('invite')
+                    }}
+                  >
+                    Convidar amigo
+                  </button>
                 )}
                 {canEditGroupInfo && (
                   <button type="button" onClick={openGroupEdit}>Editar nome/descrição/foto</button>
@@ -1665,12 +1711,46 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                           </button>
                           <button type="button" disabled={inviteLinkBusy} onClick={generateGroupInviteLink}>gerar novo</button>
                         </div>
-                        <span className="invite-code">quem tem esse link entra direto, mesmo sem ser seu amigo</span>
+                        <span className="invite-code">
+                          {conversation.invite_requires_approval
+                            ? 'quem tem esse link pede pra entrar, precisa você aceitar'
+                            : 'quem tem esse link entra direto, mesmo sem ser seu amigo'}
+                        </span>
                       </>
                     ) : (
                       <button type="button" disabled={inviteLinkBusy} onClick={generateGroupInviteLink}>
                         {inviteLinkBusy ? 'gerando...' : 'gerar link de convite'}
                       </button>
+                    )}
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '.8rem', marginTop: 6 }}>
+                      <input
+                        type="checkbox"
+                        style={{ width: 'auto' }}
+                        checked={!!conversation.invite_requires_approval}
+                        onChange={toggleInviteApproval}
+                      />
+                      Aprovar antes de entrar pelo link
+                    </label>
+                    {joinRequests.length > 0 && (
+                      <div className="chat-config-members" style={{ marginTop: 8 }}>
+                        <span style={{ fontSize: '.75rem', color: 'var(--muted)' }}>pedidos pra entrar</span>
+                        {joinRequests.map((r) => (
+                          <div key={r.user_id} className="chat-config-row">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                              <div className="photo" style={{ width: 32, height: 32, flexShrink: 0 }}>
+                                {r.avatar_url ? <img src={r.avatar_url} alt="" /> : (r.username?.[0] || '?').toUpperCase()}
+                              </div>
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {r.display_name || r.username}
+                              </span>
+                            </div>
+                            <div className="chat-config-actions">
+                              <button type="button" onClick={() => acceptJoinRequest(r.user_id)}>aceitar</button>
+                              <button type="button" onClick={() => rejectJoinRequest(r.user_id)}>recusar</button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
                 )}

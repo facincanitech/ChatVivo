@@ -392,6 +392,11 @@ function App() {
       const { data: groupRows } = await supabase.rpc('get_group_by_invite_code', { p_code: pendingInviteCode })
       const group = groupRows?.[0]
       if (group) {
+        if (group.invite_requires_approval) {
+          await supabase.from('conversation_join_requests').insert({ conversation_id: group.id, user_id: profile.id })
+          alert(`Pedido pra entrar em "${group.name}" enviado — aguarde um admin aceitar.`)
+          return
+        }
         await supabase.from('conversation_members').insert({ conversation_id: group.id, user_id: profile.id })
         const { data: conv } = await supabase.from('conversations').select('*').eq('id', group.id).maybeSingle()
         if (conv) setSelected(conv as Conversation)

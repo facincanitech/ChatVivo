@@ -691,6 +691,14 @@ export function ChatList({
           closePanel()
           return
         }
+
+        const { data: friends } = await supabase.rpc('are_friends', { a: me.id, b: target.id })
+        if (!friends) {
+          const { data: sharesGroup } = await supabase.rpc('share_a_group', { a: me.id, b: target.id })
+          if (sharesGroup) {
+            throw new Error('Vocês estão no mesmo grupo mas ainda não são amigos — adicione como amigo antes de mandar mensagem direta.')
+          }
+        }
       }
 
       const { data: conv, error: convErr } = await supabase
